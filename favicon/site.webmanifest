@@ -1,5 +1,5 @@
 {
-  "name": "JB CLOUD HUB ",
+  "name": "JB CLOUD HUB",
   "short_name": "JB HUB",
   "icons": [
     {
@@ -15,7 +15,7 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#1c0df4",
+  "background_color": "#0a0cf7",
   "display": "standalone"
 }
