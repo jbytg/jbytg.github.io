@@ -84,7 +84,7 @@
 
     <!-- Windows 11 Style Welcome Overlay -->
     <div id="win-welcome-screen" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4 win-welcome">
-        <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-3xl font-bold shadow-2xl mb-6 shadow-purple-500/50">
+        <div id="win-welcome-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-4xl font-bold shadow-2xl mb-6 shadow-purple-500/50 text-white uppercase">
             <i class="fa fa-user text-white"></i>
         </div>
         <h2 id="win-welcome-name" class="text-3xl sm:text-4xl font-light tracking-wide text-white mb-2 text-center">Welcome</h2>
@@ -608,6 +608,13 @@
             document.getElementById('about-view').classList.add('hidden');
             
             const welcomeScreen = document.getElementById('win-welcome-screen');
+            const avatarBox = document.getElementById('win-welcome-avatar');
+            
+            if (avatarBox) {
+                const firstChar = username ? username.charAt(0).toUpperCase() : 'U';
+                avatarBox.innerText = firstChar;
+            }
+
             document.getElementById('win-welcome-name').innerText = `Welcome, ${username}`;
             document.getElementById('win-welcome-classification').innerText = `Age Category: ${getAgeCategory(dob)}`;
             welcomeScreen.classList.remove('hidden');
