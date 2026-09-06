@@ -40,6 +40,14 @@
         .win-welcome { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         .dpad-btn { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 
+        /* Performance Mode Styles */
+        body.perf-low-graphics #canvas-bg { display: none !important; }
+        body.perf-low-graphics .glass { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; background: rgba(15, 15, 25, 0.95) !important; }
+        body.perf-disable-animations *, body.perf-disable-animations *::before, body.perf-disable-animations *::after {
+            animation: none !important;
+            transition: none !important;
+        }
+
         /* Ultra-Smooth Hardware-Accelerated Per-Letter Wave Animation */
         @keyframes letterWave {
             0%, 100% {
@@ -75,6 +83,11 @@
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
     <canvas id="canvas-bg"></canvas>
+
+    <!-- Global Top-Left Settings Button -->
+    <button onclick="openPerformanceSettingsModal()" class="fixed top-4 left-4 z-40 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md" title="Performance Settings">
+        <i class="fa fa-cog text-lg"></i>
+    </button>
 
     <!-- Notification Toast -->
     <div id="toast" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
@@ -221,6 +234,53 @@
     </div>
 
     <script>
+        // Performance Mode State
+        let perfSettings = {
+            disableBg: localStorage.getItem('perf_disableBg') === 'true',
+            disableAnim: localStorage.getItem('perf_disableAnim') === 'true'
+        };
+
+        function applyPerformanceSettings() {
+            if (perfSettings.disableBg) {
+                document.body.classList.add('perf-low-graphics');
+            } else {
+                document.body.classList.remove('perf-low-graphics');
+            }
+
+            if (perfSettings.disableAnim) {
+                document.body.classList.add('perf-disable-animations');
+            } else {
+                document.body.classList.remove('perf-disable-animations');
+            }
+        }
+        applyPerformanceSettings();
+
+        window.openPerformanceSettingsModal = function() {
+            const inputsHtml = `
+                <div class="space-y-3 text-left">
+                    <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
+                        <input type="checkbox" id="perf-toggle-bg" ${perfSettings.disableBg ? 'checked' : ''} class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
+                        <span class="text-xs text-gray-200">Disable Background Particle Effects & Blur (Saves CPU/GPU)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
+                        <input type="checkbox" id="perf-toggle-anim" ${perfSettings.disableAnim ? 'checked' : ''} class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
+                        <span class="text-xs text-gray-200">Disable Animations & Glow Effects (Reduces Lag)</span>
+                    </label>
+                </div>
+            `;
+
+            openModal("Performance & Optimization Settings", "Toggle settings to boost performance on low-end mobile and desktop devices.", inputsHtml, () => {
+                perfSettings.disableBg = document.getElementById('perf-toggle-bg').checked;
+                perfSettings.disableAnim = document.getElementById('perf-toggle-anim').checked;
+
+                localStorage.setItem('perf_disableBg', perfSettings.disableBg);
+                localStorage.setItem('perf_disableAnim', perfSettings.disableAnim);
+
+                applyPerformanceSettings();
+                showToast("Performance settings updated!");
+            });
+        }
+
         // Smooth Per-Letter Wave Effect Helper
         function applyWaveEffect(el, text) {
             if (!el) return;
@@ -387,6 +447,10 @@
         }
 
         function animateBackground() {
+            if (perfSettings.disableBg) {
+                requestAnimationFrame(animateBackground);
+                return;
+            }
             step += 0.002;
             const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             const h1 = (Math.sin(step) * 120) + 120;
@@ -954,17 +1018,29 @@
                     <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 flex flex-col items-center space-y-2 select-none">
                         <span class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Touch Controls (Mobile / On-Screen)</span>
                         <div class="flex flex-col items-center space-y-1.5">
-                            <button onclick="setSnakeDir('UP')" class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                            <button 
+                                onmousedown="setSnakeDir('UP')" 
+                                ontouchstart="event.preventDefault(); setSnakeDir('UP')" 
+                                class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
                                 <i class="fa fa-chevron-up"></i>
                             </button>
                             <div class="flex space-x-3">
-                                <button onclick="setSnakeDir('LEFT')" class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <button 
+                                    onmousedown="setSnakeDir('LEFT')" 
+                                    ontouchstart="event.preventDefault(); setSnakeDir('LEFT')" 
+                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
                                     <i class="fa fa-chevron-left"></i>
                                 </button>
-                                <button onclick="setSnakeDir('DOWN')" class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <button 
+                                    onmousedown="setSnakeDir('DOWN')" 
+                                    ontouchstart="event.preventDefault(); setSnakeDir('DOWN')" 
+                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
                                     <i class="fa fa-chevron-down"></i>
                                 </button>
-                                <button onclick="setSnakeDir('RIGHT')" class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <button 
+                                    onmousedown="setSnakeDir('RIGHT')" 
+                                    ontouchstart="event.preventDefault(); setSnakeDir('RIGHT')" 
+                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
                                     <i class="fa fa-chevron-right"></i>
                                 </button>
                             </div>
@@ -1075,10 +1151,10 @@
 
         window.addEventListener('keydown', e => {
             if (!cyberSnake.running || isGamePaused) return;
-            if (['ArrowUp', 'KeyW'].includes(e.code)) setSnakeDir('UP');
-            if (['ArrowDown', 'KeyS'].includes(e.code)) setSnakeDir('DOWN');
-            if (['ArrowLeft', 'KeyA'].includes(e.code)) setSnakeDir('LEFT');
-            if (['ArrowRight', 'KeyD'].includes(e.code)) setSnakeDir('RIGHT');
+            if (['ArrowUp', 'KeyW', 'w', 'W'].includes(e.key) || e.code === 'ArrowUp' || e.code === 'KeyW') { setSnakeDir('UP'); e.preventDefault(); }
+            if (['ArrowDown', 'KeyS', 's', 'S'].includes(e.key) || e.code === 'ArrowDown' || e.code === 'KeyS') { setSnakeDir('DOWN'); e.preventDefault(); }
+            if (['ArrowLeft', 'KeyA', 'a', 'A'].includes(e.key) || e.code === 'ArrowLeft' || e.code === 'KeyA') { setSnakeDir('LEFT'); e.preventDefault(); }
+            if (['ArrowRight', 'KeyD', 'd', 'D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { setSnakeDir('RIGHT'); e.preventDefault(); }
         });
 
         function updateCyberLoop() {
