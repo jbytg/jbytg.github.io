@@ -154,7 +154,7 @@
                 <p id="auth-subtitle" class="text-xs text-gray-400 mt-1">Sign in to your secure server account</p>
             </div>
 
-            <div id="auth-form" class="space-y-4">
+            <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Username</label>
                     <input type="text" id="username" placeholder="Enter username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
@@ -211,13 +211,13 @@
                     </div>
                 </div>
 
-                <button onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
+                <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
                 
                 <div class="flex justify-between items-center text-xs sm:text-sm pt-2">
                     <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="toggleMode()"><span id="toggle-text">Create Account</span></p>
                     <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showAbout()">About Us</p>
                 </div>
-            </div>
+            </form>
         </div>
 
         <!-- About View (Pre-login) -->
@@ -1016,7 +1016,7 @@
 
         // --- CYBER ARCADE ---
         let snakeInterval = null;
-        let cyberSnake = { snake: [], food: { x: 0, y: 0 }, dir: 'RIGHT', nextDir: 'RIGHT', score: 0, level: 1, speed: 150, running: false };
+        let cyberSnake = { snake: [], food: { x: 0, y: 0 }, dir: 'RIGHT', nextDir: 'RIGHT', score: 0, level: 1, speed: 150, running: false, gameOver: false };
         let isGamePaused = false;
 
         function renderArcadeTab(container) {
@@ -1076,7 +1076,7 @@
                             <span>How to Play & Game Info</span>
                         </h4>
                         <ul class="list-disc list-inside space-y-1 text-gray-400">
-                            <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or W/A/S/D on keyboard.</li>
+                            <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or W/A/S/D. Press <strong>Space</strong> to Pause, <strong>Enter</strong> to Restart.</li>
                             <li><strong class="text-gray-200">Mobile / Touch:</strong> Use the touch control pad above.</li>
                             <li><strong class="text-gray-200">Speed Mechanics:</strong> Starts slowly and increases in speed as you level up!</li>
                             <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
@@ -1107,6 +1107,7 @@
 
         window.startCyberGame = function() {
             isGamePaused = false;
+            cyberSnake.gameOver = false;
             const pauseBtn = document.getElementById('pause-game-btn');
             if (pauseBtn) {
                 pauseBtn.classList.remove('hidden');
@@ -1172,6 +1173,23 @@
         }
 
         window.addEventListener('keydown', e => {
+            if (currentTab === 'arcade') {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (cyberSnake.running || isGamePaused) {
+                        togglePauseGame();
+                    }
+                    return;
+                }
+                if (e.key === 'Enter') {
+                    if (cyberSnake.gameOver || !cyberSnake.running) {
+                        e.preventDefault();
+                        startCyberGame();
+                        return;
+                    }
+                }
+            }
+
             if (!cyberSnake.running || isGamePaused) return;
             if (['ArrowUp', 'KeyW', 'w', 'W'].includes(e.key) || e.code === 'ArrowUp' || e.code === 'KeyW') { setSnakeDir('UP'); e.preventDefault(); }
             if (['ArrowDown', 'KeyS', 's', 'S'].includes(e.key) || e.code === 'ArrowDown' || e.code === 'KeyS') { setSnakeDir('DOWN'); e.preventDefault(); }
@@ -1218,6 +1236,7 @@
 
         async function endCyberGame() {
             cyberSnake.running = false;
+            cyberSnake.gameOver = true;
             isGamePaused = false;
             clearInterval(snakeInterval);
             const pauseBtn = document.getElementById('pause-game-btn');
@@ -1775,6 +1794,31 @@
         function escapeHtml(str) {
             return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
         }
+
+        // Setup Enter key navigation for form inputs across all views
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const target = e.target;
+                if (target.tagName === 'INPUT' && target.type !== 'button' && target.type !== 'submit') {
+                    const form = target.closest('form') || target.closest('#auth-form') || target.closest('.glass');
+                    if (form) {
+                        const inputs = Array.from(form.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([type="checkbox"])')).filter(i => {
+                            return i.offsetWidth > 0 || i.offsetHeight > 0 || i.getClientRects().length > 0;
+                        });
+                        const currentIndex = inputs.indexOf(target);
+                        if (currentIndex !== -1 && currentIndex < inputs.length - 1) {
+                            e.preventDefault();
+                            inputs[currentIndex + 1].focus();
+                        } else if (currentIndex === inputs.length - 1) {
+                            if (form.id === 'auth-form' || form.closest('#auth-view')) {
+                                e.preventDefault();
+                                handleAuth();
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
         document.addEventListener('DOMContentLoaded', initAllWaveLogos);
         initAllWaveLogos();
