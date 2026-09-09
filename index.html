@@ -4,30 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- SEO & Search Engine Optimization for JB Hub -->
-    <title>JB Hub - High Security Cloud Platform & Cyber Arcade</title>
+    <title>JB Cloud Hub - Free Fun Hub</title>
     <link rel="canonical" href="https://jbytg.github.io/" />
-    <meta name="description" content="JB Hub - High Security Cloud Platform, Cyber Arcade, and Secure Workspace.">
+    <meta name="description" content="JB Hub - Free Cloud Workspace & Cyber Arcade Platform.">
     <meta name="keywords" content="JB Hub, JB YT GAMER, Cloud Hub, Cyber Arcade, Secure Platform">
-    <meta name="author" content="JB Hub">
-    <meta property="og:title" content="JB Hub">
-    <meta property="og:description" content="JB Hub - High Security Cloud Workspace and Cyber Arcade Platform.">
+    <meta name="author" content="JB HUB">
+    <meta property="og:site_name" content="JB HUB">
+    <meta property="og:title" content="JB Cloud Hub - Free Fun Hub">
+    <meta property="og:description" content="JB Hub - Free Cloud Workspace & Cyber Arcade Platform.">
     <meta property="og:type" content="website">
 
     <!-- Favicons -->
+    <link rel="icon" type="image/png" href="logo.png" sizes="1254x1254" />
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
-    <link rel="shortcut icon" href="/favicon/favicon.ico" />
+    <link rel="shortcut icon" href="logo.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="JB HUB" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
-
-    <!-- Google Tag Manager -->
-<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-WD7GGXXD');</script>
-<!-- End Google Tag Manager -->
 
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -158,7 +152,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <div id="auth-view" class="glass p-6 sm:p-8 w-full max-w-md my-auto">
             <div class="text-center mb-6">
                 <!-- Glowing & Moving Colour Changing Wave Logo -->
-                <h1 id="auth-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight glowing-logo">JB Hub</h1>
+                <h1 id="auth-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight glowing-logo">JB HUB</h1>
                 <p id="auth-subtitle" class="text-xs text-gray-400 mt-1">Sign in to your secure server account</p>
             </div>
 
@@ -230,9 +224,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
         <!-- About View (Pre-login) -->
         <div id="about-view" class="glass p-6 sm:p-8 w-full max-w-md hidden my-auto">
-            <h2 class="text-xl sm:text-2xl font-bold mb-4 glowing-logo">About JB Hub</h2>
+            <h2 class="text-xl sm:text-2xl font-bold mb-4 glowing-logo">About JB HUB</h2>
             <div class="text-xs sm:text-sm text-gray-300 space-y-3 mb-6">
-                <p id="prelogin-about-text">Welcome to JB Hub high-security cloud platform. All user data, notes, and leaderboards are securely synced via Firebase database.</p>
+                <p id="prelogin-about-text">Welcome to JB HUB high-security cloud platform. All user data, notes, and leaderboards are securely synced via Firebase database.</p>
                 <div class="p-4 bg-purple-900/20 border border-purple-500/30 rounded-xl">
                     <p class="font-bold text-purple-300">Special Thanks</p>
                     <p id="prelogin-thanks-text" class="text-xs sm:text-sm text-purple-200 mt-1">JB YT GAMER</p>
@@ -337,7 +331,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
         // Web Refresh / Page Exit Confirmation Notice
         window.addEventListener('beforeunload', function (e) {
-            const message = 'Refreshing or leaving the web page will terminate your active JB Hub session and reset temporary workspace progress to protect system security.';
+            const message = 'Refreshing or leaving the web page will terminate your active JB HUB session and reset temporary workspace progress to protect system security.';
             e.preventDefault();
             e.returnValue = message;
             return message;
@@ -363,7 +357,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         let leaderboardData = [];
         let usersData = [];
         let globalSettings = { 
-            aboutText: "Welcome to JB Hub cloud-powered secure platform.", 
+            aboutText: "Welcome to JB HUB cloud-powered secure platform.", 
             rulesText: "Welcome! Please follow the platform guidelines and keep your account secure.",
             specialThanks: "JB YT GAMER"
         };
@@ -538,7 +532,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             isSignupMode = !isSignupMode;
             document.getElementById('signup-fields').classList.toggle('hidden', !isSignupMode);
             
-            applyWaveEffect(document.getElementById('auth-title'), 'JB Hub');
+            applyWaveEffect(document.getElementById('auth-title'), 'JB HUB');
             
             document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register a secure cloud profile' : 'Sign in to your secure server account';
             document.getElementById('auth-btn').innerText = isSignupMode ? 'Sign Up' : 'Login';
@@ -1460,7 +1454,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         function renderAboutTab(container) {
             container.innerHTML = `
                 <div class="glass p-6 rounded-xl max-w-md mx-auto text-center space-y-4">
-                    <h2 class="text-xl font-bold glowing-logo">About JB Hub</h2>
+                    <h2 class="text-xl font-bold glowing-logo">About JB HUB</h2>
                     <div class="text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.aboutText}</div>
                     <div class="p-4 bg-purple-900/20 rounded-xl"><p class="font-bold text-purple-300">${globalSettings.specialThanks}</p></div>
                 </div>
