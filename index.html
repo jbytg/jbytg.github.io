@@ -366,6 +366,23 @@
         let toastTimeout = null;
         let humanTestPassed = false;
         let presenceRef = null;
+        let isFirebaseConnected = true;
+
+        // Monitor Network & Firebase Connection State
+        window.addEventListener('offline', () => {
+            showToast("No Internet", "error");
+        });
+
+        window.addEventListener('online', () => {
+            showToast("Internet connection restored");
+        });
+
+        db.ref('.info/connected').on('value', (snap) => {
+            isFirebaseConnected = snap.val() === true;
+            if (!isFirebaseConnected && navigator.onLine) {
+                showToast("Cant connect to server", "error");
+            }
+        });
 
         // Helper: Calculate exact age in years
         function getAgeInYears(dobStr) {
@@ -611,6 +628,15 @@
         }
 
         window.handleAuth = async function() {
+            if (!navigator.onLine) {
+                showToast("No Internet", "error");
+                return;
+            }
+            if (!isFirebaseConnected) {
+                showToast("Cant connect to server", "error");
+                return;
+            }
+
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
@@ -872,6 +898,9 @@
         }
 
         window.saveNote = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
             const title = document.getElementById('note-title-input').value.trim();
             const text = document.getElementById('note-input').value.trim();
             if (!title || !text) { showToast("Title and text cannot be empty", "error"); return; }
@@ -907,6 +936,9 @@
             `;
 
             openModal("Edit Note", "Update your note title and details.", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 const newTitle = document.getElementById('edit-note-title').value.trim();
                 const newText = document.getElementById('edit-note-text').value.trim();
                 if (!newTitle || !newText) { showToast("Title and text cannot be empty", "error"); return; }
@@ -922,6 +954,9 @@
 
         window.deleteNotePrompt = function(id) {
             openModal("Delete Note", "Are you sure you want to delete this note?", "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 await db.ref('notes/' + id).remove();
                 showToast("Note deleted");
             });
@@ -988,6 +1023,9 @@
         }
 
         window.submitBugReport = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
             const title = document.getElementById('bug-title-input').value.trim();
             const description = document.getElementById('bug-desc-input').value.trim();
             if (!title || !description) { showToast("Title and description cannot be empty", "error"); return; }
@@ -1011,6 +1049,9 @@
 
         window.deleteBugReport = function(id) {
             openModal("Delete Bug Report", "Are you sure you want to delete this bug report?", "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 await db.ref('bugReports/' + id).remove();
                 showToast("Bug report deleted");
             });
@@ -1102,7 +1143,7 @@
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
             if (dir === 'UP' && cyberSnake.dir !== 'DOWN') cyberSnake.nextDir = 'UP';
-            if (dir === 'DOWN' && cyberSnake.dir !== 'UP') cyberSnake.nextDir = 'DOWN';
+            if (dir === 'DOWN' && cyberSnake.dir !== 'UP') cyberSnake.nextDir = 'UP';
             if (dir === 'LEFT' && cyberSnake.dir !== 'RIGHT') cyberSnake.nextDir = 'LEFT';
             if (dir === 'RIGHT' && cyberSnake.dir !== 'LEFT') cyberSnake.nextDir = 'RIGHT';
         }
@@ -1244,7 +1285,7 @@
             const pauseBtn = document.getElementById('pause-game-btn');
             if (pauseBtn) pauseBtn.classList.add('hidden');
 
-            if (cyberSnake.score > 0) {
+            if (cyberSnake.score > 0 && navigator.onLine && isFirebaseConnected) {
                 const userLbRef = db.ref('leaderboard/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < cyberSnake.score) {
@@ -1357,6 +1398,9 @@
         }
 
         window.updateAccountProfile = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
             const newUsername = document.getElementById('acc-username-input').value.trim();
             const newDob = document.getElementById('account-dob-input').value;
             const newPassword = document.getElementById('acc-new-pass').value;
@@ -1419,6 +1463,9 @@
             `;
 
             openModal("Delete Account Confirmation", `Are you sure you want to permanently delete account (${currentUser.username})? This action is irreversible.`, inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 const enteredPass = document.getElementById('delete-confirm-pass').value;
                 if (!enteredPass) {
                     showToast("Password confirmation required!", "error");
@@ -1657,6 +1704,9 @@
             `;
 
             openModal("Admin Bug Reply & Status", "Update issue status and reply to user report", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 const status = document.getElementById('admin-bug-status').value;
                 const reply = document.getElementById('admin-bug-reply').value.trim();
 
@@ -1669,6 +1719,9 @@
         }
 
         window.adminSaveSettings = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
             const aboutText = document.getElementById('admin-about-input').value.trim();
             const rulesText = document.getElementById('admin-rules-input').value.trim();
             const specialThanks = document.getElementById('admin-thanks-input').value.trim();
@@ -1698,6 +1751,9 @@
             `;
 
             openModal("Edit User Account", `Update credentials and DOB for user '${user.username}'`, inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 const newUsername = document.getElementById('admin-edit-username').value.trim();
                 const newPassword = document.getElementById('admin-edit-password').value.trim();
                 const newDob = document.getElementById('admin-edit-dob').value;
@@ -1746,12 +1802,18 @@
         }
 
         window.adminToggleRole = async function(usernameKey, newAdminStatus) {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
             await db.ref(`users/${usernameKey}`).update({ isAdmin: newAdminStatus });
             showToast("User role updated");
         }
 
         window.adminDeleteUser = function(usernameKey) {
             openModal("Delete User Account", `Are you sure you want to delete user account '${usernameKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 await db.ref(`users/${usernameKey}`).remove();
                 await db.ref(`leaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
@@ -1771,6 +1833,9 @@
             `;
 
             openModal("Edit Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 const newUsername = document.getElementById('admin-lb-username').value.trim();
                 const newScore = parseInt(document.getElementById('admin-lb-score').value) || 0;
 
@@ -1788,6 +1853,9 @@
 
         window.adminDeleteLeaderboard = function(userKey) {
             openModal("Delete Score Entry", `Remove leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
                 await db.ref('leaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
