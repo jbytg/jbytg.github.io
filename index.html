@@ -1143,7 +1143,7 @@
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
             if (dir === 'UP' && cyberSnake.dir !== 'DOWN') cyberSnake.nextDir = 'UP';
-            if (dir === 'DOWN' && cyberSnake.dir !== 'UP') cyberSnake.nextDir = 'UP';
+            if (dir === 'DOWN' && cyberSnake.dir !== 'UP') cyberSnake.nextDir = 'DOWN';
             if (dir === 'LEFT' && cyberSnake.dir !== 'RIGHT') cyberSnake.nextDir = 'LEFT';
             if (dir === 'RIGHT' && cyberSnake.dir !== 'LEFT') cyberSnake.nextDir = 'RIGHT';
         }
