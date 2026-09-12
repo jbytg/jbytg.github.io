@@ -3,19 +3,19 @@
   "short_name": "JB HUB",
   "icons": [
     {
-      "src": "/favicon/web-app-manifest-192x192.png",
+      "src": "/favicon/web-app-manifest-192x192.png?v=20260912",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/favicon/web-app-manifest-512x512.png",
+      "src": "/favicon/web-app-manifest-512x512.png?v=20260912",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#1c0df4",
-  "background_color": "#0a0cf7",
+  "theme_color": "#010044",
+  "background_color": "#000235",
   "display": "standalone"
 }
