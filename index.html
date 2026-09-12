@@ -251,6 +251,7 @@
             <div class="flex flex-col sm:flex-row justify-between items-center border-b border-white/10 pb-4 mb-6 gap-3">
                 <div class="flex space-x-4 sm:space-x-6 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 pl-12 sm:pl-0">
                     <button onclick="switchTab('notes')" class="tab-btn active-tab pb-2 px-2 text-xs sm:text-sm whitespace-nowrap transition hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)]">Notes</button>
+                    <button onclick="switchTab('chat')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Global Chat</button>
                     <button onclick="switchTab('arcade')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Cyber Arcade</button>
                     <button onclick="switchTab('bugs')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Bug Reports</button>
                     <button onclick="switchTab('leaderboard')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Leaderboard</button>
@@ -365,6 +366,9 @@
         let currentUser = null;
         let notesData = [];
         let bugReportsData = [];
+        let chatData = [];
+        let chatPruneInterval = null;
+        const CHAT_LIFETIME_MS = 24 * 60 * 60 * 1000;
         let leaderboardData = [];
         let usersData = [];
         let globalSettings = { 
@@ -801,6 +805,37 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
+            db.ref('globalChat').on('value', snap => {
+                chatData = [];
+                const cutoff = Date.now() - CHAT_LIFETIME_MS;
+                if (snap.exists()) {
+                    snap.forEach(child => {
+                        const msg = child.val();
+                        if (msg && msg.createdAt && msg.createdAt >= cutoff) {
+                            chatData.push(msg);
+                        } else {
+                            // Message has passed the 24 hour lifetime - prune it.
+                            // Any connected client performs this cleanup, so the
+                            // chat clears itself without needing a server.
+                            db.ref('globalChat/' + child.key).remove();
+                        }
+                    });
+                    chatData.sort((a, b) => a.createdAt - b.createdAt);
+                }
+                if (currentTab === 'chat') renderChatList();
+            });
+
+            if (!chatPruneInterval) {
+                // Periodic sweep in case a client is idle in the chat tab
+                // while messages cross the 24 hour mark.
+                chatPruneInterval = setInterval(() => {
+                    const cutoff = Date.now() - CHAT_LIFETIME_MS;
+                    chatData.filter(m => m.createdAt < cutoff).forEach(m => {
+                        db.ref('globalChat/' + m.id).remove();
+                    });
+                }, 60 * 1000);
+            }
+
             if (currentUser && currentUser.isAdmin) {
                 db.ref('users').on('value', snap => {
                     usersData = [];
@@ -850,6 +885,7 @@
             container.innerHTML = '';
 
             if (tab === 'notes') renderNotesTab(container);
+            else if (tab === 'chat') renderChatTab(container);
             else if (tab === 'arcade') renderArcadeTab(container);
             else if (tab === 'bugs') renderBugReportsTab(container);
             else if (tab === 'leaderboard') renderLeaderboardTab(container);
@@ -1065,6 +1101,107 @@
 
                 await db.ref('bugReports/' + id).remove();
                 showToast("Bug report deleted");
+            });
+        }
+
+        // --- GLOBAL CHAT TAB ---
+        function renderChatTab(container) {
+            container.innerHTML = `
+                <div class="space-y-4 max-w-2xl mx-auto flex flex-col">
+                    <div class="glass p-3 rounded-xl flex items-center space-x-2 border border-purple-500/30 bg-purple-900/10">
+                        <i class="fa fa-clock-rotate-left text-purple-300"></i>
+                        <p class="text-xs text-purple-200">This is a public chat visible to everyone. Messages automatically clear every 24 hours. You can delete your own messages anytime${currentUser && currentUser.isAdmin ? '; as admin, you can clear all messages' : ''}.</p>
+                    </div>
+
+                    <div class="glass p-4 rounded-xl flex flex-col space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h2 class="font-bold text-lg text-purple-300">Global Chat</h2>
+                            ${currentUser && currentUser.isAdmin ? `<button onclick="adminClearAllChat()" class="text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"><i class="fa fa-trash mr-1"></i>Clear All</button>` : ''}
+                        </div>
+                        <div id="chat-messages-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+                        <div class="flex space-x-2 pt-2 border-t border-white/10">
+                            <input type="text" id="chat-message-input" maxlength="500" placeholder="Type a message to everyone..." class="flex-1 p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
+                            <button onclick="sendChatMessage()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition"><i class="fa fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            renderChatList();
+        }
+
+        function renderChatList() {
+            const listContainer = document.getElementById('chat-messages-list');
+            if (!listContainer) return;
+
+            if (chatData.length === 0) {
+                listContainer.innerHTML = `<p class="text-gray-400 text-sm italic text-center">No messages yet. Say hello! (Chat resets every 24 hours)</p>`;
+                return;
+            }
+
+            const wasNearBottom = listContainer.scrollHeight - listContainer.scrollTop - listContainer.clientHeight < 60;
+
+            listContainer.innerHTML = chatData.map(m => {
+                const isMine = currentUser && m.userId === currentUser.id;
+                const canDelete = isMine || (currentUser && currentUser.isAdmin);
+                return `
+                    <div class="glass p-3 rounded-xl border border-white/10 relative group">
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-center space-x-2">
+                                <span class="font-bold text-sm ${isMine ? 'text-pink-400' : 'text-purple-300'}">${escapeHtml(m.username || 'User')}</span>
+                                ${m.isAdmin ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">ADMIN</span>' : ''}
+                                <span class="text-[11px] text-gray-500">${new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                            ${canDelete ? `<button onclick="deleteChatMessage('${m.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-0.5 bg-red-500/10 rounded-lg transition" title="Delete message"><i class="fa fa-trash"></i></button>` : ''}
+                        </div>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap mt-1 break-words">${escapeHtml(m.text)}</p>
+                    </div>
+                `;
+            }).join('');
+
+            if (wasNearBottom) {
+                listContainer.scrollTop = listContainer.scrollHeight;
+            }
+        }
+
+        window.sendChatMessage = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text) { showToast("Message cannot be empty", "error"); return; }
+
+            const msgId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+            await db.ref('globalChat/' + msgId).set({
+                id: msgId,
+                userId: currentUser.id,
+                username: currentUser.username,
+                isAdmin: !!currentUser.isAdmin,
+                text,
+                createdAt: Date.now()
+            });
+
+            input.value = '';
+            input.focus();
+        }
+
+        window.deleteChatMessage = function(id) {
+            openModal("Delete Message", "Are you sure you want to delete this message?", "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('globalChat/' + id).remove();
+                showToast("Message deleted");
+            });
+        }
+
+        window.adminClearAllChat = function() {
+            openModal("Clear All Messages", "Are you sure you want to delete ALL messages in Global Chat for everyone?", "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('globalChat').remove();
+                showToast("Global chat cleared for everyone");
             });
         }
 
