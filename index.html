@@ -114,6 +114,41 @@
             animation-delay: calc(var(--i) * 0.12s);
             white-space: pre;
         }
+        .memory-card-scene { perspective: 800px; }
+        .memory-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.4s;
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-card-inner,
+        .memory-card.matched .memory-card-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-card-face {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            border-radius: 12px;
+        }
+        .memory-card-front {
+            background: linear-gradient(135deg, #4c1d95, #7e22ce);
+            border: 1px solid rgba(236, 72, 153, 0.4);
+        }
+        .memory-card-back {
+            background: linear-gradient(135deg, #1e1b3a, #2a1145);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            transform: rotateY(180deg);
+            font-size: 1.6rem;
+        }
+        .memory-card.matched .memory-card-back {
+            border-color: rgba(74, 222, 128, 0.7);
+            box-shadow: 0 0 14px rgba(74, 222, 128, 0.5);
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
@@ -370,6 +405,8 @@
         let chatPruneInterval = null;
         const CHAT_LIFETIME_MS = 24 * 60 * 60 * 1000;
         let leaderboardData = [];
+        let memoryLeaderboardData = [];
+        let leaderboardGameMode = 'snake';
         let usersData = [];
         let globalSettings = { 
             aboutText: "Welcome to JB HUB cloud-powered secure platform.", 
@@ -772,6 +809,15 @@
                 leaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { leaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            });
+
+            db.ref('memoryLeaderboard').on('value', snap => {
+                memoryLeaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { memoryLeaderboardData.push(child.val()); });
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
@@ -1209,74 +1255,153 @@
         let snakeInterval = null;
         let cyberSnake = { snake: [], food: { x: 0, y: 0 }, dir: 'RIGHT', nextDir: 'RIGHT', score: 0, level: 1, speed: 150, running: false, gameOver: false };
         let isGamePaused = false;
+        let arcadeGameMode = 'snake';
 
         function renderArcadeTab(container) {
             container.innerHTML = `
                 <div class="flex flex-col items-center space-y-4">
-                    <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
-                        <span>Score: <span id="game-score" class="text-pink-400">0</span></span>
-                        <button id="pause-game-btn" onclick="togglePauseGame()" class="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 rounded-lg text-xs text-purple-200 transition hidden"><i class="fa fa-pause" id="pause-icon"></i> <span id="pause-text">Pause</span></button>
-                        <span>Level: <span id="game-level" class="text-emerald-400">1</span></span>
+                    <div class="flex items-center justify-center space-x-2 w-full max-w-sm">
+                        <button onclick="switchArcadeGame('snake')" id="arcade-mode-snake-btn" class="flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-worm mr-1"></i> Snake Game
+                        </button>
+                        <button onclick="switchArcadeGame('memory')" id="arcade-mode-memory-btn" class="flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-brain mr-1"></i> Memory Game
+                        </button>
                     </div>
 
-                    <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
-                        <canvas id="snake-canvas" width="320" height="320" class="block"></canvas>
-                        <div id="game-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
-                            <h3 id="overlay-title" class="text-2xl font-black glowing-logo">CYBER SNAKE</h3>
-                            <button id="overlay-btn" onclick="handleOverlayBtnClick()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
-                        </div>
-                    </div>
-
-                    <!-- On-Screen Directional Touch Controls for Mobile Users -->
-                    <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 flex flex-col items-center space-y-2 select-none">
-                        <span class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Touch Controls (Mobile / On-Screen)</span>
-                        <div class="flex flex-col items-center space-y-1.5">
-                            <button 
-                                onmousedown="setSnakeDir('UP')" 
-                                ontouchstart="event.preventDefault(); setSnakeDir('UP')" 
-                                class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
-                                <i class="fa fa-chevron-up"></i>
-                            </button>
-                            <div class="flex space-x-3">
-                                <button 
-                                    onmousedown="setSnakeDir('LEFT')" 
-                                    ontouchstart="event.preventDefault(); setSnakeDir('LEFT')" 
-                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
-                                    <i class="fa fa-chevron-left"></i>
-                                </button>
-                                <button 
-                                    onmousedown="setSnakeDir('DOWN')" 
-                                    ontouchstart="event.preventDefault(); setSnakeDir('DOWN')" 
-                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
-                                    <i class="fa fa-chevron-down"></i>
-                                </button>
-                                <button 
-                                    onmousedown="setSnakeDir('RIGHT')" 
-                                    ontouchstart="event.preventDefault(); setSnakeDir('RIGHT')" 
-                                    class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
-                                    <i class="fa fa-chevron-right"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Game Instructions & Information -->
-                    <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
-                        <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
-                            <i class="fa fa-circle-info text-pink-400"></i>
-                            <span>How to Play & Game Info</span>
-                        </h4>
-                        <ul class="list-disc list-inside space-y-1 text-gray-400">
-                            <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or W/A/S/D. Press <strong>Space</strong> to Pause, <strong>Enter</strong> to Restart.</li>
-                            <li><strong class="text-gray-200">Mobile / Touch:</strong> Use the touch control pad above.</li>
-                            <li><strong class="text-gray-200">Speed Mechanics:</strong> Starts slowly and increases in speed as you level up!</li>
-                            <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
-                        </ul>
-                    </div>
+                    <div id="arcade-game-area" class="w-full flex flex-col items-center space-y-4"></div>
                 </div>
             `;
-            initCyberCanvas();
-            isGamePaused = false;
+            renderArcadeGameArea();
+        }
+
+        window.switchArcadeGame = function(mode) {
+            if (arcadeGameMode === mode) return;
+
+            // Stop whichever game might be mid-run before switching away
+            if (arcadeGameMode === 'snake') {
+                clearInterval(snakeInterval);
+                cyberSnake.running = false;
+                isGamePaused = false;
+            } else {
+                clearInterval(memoryGame.timerInterval);
+                memoryGame.running = false;
+            }
+
+            arcadeGameMode = mode;
+            renderArcadeTab(document.getElementById('tab-content'));
+        }
+
+        function renderArcadeGameArea() {
+            const area = document.getElementById('arcade-game-area');
+            if (!area) return;
+
+            if (arcadeGameMode === 'memory') {
+                area.innerHTML = memoryGameMarkup();
+                initMemoryGame();
+            } else {
+                area.innerHTML = snakeGameMarkup();
+                initCyberCanvas();
+                isGamePaused = false;
+            }
+        }
+
+        function snakeGameMarkup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="game-score" class="text-pink-400">0</span></span>
+                    <button id="pause-game-btn" onclick="togglePauseGame()" class="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 rounded-lg text-xs text-purple-200 transition hidden"><i class="fa fa-pause" id="pause-icon"></i> <span id="pause-text">Pause</span></button>
+                    <span>Level: <span id="game-level" class="text-emerald-400">1</span></span>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                    <canvas id="snake-canvas" width="320" height="320" class="block"></canvas>
+                    <div id="game-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="overlay-title" class="text-2xl font-black glowing-logo">CYBER SNAKE</h3>
+                        <button id="overlay-btn" onclick="handleOverlayBtnClick()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
+                    </div>
+                </div>
+
+                <!-- On-Screen Directional Touch Controls for Mobile Users -->
+                <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 flex flex-col items-center space-y-2 select-none">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Touch Controls (Mobile / On-Screen)</span>
+                    <div class="flex flex-col items-center space-y-1.5">
+                        <button 
+                            onmousedown="setSnakeDir('UP')" 
+                            ontouchstart="event.preventDefault(); setSnakeDir('UP')" 
+                            class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                            <i class="fa fa-chevron-up"></i>
+                        </button>
+                        <div class="flex space-x-3">
+                            <button 
+                                onmousedown="setSnakeDir('LEFT')" 
+                                ontouchstart="event.preventDefault(); setSnakeDir('LEFT')" 
+                                class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <i class="fa fa-chevron-left"></i>
+                            </button>
+                            <button 
+                                onmousedown="setSnakeDir('DOWN')" 
+                                ontouchstart="event.preventDefault(); setSnakeDir('DOWN')" 
+                                class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <i class="fa fa-chevron-down"></i>
+                            </button>
+                            <button 
+                                onmousedown="setSnakeDir('RIGHT')" 
+                                ontouchstart="event.preventDefault(); setSnakeDir('RIGHT')" 
+                                class="dpad-btn w-12 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                                <i class="fa fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or W/A/S/D. Press <strong>Space</strong> to Pause, <strong>Enter</strong> to Restart.</li>
+                        <li><strong class="text-gray-200">Mobile / Touch:</strong> Use the touch control pad above.</li>
+                        <li><strong class="text-gray-200">Speed Mechanics:</strong> Starts slowly and increases in speed as you level up!</li>
+                        <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function memoryGameMarkup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Moves: <span id="memory-moves" class="text-pink-400">0</span></span>
+                    <span>Time: <span id="memory-timer" class="text-emerald-400">0s</span></span>
+                    <span>Pairs: <span id="memory-pairs" class="text-purple-200">0</span>/${memoryGame.totalPairs}</span>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md p-3">
+                    <div id="memory-board" class="grid grid-cols-4 gap-2 w-[280px] sm:w-[320px] aspect-square"></div>
+                    <div id="memory-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="memory-overlay-title" class="text-2xl font-black glowing-logo">MEMORY MATRIX</h3>
+                        <p class="text-xs text-gray-400 max-w-[220px]">Flip cards and find every matching pair. Fewer moves and less time score higher!</p>
+                        <button id="memory-overlay-btn" onclick="startMemoryGame()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
+                    </div>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">Goal:</strong> Tap two cards to flip them. Matching symbols stay revealed.</li>
+                        <li><strong class="text-gray-200">Random Layout:</strong> Cards are shuffled into new random positions every single game.</li>
+                        <li><strong class="text-gray-200">Scoring:</strong> Fewer moves and a faster time earn a higher score.</li>
+                        <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
+                    </ul>
+                </div>
+            `;
         }
 
         let snakeCanvas, sCtx;
@@ -1403,6 +1528,138 @@
             drawCyberBoard();
         }
 
+        // --- MEMORY GAME (Cyber Arcade second game) ---
+        const MEMORY_SYMBOLS = ['🍇', '🍉', '🍓', '🍒', '🍋', '🍍', '🥝', '🍑'];
+        let memoryGame = { cards: [], flippedIndices: [], matchedPairs: 0, totalPairs: MEMORY_SYMBOLS.length, moves: 0, timerSeconds: 0, timerInterval: null, running: false, lock: false, gameOver: false };
+
+        function initMemoryGame() {
+            clearInterval(memoryGame.timerInterval);
+            memoryGame.running = false;
+            memoryGame.gameOver = false;
+            memoryGame.cards = [];
+            memoryGame.flippedIndices = [];
+            memoryGame.matchedPairs = 0;
+            memoryGame.moves = 0;
+            memoryGame.timerSeconds = 0;
+            memoryGame.lock = false;
+        }
+
+        window.startMemoryGame = function() {
+            const overlay = document.getElementById('memory-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            // Build the deck and shuffle it randomly (Fisher-Yates) so every game
+            // lays out the pairs in a brand new random arrangement.
+            let deck = [...MEMORY_SYMBOLS, ...MEMORY_SYMBOLS];
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+
+            memoryGame.cards = deck.map((symbol, idx) => ({ id: idx, symbol, flipped: false, matched: false }));
+            memoryGame.flippedIndices = [];
+            memoryGame.matchedPairs = 0;
+            memoryGame.moves = 0;
+            memoryGame.timerSeconds = 0;
+            memoryGame.lock = false;
+            memoryGame.running = true;
+            memoryGame.gameOver = false;
+
+            const movesEl = document.getElementById('memory-moves');
+            const timerEl = document.getElementById('memory-timer');
+            const pairsEl = document.getElementById('memory-pairs');
+            if (movesEl) movesEl.innerText = '0';
+            if (timerEl) timerEl.innerText = '0s';
+            if (pairsEl) pairsEl.innerText = '0';
+
+            renderMemoryBoard();
+
+            clearInterval(memoryGame.timerInterval);
+            memoryGame.timerInterval = setInterval(() => {
+                memoryGame.timerSeconds++;
+                const t = document.getElementById('memory-timer');
+                if (t) t.innerText = memoryGame.timerSeconds + 's';
+            }, 1000);
+        }
+
+        function renderMemoryBoard() {
+            const board = document.getElementById('memory-board');
+            if (!board) return;
+            board.innerHTML = memoryGame.cards.map((card, idx) => `
+                <button onclick="flipMemoryCard(${idx})" class="memory-card ${card.flipped ? 'flipped' : ''} ${card.matched ? 'matched' : ''} memory-card-scene aspect-square" ${card.matched ? 'disabled' : ''}>
+                    <div class="memory-card-inner">
+                        <div class="memory-card-face memory-card-front"><i class="fa fa-bolt text-pink-200/70 text-sm"></i></div>
+                        <div class="memory-card-face memory-card-back">${card.symbol}</div>
+                    </div>
+                </button>
+            `).join('');
+        }
+
+        window.flipMemoryCard = function(idx) {
+            if (!memoryGame.running || memoryGame.lock) return;
+            const card = memoryGame.cards[idx];
+            if (!card || card.flipped || card.matched) return;
+
+            card.flipped = true;
+            memoryGame.flippedIndices.push(idx);
+            renderMemoryBoard();
+
+            if (memoryGame.flippedIndices.length === 2) {
+                memoryGame.moves++;
+                const movesEl = document.getElementById('memory-moves');
+                if (movesEl) movesEl.innerText = memoryGame.moves;
+
+                const [i1, i2] = memoryGame.flippedIndices;
+                const c1 = memoryGame.cards[i1], c2 = memoryGame.cards[i2];
+
+                if (c1.symbol === c2.symbol) {
+                    c1.matched = true; c2.matched = true;
+                    memoryGame.matchedPairs++;
+                    memoryGame.flippedIndices = [];
+                    const pairsEl = document.getElementById('memory-pairs');
+                    if (pairsEl) pairsEl.innerText = memoryGame.matchedPairs;
+                    renderMemoryBoard();
+
+                    if (memoryGame.matchedPairs === memoryGame.totalPairs) {
+                        endMemoryGame();
+                    }
+                } else {
+                    memoryGame.lock = true;
+                    setTimeout(() => {
+                        c1.flipped = false; c2.flipped = false;
+                        memoryGame.flippedIndices = [];
+                        memoryGame.lock = false;
+                        renderMemoryBoard();
+                    }, 700);
+                }
+            }
+        }
+
+        async function endMemoryGame() {
+            memoryGame.running = false;
+            memoryGame.gameOver = true;
+            clearInterval(memoryGame.timerInterval);
+
+            const score = Math.max(50, 1000 - (memoryGame.moves * 15) - (memoryGame.timerSeconds * 5));
+
+            if (navigator.onLine && isFirebaseConnected) {
+                const userLbRef = db.ref('memoryLeaderboard/' + currentUser.username.toLowerCase());
+                const snap = await userLbRef.once('value');
+                if (!snap.exists() || snap.val().score < score) {
+                    await userLbRef.set({ username: currentUser.username, score });
+                }
+            }
+
+            const overlayTitle = document.getElementById('memory-overlay-title');
+            const overlayBtn = document.getElementById('memory-overlay-btn');
+            const overlay = document.getElementById('memory-overlay');
+            if (overlayTitle) applyWaveEffect(overlayTitle, "MATCHED!");
+            if (overlayBtn) overlayBtn.innerText = "Play Again";
+            if (overlay) overlay.classList.remove('hidden');
+
+            showToast(`Memory game complete! Score: ${score}`);
+        }
+
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
             if (dir === 'UP' && cyberSnake.dir !== 'DOWN') cyberSnake.nextDir = 'UP';
@@ -1480,7 +1737,7 @@
         }
 
         window.addEventListener('keydown', e => {
-            if (currentTab === 'arcade') {
+            if (currentTab === 'arcade' && arcadeGameMode === 'snake') {
                 if (e.code === 'Space') {
                     e.preventDefault();
                     if (cyberSnake.running || isGamePaused) {
@@ -1563,16 +1820,27 @@
             container.innerHTML = `
                 <div class="space-y-4 max-w-md mx-auto">
                     <h2 class="text-lg font-bold text-purple-300 text-center">Arcade Leaderboard</h2>
+                    <div class="flex items-center justify-center space-x-2">
+                        <button onclick="switchLeaderboardGame('snake')" id="lb-mode-snake-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-worm mr-1"></i>Snake</button>
+                        <button onclick="switchLeaderboardGame('memory')" id="lb-mode-memory-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-brain mr-1"></i>Memory</button>
+                    </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
             `;
             renderLeaderboard();
         }
 
+        window.switchLeaderboardGame = function(mode) {
+            if (leaderboardGameMode === mode) return;
+            leaderboardGameMode = mode;
+            renderLeaderboardTab(document.getElementById('tab-content'));
+        }
+
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const sorted = [...leaderboardData].sort((a, b) => b.score - a.score).slice(0, 10);
+            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : leaderboardData;
+            const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
                 return;
@@ -1700,6 +1968,13 @@
                     await db.ref('leaderboard/' + newKey).set({ username: newUsername, score: oldScore });
                 }
 
+                const mlbSnap = await db.ref('memoryLeaderboard/' + oldKey).once('value');
+                if (mlbSnap.exists()) {
+                    const oldMemoryScore = mlbSnap.val().score;
+                    await db.ref('memoryLeaderboard/' + oldKey).remove();
+                    await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
+                }
+
                 currentUser.username = newUsername;
                 setupPresence(newKey);
             }
@@ -1754,6 +2029,7 @@
 
                 await db.ref('users/' + usernameKey).remove();
                 await db.ref('leaderboard/' + usernameKey).remove();
+                await db.ref('memoryLeaderboard/' + usernameKey).remove();
 
                 showToast("Account deleted successfully.");
                 logout();
@@ -1900,9 +2176,9 @@
                         </div>
                     </div>
 
-                    <!-- Leaderboard Management -->
+                    <!-- Leaderboard Management (Snake) -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
-                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Leaderboard Management</h2>
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-worm mr-1"></i>Snake Leaderboard Management</h2>
                         <div class="space-y-2">
                             ${leaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : leaderboardData.map(lb => `
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
@@ -1913,6 +2189,25 @@
                                     <div class="space-x-2">
                                         <button onclick="adminEditLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Management (Memory) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-brain mr-1"></i>Memory Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${memoryLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : memoryLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditMemoryLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteMemoryLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -2046,6 +2341,13 @@
                         await db.ref('leaderboard/' + usernameKey).remove();
                         await db.ref('leaderboard/' + newKey).set({ username: newUsername, score: oldScore });
                     }
+
+                    const mlbSnap = await db.ref('memoryLeaderboard/' + usernameKey).once('value');
+                    if (mlbSnap.exists()) {
+                        const oldMemoryScore = mlbSnap.val().score;
+                        await db.ref('memoryLeaderboard/' + usernameKey).remove();
+                        await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
+                    }
                 }
 
                 user.username = newUsername;
@@ -2078,6 +2380,7 @@
 
                 await db.ref(`users/${usernameKey}`).remove();
                 await db.ref(`leaderboard/${usernameKey}`).remove();
+                await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -2119,6 +2422,47 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref('leaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditMemoryLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Display Username</label>
+                    <input type="text" id="admin-mlb-username" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input type="number" id="admin-mlb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+
+            openModal("Edit Memory Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const newUsername = document.getElementById('admin-mlb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-mlb-score').value) || 0;
+
+                if (!newUsername) { showToast("Username required", "error"); return; }
+
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) {
+                    await db.ref('memoryLeaderboard/' + userKey).remove();
+                }
+
+                await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteMemoryLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove memory leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('memoryLeaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
