@@ -406,6 +406,7 @@
         const CHAT_LIFETIME_MS = 24 * 60 * 60 * 1000;
         let leaderboardData = [];
         let memoryLeaderboardData = [];
+        let flappyLeaderboardData = [];
         let leaderboardGameMode = 'snake';
         let usersData = [];
         let globalSettings = { 
@@ -818,6 +819,15 @@
                 memoryLeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { memoryLeaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            });
+
+            db.ref('flappyLeaderboard').on('value', snap => {
+                flappyLeaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { flappyLeaderboardData.push(child.val()); });
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
@@ -1260,12 +1270,15 @@
         function renderArcadeTab(container) {
             container.innerHTML = `
                 <div class="flex flex-col items-center space-y-4">
-                    <div class="flex items-center justify-center space-x-2 w-full max-w-sm">
-                        <button onclick="switchArcadeGame('snake')" id="arcade-mode-snake-btn" class="flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
-                            <i class="fa fa-worm mr-1"></i> Snake Game
+                    <div class="flex flex-wrap items-center justify-center gap-2 w-full max-w-sm">
+                        <button onclick="switchArcadeGame('snake')" id="arcade-mode-snake-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-worm mr-1"></i> Snake
                         </button>
-                        <button onclick="switchArcadeGame('memory')" id="arcade-mode-memory-btn" class="flex-1 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
-                            <i class="fa fa-brain mr-1"></i> Memory Game
+                        <button onclick="switchArcadeGame('memory')" id="arcade-mode-memory-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-brain mr-1"></i> Memory
+                        </button>
+                        <button onclick="switchArcadeGame('flappy')" id="arcade-mode-flappy-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'flappy' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-kiwi-bird mr-1"></i> Flappy Bird
                         </button>
                     </div>
 
@@ -1283,9 +1296,12 @@
                 clearInterval(snakeInterval);
                 cyberSnake.running = false;
                 isGamePaused = false;
-            } else {
+            } else if (arcadeGameMode === 'memory') {
                 clearInterval(memoryGame.timerInterval);
                 memoryGame.running = false;
+            } else if (arcadeGameMode === 'flappy') {
+                cancelAnimationFrame(flappyBird.rafId);
+                flappyBird.running = false;
             }
 
             arcadeGameMode = mode;
@@ -1299,6 +1315,9 @@
             if (arcadeGameMode === 'memory') {
                 area.innerHTML = memoryGameMarkup();
                 initMemoryGame();
+            } else if (arcadeGameMode === 'flappy') {
+                area.innerHTML = flappyGameMarkup();
+                initFlappyCanvas();
             } else {
                 area.innerHTML = snakeGameMarkup();
                 initCyberCanvas();
@@ -1398,6 +1417,49 @@
                         <li><strong class="text-gray-200">Goal:</strong> Tap two cards to flip them. Matching symbols stay revealed.</li>
                         <li><strong class="text-gray-200">Random Layout:</strong> Cards are shuffled into new random positions every single game.</li>
                         <li><strong class="text-gray-200">Scoring:</strong> Fewer moves and a faster time earn a higher score.</li>
+                        <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function flappyGameMarkup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="flappy-score" class="text-pink-400">0</span></span>
+                    <span class="text-[10px] text-gray-400 uppercase tracking-wide">Speed ramps up as you go</span>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                    <canvas id="flappy-canvas" width="300" height="400" class="block select-none" onmousedown="flappyJump()" ontouchstart="event.preventDefault(); flappyJump()"></canvas>
+                    <div id="flappy-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="flappy-overlay-title" class="text-2xl font-black glowing-logo">CYBER FLAP</h3>
+                        <p class="text-xs text-gray-400 max-w-[220px]">Tap, click, or press Space to flap. Dodge the pipes — the pace slowly ramps up the further you go!</p>
+                        <button id="flappy-overlay-btn" onclick="startFlappyGame()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
+                    </div>
+                </div>
+
+                <!-- On-Screen Tap Control for Mobile Users -->
+                <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 flex flex-col items-center space-y-2 select-none">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Flap Control (Mobile / On-Screen)</span>
+                    <button 
+                        onmousedown="flappyJump()" 
+                        ontouchstart="event.preventDefault(); flappyJump()" 
+                        class="dpad-btn w-16 h-16 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-2xl flex items-center justify-center text-2xl text-white shadow-lg transition">
+                        <i class="fa fa-dove"></i>
+                    </button>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">PC / Laptop:</strong> Press <strong>Space</strong> or click the board to flap. Press <strong>Enter</strong> to Restart.</li>
+                        <li><strong class="text-gray-200">Mobile / Touch:</strong> Tap the board or the flap button above.</li>
+                        <li><strong class="text-gray-200">Speed Mechanics:</strong> Starts slow and gradually speeds up the further you fly!</li>
                         <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
                     </ul>
                 </div>
@@ -1660,6 +1722,213 @@
             showToast(`Memory game complete! Score: ${score}`);
         }
 
+        // --- FLAPPY BIRD GAME (Cyber Arcade third game) ---
+        const FLAPPY_W = 300, FLAPPY_H = 400;
+        let flappyCanvas, fCtx;
+        let flappyBird = {
+            birdX: 70, birdY: FLAPPY_H / 2, birdVel: 0, birdRadius: 12,
+            gravity: 0.45, jumpVel: -7.6,
+            pipes: [], pipeWidth: 46, pipeGap: 120, spawnEvery: 105, spawnCounter: 0,
+            score: 0, running: false, gameOver: false, rafId: null
+        };
+
+        function initFlappyCanvas() {
+            flappyCanvas = document.getElementById('flappy-canvas');
+            if (!flappyCanvas) return;
+            fCtx = flappyCanvas.getContext('2d');
+            cancelAnimationFrame(flappyBird.rafId);
+            flappyBird.birdY = FLAPPY_H / 2;
+            flappyBird.birdVel = 0;
+            flappyBird.pipes = [];
+            flappyBird.score = 0;
+            flappyBird.spawnCounter = 0;
+            flappyBird.running = false;
+            flappyBird.gameOver = false;
+            drawFlappyBoard();
+        }
+
+        window.startFlappyGame = function() {
+            const overlay = document.getElementById('flappy-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            flappyBird.birdY = FLAPPY_H / 2;
+            flappyBird.birdVel = 0;
+            flappyBird.pipes = [];
+            flappyBird.score = 0;
+            flappyBird.spawnCounter = 60; // brief breathing room before the first pipe
+            flappyBird.running = true;
+            flappyBird.gameOver = false;
+
+            const scoreEl = document.getElementById('flappy-score');
+            if (scoreEl) scoreEl.innerText = '0';
+
+            cancelAnimationFrame(flappyBird.rafId);
+            flappyBird.rafId = requestAnimationFrame(flappyLoop);
+        }
+
+        window.flappyJump = function() {
+            if (!flappyBird.running) return;
+            flappyBird.birdVel = flappyBird.jumpVel;
+        }
+
+        function spawnFlappyPipe() {
+            const minGapTop = 30;
+            const maxGapTop = FLAPPY_H - flappyBird.pipeGap - 30;
+            const gapTop = Math.floor(Math.random() * (maxGapTop - minGapTop)) + minGapTop;
+            flappyBird.pipes.push({ x: FLAPPY_W, gapTop, scored: false });
+        }
+
+        function flappyLoop() {
+            if (!flappyBird.running) return;
+            updateFlappyPhysics();
+            if (!flappyBird.running) return; // a collision may have ended the game this frame
+            drawFlappyBoard();
+            flappyBird.rafId = requestAnimationFrame(flappyLoop);
+        }
+
+        function updateFlappyPhysics() {
+            flappyBird.birdVel += flappyBird.gravity;
+            flappyBird.birdY += flappyBird.birdVel;
+
+            // Pipe speed slowly increases the further the player gets.
+            const speed = Math.min(2.2 + flappyBird.score * 0.12, 6);
+            flappyBird.pipes.forEach(p => p.x -= speed);
+
+            flappyBird.spawnCounter++;
+            if (flappyBird.spawnCounter > flappyBird.spawnEvery) {
+                spawnFlappyPipe();
+                flappyBird.spawnCounter = 0;
+            }
+
+            flappyBird.pipes = flappyBird.pipes.filter(p => {
+                if (!p.scored && p.x + flappyBird.pipeWidth < flappyBird.birdX) {
+                    p.scored = true;
+                    flappyBird.score++;
+                    const scoreEl = document.getElementById('flappy-score');
+                    if (scoreEl) scoreEl.innerText = flappyBird.score;
+                }
+                return p.x > -flappyBird.pipeWidth;
+            });
+
+            if (flappyBird.birdY - flappyBird.birdRadius < 0 || flappyBird.birdY + flappyBird.birdRadius > FLAPPY_H) {
+                endFlappyGame();
+                return;
+            }
+
+            for (const p of flappyBird.pipes) {
+                const withinPipeX = flappyBird.birdX + flappyBird.birdRadius > p.x && flappyBird.birdX - flappyBird.birdRadius < p.x + flappyBird.pipeWidth;
+                if (withinPipeX) {
+                    const hitsGap = flappyBird.birdY - flappyBird.birdRadius < p.gapTop || flappyBird.birdY + flappyBird.birdRadius > p.gapTop + flappyBird.pipeGap;
+                    if (hitsGap) {
+                        endFlappyGame();
+                        return;
+                    }
+                }
+            }
+        }
+
+        function drawFlappyBackground() {
+            const grad = fCtx.createLinearGradient(0, 0, 0, FLAPPY_H);
+            grad.addColorStop(0, '#0c0a18');
+            grad.addColorStop(0.5, '#140c26');
+            grad.addColorStop(1, '#0a0e20');
+            fCtx.fillStyle = grad;
+            fCtx.fillRect(0, 0, FLAPPY_W, FLAPPY_H);
+
+            fCtx.strokeStyle = 'rgba(168, 85, 247, 0.07)';
+            fCtx.lineWidth = 1;
+            for (let i = 0; i < FLAPPY_W; i += 20) {
+                fCtx.beginPath(); fCtx.moveTo(i + 0.5, 0); fCtx.lineTo(i + 0.5, FLAPPY_H); fCtx.stroke();
+            }
+            for (let i = 0; i < FLAPPY_H; i += 20) {
+                fCtx.beginPath(); fCtx.moveTo(0, i + 0.5); fCtx.lineTo(FLAPPY_W, i + 0.5); fCtx.stroke();
+            }
+        }
+
+        function drawFlappyPipes() {
+            flappyBird.pipes.forEach(p => {
+                const grad = fCtx.createLinearGradient(p.x, 0, p.x + flappyBird.pipeWidth, 0);
+                grad.addColorStop(0, '#6d28d9');
+                grad.addColorStop(1, '#c026d3');
+
+                fCtx.save();
+                fCtx.shadowColor = 'rgba(192, 132, 252, 0.55)';
+                fCtx.shadowBlur = 8;
+                fCtx.fillStyle = grad;
+                fCtx.fillRect(p.x, 0, flappyBird.pipeWidth, p.gapTop);
+                fCtx.fillRect(p.x, p.gapTop + flappyBird.pipeGap, flappyBird.pipeWidth, FLAPPY_H - (p.gapTop + flappyBird.pipeGap));
+                fCtx.restore();
+
+                fCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                fCtx.lineWidth = 1;
+                fCtx.strokeRect(p.x + 0.5, 0.5, flappyBird.pipeWidth - 1, p.gapTop - 1);
+                fCtx.strokeRect(p.x + 0.5, p.gapTop + flappyBird.pipeGap + 0.5, flappyBird.pipeWidth - 1, FLAPPY_H - (p.gapTop + flappyBird.pipeGap) - 1);
+            });
+        }
+
+        function drawFlappyBird() {
+            const angle = Math.max(-0.5, Math.min(0.9, flappyBird.birdVel / 10));
+
+            fCtx.save();
+            fCtx.translate(flappyBird.birdX, flappyBird.birdY);
+            fCtx.rotate(angle);
+
+            fCtx.shadowColor = 'rgba(236, 72, 153, 0.9)';
+            fCtx.shadowBlur = 12;
+            const bodyGrad = fCtx.createRadialGradient(-3, -3, 1, 0, 0, flappyBird.birdRadius);
+            bodyGrad.addColorStop(0, '#fff0f8');
+            bodyGrad.addColorStop(0.5, '#f472b6');
+            bodyGrad.addColorStop(1, '#a21caf');
+            fCtx.fillStyle = bodyGrad;
+            fCtx.beginPath();
+            fCtx.arc(0, 0, flappyBird.birdRadius, 0, Math.PI * 2);
+            fCtx.fill();
+            fCtx.shadowBlur = 0;
+
+            fCtx.fillStyle = '#fbbf24';
+            fCtx.beginPath();
+            fCtx.moveTo(flappyBird.birdRadius - 2, -3);
+            fCtx.lineTo(flappyBird.birdRadius + 9, 0);
+            fCtx.lineTo(flappyBird.birdRadius - 2, 3);
+            fCtx.closePath();
+            fCtx.fill();
+
+            fCtx.fillStyle = '#0c0a18';
+            fCtx.beginPath();
+            fCtx.arc(3, -4, 2, 0, Math.PI * 2);
+            fCtx.fill();
+
+            fCtx.restore();
+        }
+
+        function drawFlappyBoard() {
+            if (!fCtx) return;
+            drawFlappyBackground();
+            drawFlappyPipes();
+            drawFlappyBird();
+        }
+
+        async function endFlappyGame() {
+            flappyBird.running = false;
+            flappyBird.gameOver = true;
+            cancelAnimationFrame(flappyBird.rafId);
+
+            if (flappyBird.score > 0 && navigator.onLine && isFirebaseConnected) {
+                const userLbRef = db.ref('flappyLeaderboard/' + currentUser.username.toLowerCase());
+                const snap = await userLbRef.once('value');
+                if (!snap.exists() || snap.val().score < flappyBird.score) {
+                    await userLbRef.set({ username: currentUser.username, score: flappyBird.score });
+                }
+            }
+
+            const overlayTitle = document.getElementById('flappy-overlay-title');
+            const overlayBtn = document.getElementById('flappy-overlay-btn');
+            const overlay = document.getElementById('flappy-overlay');
+            if (overlayTitle) applyWaveEffect(overlayTitle, "GAME OVER");
+            if (overlayBtn) overlayBtn.innerText = "Restart Game";
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
             if (dir === 'UP' && cyberSnake.dir !== 'DOWN') cyberSnake.nextDir = 'UP';
@@ -1761,6 +2030,26 @@
             if (['ArrowRight', 'KeyD', 'd', 'D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { setSnakeDir('RIGHT'); e.preventDefault(); }
         });
 
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== 'flappy') return;
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (flappyBird.running) {
+                    flappyJump();
+                } else if (!flappyBird.running) {
+                    startFlappyGame();
+                }
+                return;
+            }
+            if (e.key === 'Enter') {
+                if (flappyBird.gameOver || !flappyBird.running) {
+                    e.preventDefault();
+                    startFlappyGame();
+                }
+            }
+        });
+
         function updateCyberLoop() {
             cyberSnake.dir = cyberSnake.nextDir;
             let head = { ...cyberSnake.snake[0] };
@@ -1820,9 +2109,10 @@
             container.innerHTML = `
                 <div class="space-y-4 max-w-md mx-auto">
                     <h2 class="text-lg font-bold text-purple-300 text-center">Arcade Leaderboard</h2>
-                    <div class="flex items-center justify-center space-x-2">
+                    <div class="flex flex-wrap items-center justify-center gap-2">
                         <button onclick="switchLeaderboardGame('snake')" id="lb-mode-snake-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-worm mr-1"></i>Snake</button>
                         <button onclick="switchLeaderboardGame('memory')" id="lb-mode-memory-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-brain mr-1"></i>Memory</button>
+                        <button onclick="switchLeaderboardGame('flappy')" id="lb-mode-flappy-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'flappy' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-kiwi-bird mr-1"></i>Flappy Bird</button>
                     </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
@@ -1839,7 +2129,7 @@
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : leaderboardData;
+            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : leaderboardData);
             const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
@@ -1975,6 +2265,13 @@
                     await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
                 }
 
+                const flbSnap = await db.ref('flappyLeaderboard/' + oldKey).once('value');
+                if (flbSnap.exists()) {
+                    const oldFlappyScore = flbSnap.val().score;
+                    await db.ref('flappyLeaderboard/' + oldKey).remove();
+                    await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: oldFlappyScore });
+                }
+
                 currentUser.username = newUsername;
                 setupPresence(newKey);
             }
@@ -2030,6 +2327,7 @@
                 await db.ref('users/' + usernameKey).remove();
                 await db.ref('leaderboard/' + usernameKey).remove();
                 await db.ref('memoryLeaderboard/' + usernameKey).remove();
+                await db.ref('flappyLeaderboard/' + usernameKey).remove();
 
                 showToast("Account deleted successfully.");
                 logout();
@@ -2214,6 +2512,25 @@
                         </div>
                     </div>
 
+                    <!-- Leaderboard Management (Flappy Bird) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-kiwi-bird mr-1"></i>Flappy Bird Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${flappyLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : flappyLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditFlappyLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteFlappyLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
                     <!-- All Notes Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Global Notes Control</h2>
@@ -2348,6 +2665,13 @@
                         await db.ref('memoryLeaderboard/' + usernameKey).remove();
                         await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
                     }
+
+                    const flbSnap = await db.ref('flappyLeaderboard/' + usernameKey).once('value');
+                    if (flbSnap.exists()) {
+                        const oldFlappyScore = flbSnap.val().score;
+                        await db.ref('flappyLeaderboard/' + usernameKey).remove();
+                        await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: oldFlappyScore });
+                    }
                 }
 
                 user.username = newUsername;
@@ -2381,6 +2705,7 @@
                 await db.ref(`users/${usernameKey}`).remove();
                 await db.ref(`leaderboard/${usernameKey}`).remove();
                 await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
+                await db.ref(`flappyLeaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -2463,6 +2788,47 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref('memoryLeaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditFlappyLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Display Username</label>
+                    <input type="text" id="admin-flb-username" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input type="number" id="admin-flb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+
+            openModal("Edit Flappy Bird Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const newUsername = document.getElementById('admin-flb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-flb-score').value) || 0;
+
+                if (!newUsername) { showToast("Username required", "error"); return; }
+
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) {
+                    await db.ref('flappyLeaderboard/' + userKey).remove();
+                }
+
+                await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteFlappyLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove flappy bird leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('flappyLeaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
