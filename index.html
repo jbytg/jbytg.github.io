@@ -868,6 +868,7 @@
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
                 if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
                 else if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
+                else if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
                 else if (MAINTAINABLE_SECTIONS.includes(currentTab)) renderCurrentTabContent();
             });
 
