@@ -180,6 +180,23 @@
         </div>
     </div>
 
+    <!-- Account Ban / Suspension Screen -->
+    <div id="ban-screen" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-2xl border border-red-500/40 text-center space-y-4 win-welcome">
+            <div class="w-20 h-20 mx-auto rounded-full bg-red-500/20 flex items-center justify-center">
+                <i class="fa fa-ban text-red-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-red-400">Account Suspended</h2>
+            <p id="ban-screen-type" class="text-xs uppercase tracking-widest font-semibold text-red-300"></p>
+            <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-left">
+                <p class="text-xs text-gray-400 mb-1">Reason:</p>
+                <p id="ban-screen-reason" class="text-sm text-gray-200 whitespace-pre-wrap"></p>
+            </div>
+            <p id="ban-screen-unban-date" class="text-xs text-amber-300 hidden"></p>
+            <button onclick="closeBanScreen()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">Back to Login</button>
+        </div>
+    </div>
+
     <!-- Custom Modal Container -->
     <div id="custom-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="glass p-6 w-full max-w-sm space-y-4 border border-purple-500/30">
@@ -412,8 +429,18 @@
         let globalSettings = { 
             aboutText: "Welcome to JB HUB cloud-powered secure platform.", 
             rulesText: "Welcome! Please follow the platform guidelines and keep your account secure.",
-            specialThanks: "JB YT GAMER"
+            specialThanks: "JB YT GAMER",
+            maintenance: {}
         };
+
+        // Sections that admins can lock behind a maintenance notice
+        const MAINTAINABLE_SECTIONS = ['notes', 'chat', 'arcade', 'bugs', 'leaderboard'];
+        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug Reports', leaderboard: 'Leaderboard' };
+
+        function getMaintenanceConfig(section) {
+            const m = (globalSettings.maintenance && globalSettings.maintenance[section]) || {};
+            return { enabled: !!m.enabled, reason: m.reason || '' };
+        }
         let isSignupMode = false;
         let currentTab = 'notes';
         let toastTimeout = null;
@@ -741,11 +768,47 @@
                     showToast("Invalid credentials", "error");
                     return;
                 }
-                currentUser = snapshot.val();
+
+                let userVal = snapshot.val();
+
+                // Ban Enforcement: check for an active ban before granting access
+                if (userVal.ban && userVal.ban.isBanned) {
+                    const banExpired = userVal.ban.type === 'temporary' && userVal.ban.unbanAt && Date.now() >= userVal.ban.unbanAt;
+                    if (banExpired) {
+                        // Temporary ban has passed its unban date - automatically lift it
+                        await db.ref('users/' + usernameKey + '/ban').remove();
+                        delete userVal.ban;
+                    } else {
+                        showBanScreen(userVal.ban);
+                        return;
+                    }
+                }
+
+                currentUser = userVal;
                 setupPresence(usernameKey);
                 showToast("Logged in successfully!");
                 triggerWinWelcome(currentUser.username, currentUser.dob);
             }
+        }
+
+        window.showBanScreen = function(ban) {
+            document.getElementById('ban-screen-type').innerText = ban.type === 'permanent' ? 'Permanent Ban' : 'Temporary Ban';
+            document.getElementById('ban-screen-reason').innerText = ban.reason || 'No reason provided.';
+
+            const unbanDateEl = document.getElementById('ban-screen-unban-date');
+            if (ban.type === 'temporary' && ban.unbanAt) {
+                unbanDateEl.innerText = `You will automatically regain access on ${new Date(ban.unbanAt).toLocaleDateString()}.`;
+                unbanDateEl.classList.remove('hidden');
+            } else {
+                unbanDateEl.classList.add('hidden');
+            }
+
+            document.getElementById('ban-screen').classList.remove('hidden');
+        }
+
+        window.closeBanScreen = function() {
+            document.getElementById('ban-screen').classList.add('hidden');
+            document.getElementById('password').value = '';
         }
 
         function getAgeCategory(dobStr) {
@@ -802,8 +865,10 @@
         function listenForRealtimeUpdates() {
             db.ref('settings').on('value', snap => {
                 if (snap.exists()) globalSettings = snap.val();
+                if (!globalSettings.maintenance) globalSettings.maintenance = {};
                 if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
-                if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
+                else if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
+                else if (MAINTAINABLE_SECTIONS.includes(currentTab)) renderCurrentTabContent();
             });
 
             db.ref('leaderboard').on('value', snap => {
@@ -937,8 +1002,35 @@
                 event.target.classList.remove('text-gray-400');
             }
 
+            renderCurrentTabContent();
+        }
+
+        // Renders whatever `currentTab` currently is into #tab-content.
+        // Split out from switchTab so realtime settings updates (e.g. a
+        // maintenance toggle) can refresh the visible tab without touching
+        // the tab button highlighting.
+        function renderCurrentTabContent() {
+            const tab = currentTab;
             const container = document.getElementById('tab-content');
             container.innerHTML = '';
+
+            let maintenanceBanner = '';
+            if (MAINTAINABLE_SECTIONS.includes(tab)) {
+                const maint = getMaintenanceConfig(tab);
+                if (maint.enabled) {
+                    if (!(currentUser && currentUser.isAdmin)) {
+                        renderMaintenanceScreen(container, tab, maint.reason);
+                        setTimeout(initAllWaveLogos, 0);
+                        return;
+                    }
+                    maintenanceBanner = `
+                        <div class="glass p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 mb-4 flex items-start space-x-2">
+                            <i class="fa fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+                            <p class="text-xs text-amber-200"><strong>Admin Notice:</strong> ${escapeHtml(MAINTAINABLE_SECTION_LABELS[tab] || tab)} is under maintenance for regular users. Reason: ${escapeHtml(maint.reason || 'No reason provided')}</p>
+                        </div>
+                    `;
+                }
+            }
 
             if (tab === 'notes') renderNotesTab(container);
             else if (tab === 'chat') renderChatTab(container);
@@ -950,7 +1042,28 @@
             else if (tab === 'about') renderAboutTab(container);
             else if (tab === 'admin') renderAdminTab(container);
 
+            if (maintenanceBanner) {
+                container.insertAdjacentHTML('afterbegin', maintenanceBanner);
+            }
+
             setTimeout(initAllWaveLogos, 0);
+        }
+
+        function renderMaintenanceScreen(container, section, reason) {
+            container.innerHTML = `
+                <div class="max-w-md mx-auto glass p-8 rounded-xl border border-amber-500/40 text-center space-y-4">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <i class="fa fa-screwdriver-wrench text-amber-400 text-2xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-amber-300">${escapeHtml(MAINTAINABLE_SECTION_LABELS[section] || section)} is Under Maintenance</h2>
+                    <p class="text-sm text-gray-300">This section is temporarily unavailable while we make improvements.</p>
+                    <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-left">
+                        <p class="text-xs text-gray-400 mb-1">Reason:</p>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(reason || 'No reason provided.')}</p>
+                    </div>
+                    <p class="text-xs text-gray-500">Please check back later or contact an administrator.</p>
+                </div>
+            `;
         }
 
         // --- NOTES TAB ---
@@ -2399,6 +2512,36 @@
                         <button onclick="adminSaveSettings()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">Save System Content</button>
                     </div>
 
+                    <!-- Section Maintenance Mode -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-screwdriver-wrench mr-1"></i>Section Maintenance Mode</h2>
+                        <div class="space-y-2">
+                            ${MAINTAINABLE_SECTIONS.map(section => {
+                                const maint = getMaintenanceConfig(section);
+                                const label = MAINTAINABLE_SECTION_LABELS[section];
+                                return `
+                                    <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                                        <div>
+                                            <div class="flex items-center space-x-2">
+                                                <p class="font-bold text-sm text-purple-200">${label}</p>
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${maint.enabled ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+                                                    ${maint.enabled ? 'UNDER MAINTENANCE' : 'ONLINE'}
+                                                </span>
+                                            </div>
+                                            ${maint.enabled ? `<p class="text-xs text-gray-300 mt-1">Reason: ${escapeHtml(maint.reason)}</p>` : ''}
+                                        </div>
+                                        <div class="shrink-0">
+                                            ${maint.enabled
+                                                ? `<button onclick="adminToggleMaintenance('${section}', false)" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Disable Maintenance</button>`
+                                                : `<button onclick="adminToggleMaintenance('${section}', true)" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs rounded-lg transition font-medium">Enable Maintenance</button>`
+                                            }
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
                     <!-- Bug Reports Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Manage Bug Reports & Replies</h2>
@@ -2441,29 +2584,41 @@
                                     ? `${new Date(u.lastLogin).toLocaleDateString()} ${new Date(u.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
                                     : 'Never';
 
+                                const ban = u.ban && u.ban.isBanned ? u.ban : null;
+                                const banExpired = ban && ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
+                                const usernameKeyLower = u.username.toLowerCase();
+
                                 return `
-                                    <div class="p-4 bg-white/5 rounded-xl border border-white/10 space-y-2">
+                                    <div class="p-4 bg-white/5 rounded-xl border ${ban && !banExpired ? 'border-red-500/40' : 'border-white/10'} space-y-2">
                                         <div class="flex justify-between items-start">
                                             <div>
-                                                <div class="flex items-center space-x-2">
+                                                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                                     <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}" title="${isOnline ? 'Online' : 'Offline'}"></span>
                                                     <p class="font-bold text-sm text-purple-200">${escapeHtml(u.username)} ${u.isAdmin ? '<span class="text-xs text-emerald-400">(Admin)</span>' : ''}</p>
                                                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}">
                                                         ${isOnline ? 'ONLINE' : 'OFFLINE'}
                                                     </span>
+                                                    ${ban ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold ${banExpired ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
+                                                        ${banExpired ? 'BAN EXPIRED (PENDING AUTO-UNBAN)' : (ban.type === 'permanent' ? 'BANNED (PERMANENT)' : 'BANNED (TEMPORARY)')}
+                                                    </span>` : ''}
                                                 </div>
                                                 <p class="text-xs text-gray-300 mt-1">Password: <span class="font-mono text-pink-300 font-semibold">${escapeHtml(u.password)}</span></p>
                                                 <p class="text-xs text-gray-400">DOB: ${u.dob || 'N/A'} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
                                                 <p class="text-xs text-purple-300/80 mt-1"><i class="fa fa-clock text-pink-400 mr-1"></i>Last Login: <span class="font-medium text-gray-200">${lastLoginFormatted}</span></p>
+                                                ${ban && !banExpired ? `<p class="text-xs text-red-300 mt-1"><i class="fa fa-ban mr-1"></i>Reason: ${escapeHtml(ban.reason || 'No reason provided')}${ban.type === 'temporary' && ban.unbanAt ? ` &middot; Unban Date: ${new Date(ban.unbanAt).toLocaleDateString()}` : ''}</p>` : ''}
                                             </div>
                                             <div class="flex flex-wrap gap-2 justify-end">
-                                                <button onclick="adminEditUserPrompt('${u.username.toLowerCase()}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
+                                                <button onclick="adminEditUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
                                                     Edit Credentials
                                                 </button>
-                                                <button onclick="adminToggleRole('${u.username.toLowerCase()}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
+                                                <button onclick="adminToggleRole('${usernameKeyLower}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
                                                     ${u.isAdmin ? 'Demote' : 'Promote Admin'}
                                                 </button>
-                                                <button onclick="adminDeleteUser('${u.username.toLowerCase()}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
+                                                ${ban
+                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>`
+                                                    : `<button onclick="adminBanUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
+                                                }
+                                                <button onclick="adminDeleteUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
                                                     Delete User
                                                 </button>
                                             </div>
@@ -2600,9 +2755,41 @@
             const rulesText = document.getElementById('admin-rules-input').value.trim();
             const specialThanks = document.getElementById('admin-thanks-input').value.trim();
 
-            globalSettings = { aboutText, rulesText, specialThanks };
+            globalSettings = { ...globalSettings, aboutText, rulesText, specialThanks };
             await db.ref('settings').set(globalSettings);
             showToast("Global settings updated!");
+        }
+
+        window.adminToggleMaintenance = function(section, enable) {
+            const label = MAINTAINABLE_SECTION_LABELS[section] || section;
+
+            if (enable) {
+                const inputsHtml = `
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Maintenance Reason</label>
+                        <textarea id="maint-reason-input" placeholder="e.g. Upgrading the database, fixing a bug..." class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none"></textarea>
+                    </div>
+                `;
+
+                openModal(`Put ${label} Under Maintenance`, "Regular users will be blocked from this section and shown your reason until you disable maintenance mode.", inputsHtml, async () => {
+                    if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                    if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                    const reason = document.getElementById('maint-reason-input').value.trim();
+                    if (!reason) { showToast("Please provide a maintenance reason", "error"); return; }
+
+                    await db.ref('settings/maintenance/' + section).set({ enabled: true, reason });
+                    showToast(`${label} is now under maintenance`);
+                });
+            } else {
+                openModal(`Disable Maintenance for ${label}`, "Users will regain access to this section immediately.", "", async () => {
+                    if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                    if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                    await db.ref('settings/maintenance/' + section).update({ enabled: false });
+                    showToast(`${label} maintenance disabled`);
+                });
+            }
         }
 
         window.adminEditUserPrompt = function(usernameKey) {
@@ -2707,6 +2894,74 @@
                 await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
                 await db.ref(`flappyLeaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
+            });
+        }
+
+        window.adminBanUserPrompt = function(usernameKey) {
+            if (currentUser && currentUser.username.toLowerCase() === usernameKey) {
+                showToast("You cannot ban your own account", "error");
+                return;
+            }
+
+            const user = usersData.find(u => u.username.toLowerCase() === usernameKey);
+            if (!user) return;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Ban Type</label>
+                    <select id="ban-type-select" onchange="document.getElementById('ban-unban-date-wrap').classList.toggle('hidden', this.value !== 'temporary')" class="w-full p-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white">
+                        <option value="temporary">Temporary</option>
+                        <option value="permanent">Permanent</option>
+                    </select>
+                </div>
+                <div id="ban-unban-date-wrap">
+                    <label class="text-xs text-gray-400 mb-1 block">Unban Date</label>
+                    <input type="date" id="ban-unban-date" min="${todayStr}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Ban Reason</label>
+                    <textarea id="ban-reason-input" placeholder="Reason for ban..." class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none"></textarea>
+                </div>
+            `;
+
+            openModal(`Ban User: ${user.username}`, "The user will be blocked from logging in and shown this reason and ban type instead of the welcome screen.", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const type = document.getElementById('ban-type-select').value;
+                const reason = document.getElementById('ban-reason-input').value.trim();
+                const unbanDateStr = document.getElementById('ban-unban-date').value;
+
+                if (!reason) { showToast("Please provide a ban reason", "error"); return; }
+
+                let unbanAt = null;
+                if (type === 'temporary') {
+                    if (!unbanDateStr) { showToast("Please choose an unban date", "error"); return; }
+                    unbanAt = new Date(unbanDateStr + 'T00:00:00').getTime();
+                    if (unbanAt <= Date.now()) { showToast("Unban date must be in the future", "error"); return; }
+                }
+
+                await db.ref('users/' + usernameKey + '/ban').set({
+                    isBanned: true,
+                    type,
+                    reason,
+                    unbanAt,
+                    bannedAt: Date.now(),
+                    bannedBy: currentUser.username
+                });
+
+                showToast(`${user.username} has been banned (${type})`);
+            });
+        }
+
+        window.adminUnbanUser = function(usernameKey) {
+            openModal("Unban User", `Restore login access for '${usernameKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('users/' + usernameKey + '/ban').remove();
+                showToast("User unbanned");
             });
         }
 
