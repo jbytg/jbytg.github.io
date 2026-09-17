@@ -13,6 +13,19 @@
     <meta property="og:title" content="JB HUB">
     <meta property="og:description" content="Welcome to JB HUB, the ultimate Cloud Workspace and Cyber Arcade Platform. Enjoy a 100% free, completely ad-free, and fun digital experience built for seamless work and play.">
     <meta property="og:type" content="website">
+    <meta property="og:url" content="https://jbytg.github.io/">
+    <meta property="og:image" content="https://jbytg.github.io/logo.png">
+    <meta property="og:image:secure_url" content="https://jbytg.github.io/logo.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1254">
+    <meta property="og:image:height" content="1254">
+    <meta property="og:image:alt" content="JB HUB Logo">
+
+    <!-- Twitter / X Card (also used as a fallback by several other link-preview crawlers) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="JB HUB">
+    <meta name="twitter:description" content="Welcome to JB HUB, the ultimate Cloud Workspace and Cyber Arcade Platform. Enjoy a 100% free, completely ad-free, and fun digital experience built for seamless work and play.">
+    <meta name="twitter:image" content="https://jbytg.github.io/logo.png">
 
     <!-- Structured Data (JSON-LD) for Google Sitename -->
     <script type="application/ld+json">
@@ -540,6 +553,10 @@
         let mySessionId = null;
         let sessionListenerUsernameKey = null;
         let sessionListenerHandler = null;
+
+        // --- Global Chat Spam Prevention ---
+        let lastChatMessageTime = 0;
+        const CHAT_MESSAGE_COOLDOWN_MS = 5000; // 5 second cool-off between messages
 
         function detachSessionListener() {
             if (sessionListenerUsernameKey && sessionListenerHandler) {
@@ -1452,12 +1469,13 @@
                         <div id="chat-messages-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
                         <div class="flex space-x-2 pt-2 border-t border-white/10">
                             <input type="text" id="chat-message-input" maxlength="500" placeholder="Type a message to everyone..." class="flex-1 p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
-                            <button onclick="sendChatMessage()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition"><i class="fa fa-paper-plane"></i></button>
+                            <button id="chat-send-btn" onclick="sendChatMessage()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa fa-paper-plane"></i></button>
                         </div>
                     </div>
                 </div>
             `;
             renderChatList();
+            updateChatCooldownUI();
         }
 
         function renderChatList() {
@@ -1498,6 +1516,12 @@
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
+            const remainingMs = CHAT_MESSAGE_COOLDOWN_MS - (Date.now() - lastChatMessageTime);
+            if (remainingMs > 0) {
+                showToast(`Please wait ${Math.ceil(remainingMs / 1000)}s before sending another message`, "error");
+                return;
+            }
+
             const input = document.getElementById('chat-message-input');
             const text = input.value.trim();
             if (!text) { showToast("Message cannot be empty", "error"); return; }
@@ -1514,6 +1538,27 @@
 
             input.value = '';
             input.focus();
+
+            lastChatMessageTime = Date.now();
+            updateChatCooldownUI();
+        }
+
+        // Disables the send button and shows a live countdown until the
+        // cool-off period ends, to keep people from spamming the chat.
+        function updateChatCooldownUI() {
+            const btn = document.getElementById('chat-send-btn');
+            if (!btn) return;
+
+            const remainingMs = CHAT_MESSAGE_COOLDOWN_MS - (Date.now() - lastChatMessageTime);
+            if (remainingMs <= 0) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-paper-plane"></i>';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `${Math.ceil(remainingMs / 1000)}s`;
+            setTimeout(updateChatCooldownUI, 250);
         }
 
         window.deleteChatMessage = function(id) {
