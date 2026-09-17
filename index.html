@@ -197,6 +197,19 @@
         </div>
     </div>
 
+    <!-- Another Device Login Notice -->
+    <div id="other-device-screen" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-2xl border border-blue-500/40 text-center space-y-4 win-welcome">
+            <div class="w-20 h-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center">
+                <i class="fa fa-shield-halved text-blue-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-blue-300">Logged Out For Safety</h2>
+            <p class="text-sm text-gray-300">Your account was just logged in from another device. For your account's security, this session has been signed out.</p>
+            <p class="text-xs text-gray-500">If this wasn't you, change your password immediately.</p>
+            <button onclick="closeOtherDeviceScreen()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">OK, Back to Login</button>
+        </div>
+    </div>
+
     <!-- Custom Modal Container -->
     <div id="custom-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="glass p-6 w-full max-w-sm space-y-4 border border-purple-500/30">
@@ -291,8 +304,8 @@
             <div class="text-xs sm:text-sm text-gray-300 space-y-3 mb-6">
                 <p id="prelogin-about-text">Welcome to JB HUB high-security cloud platform. All user data, notes, and leaderboards are securely synced via Firebase database.</p>
                 <div class="p-4 bg-purple-900/20 border border-purple-500/30 rounded-xl">
-                    <p class="font-bold text-purple-300">Special Thanks</p>
-                    <p id="prelogin-thanks-text" class="text-xs sm:text-sm text-purple-200 mt-1">JB YT GAMER</p>
+                    <p class="font-bold text-purple-300 text-center">Special Thanks</p>
+                    <p id="prelogin-thanks-text" class="text-xs sm:text-sm text-purple-200 mt-2 flex flex-wrap justify-center items-center gap-1.5">JB YT GAMER</p>
                 </div>
             </div>
             <button onclick="showLogin()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">Back to Login</button>
@@ -447,6 +460,142 @@
         let humanTestPassed = false;
         let presenceRef = null;
         let isFirebaseConnected = true;
+        let myBanListenerUsernameKey = null;
+        let myBanListenerHandler = null;
+
+        // Renders "Special Thanks" names as centered, highlighted badges.
+        // Accepts names separated by newlines and/or commas so it scales
+        // to any number of names instead of a single line of plain text.
+        function renderSpecialThanksHtml(raw) {
+            if (!raw) return '';
+            const names = raw.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+            if (names.length === 0) return '';
+            const colors = ['#a855f7', '#ec4899', '#3b82f6', '#10b981', '#eab308', '#f43f5e', '#6366f1', '#14b8a6'];
+            return names.map((name, i) => {
+                const color = colors[i % colors.length];
+                return `<span class="inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-bold border" style="color:${color}; border-color:${color}66; background:${color}1a; text-shadow:0 0 8px ${color}80;">${escapeHtml(name)}</span>`;
+            }).join('');
+        }
+
+        // Detaches the realtime listener that watches the logged-in user's
+        // own ban status (see setupBanWatcher / forceLogoutBanned below).
+        function detachMyBanListener() {
+            if (myBanListenerUsernameKey && myBanListenerHandler) {
+                db.ref('users/' + myBanListenerUsernameKey + '/ban').off('value', myBanListenerHandler);
+            }
+            myBanListenerUsernameKey = null;
+            myBanListenerHandler = null;
+        }
+
+        // Watches the current user's own ban field so that if an admin bans
+        // them while they're active in the dashboard, they get force-logged
+        // out immediately and shown the ban screen instead of staying in.
+        function setupBanWatcher(usernameKey) {
+            detachMyBanListener();
+            myBanListenerUsernameKey = usernameKey;
+            myBanListenerHandler = db.ref('users/' + usernameKey + '/ban').on('value', snap => {
+                if (!currentUser) return;
+                const ban = snap.val();
+                if (!ban || !ban.isBanned) return;
+
+                const banExpired = ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
+                if (banExpired) {
+                    db.ref('users/' + usernameKey + '/ban').remove();
+                } else {
+                    forceLogoutBanned(ban);
+                }
+            });
+        }
+
+        // Logs an active session out and shows the ban screen, used when an
+        // admin bans a user who is currently in the dashboard.
+        async function forceLogoutBanned(ban) {
+            const usernameKey = myBanListenerUsernameKey;
+            detachMyBanListener();
+            detachSessionListener();
+            mySessionId = null;
+
+            if (usernameKey) {
+                try { await db.ref('users/' + usernameKey).update({ isOnline: false }); } catch (e) {}
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            initAllWaveLogos();
+
+            showBanScreen(ban);
+        }
+
+        // --- Single Device Login Enforcement ---
+        let mySessionId = null;
+        let sessionListenerUsernameKey = null;
+        let sessionListenerHandler = null;
+
+        function detachSessionListener() {
+            if (sessionListenerUsernameKey && sessionListenerHandler) {
+                db.ref('users/' + sessionListenerUsernameKey + '/activeSession').off('value', sessionListenerHandler);
+            }
+            sessionListenerUsernameKey = null;
+            sessionListenerHandler = null;
+        }
+
+        // Watches the account's activeSession field. Every login writes a
+        // fresh session id there; if it ever changes to something other
+        // than this tab's own id, another device just logged in, so this
+        // session gets force-logged-out for safety.
+        function setupSessionWatcher(usernameKey) {
+            detachSessionListener();
+            sessionListenerUsernameKey = usernameKey;
+            sessionListenerHandler = db.ref('users/' + usernameKey + '/activeSession').on('value', snap => {
+                if (!currentUser || !mySessionId) return;
+                const sessionVal = snap.val();
+                if (sessionVal && sessionVal !== mySessionId) {
+                    forceLogoutOtherDevice();
+                }
+            });
+        }
+
+        async function forceLogoutOtherDevice() {
+            const usernameKey = sessionListenerUsernameKey;
+            detachSessionListener();
+            detachMyBanListener();
+            mySessionId = null;
+
+            if (usernameKey) {
+                try { await db.ref('users/' + usernameKey).update({ isOnline: false }); } catch (e) {}
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            initAllWaveLogos();
+
+            document.getElementById('other-device-screen').classList.remove('hidden');
+        }
+
+        window.closeOtherDeviceScreen = function() {
+            document.getElementById('other-device-screen').classList.add('hidden');
+            document.getElementById('password').value = '';
+        }
 
         // Monitor Network & Firebase Connection State
         window.addEventListener('offline', () => {
@@ -505,10 +654,11 @@
         db.ref('settings').on('value', snap => {
             if (snap.exists()) {
                 globalSettings = snap.val();
+                if (!globalSettings.maintenance) globalSettings.maintenance = {};
                 const abt = document.getElementById('prelogin-about-text');
                 const thx = document.getElementById('prelogin-thanks-text');
                 if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
-                if (thx && globalSettings.specialThanks) thx.innerHTML = globalSettings.specialThanks;
+                if (thx && globalSettings.specialThanks) thx.innerHTML = renderSpecialThanksHtml(globalSettings.specialThanks);
             }
         });
 
@@ -759,7 +909,11 @@
                 const newUser = { username, password, dob, isAdmin: isFirstUser, id: 'u_' + Date.now() };
                 await userRef.set(newUser);
                 currentUser = newUser;
+                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                await userRef.update({ activeSession: mySessionId });
                 setupPresence(usernameKey);
+                setupBanWatcher(usernameKey);
+                setupSessionWatcher(usernameKey);
                 showToast("Account created successfully!");
                 triggerWinWelcome(currentUser.username, currentUser.dob);
             } else {
@@ -785,7 +939,11 @@
                 }
 
                 currentUser = userVal;
+                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                await userRef.update({ activeSession: mySessionId });
                 setupPresence(usernameKey);
+                setupBanWatcher(usernameKey);
+                setupSessionWatcher(usernameKey);
                 showToast("Logged in successfully!");
                 triggerWinWelcome(currentUser.username, currentUser.dob);
             }
@@ -978,6 +1136,9 @@
                 db.ref('.info/connected').off('value', presenceRef);
                 presenceRef = null;
             }
+            detachMyBanListener();
+            detachSessionListener();
+            mySessionId = null;
             currentUser = null;
             humanTestPassed = false;
             document.getElementById('dashboard-view').classList.add('hidden');
@@ -2453,7 +2614,10 @@
                 <div class="glass p-6 rounded-xl max-w-md mx-auto text-center space-y-4">
                     <h2 class="text-xl font-bold glowing-logo">About JB HUB</h2>
                     <div class="text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.aboutText}</div>
-                    <div class="p-4 bg-purple-900/20 rounded-xl"><p class="font-bold text-purple-300">${globalSettings.specialThanks}</p></div>
+                    <div class="p-4 bg-purple-900/20 rounded-xl space-y-2">
+                        <p class="font-bold text-purple-300">Special Thanks</p>
+                        <div class="flex flex-wrap justify-center items-center gap-1.5">${renderSpecialThanksHtml(globalSettings.specialThanks)}</div>
+                    </div>
                 </div>
             `;
         }
@@ -2506,8 +2670,8 @@
                         </div>
 
                         <div>
-                            <label class="text-xs text-gray-400 mb-1 block">Special Thanks Banner</label>
-                            <input type="text" id="admin-thanks-input" value="${globalSettings.specialThanks || ''}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
+                            <label class="text-xs text-gray-400 mb-1 block">Special Thanks Names (one per line, or comma separated — shown as centered highlighted badges)</label>
+                            <textarea id="admin-thanks-input" placeholder="e.g.&#10;JB YT GAMER&#10;Alex&#10;Sam" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.specialThanks || ''}</textarea>
                         </div>
 
                         <button onclick="adminSaveSettings()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">Save System Content</button>
@@ -2531,9 +2695,10 @@
                                             </div>
                                             ${maint.enabled ? `<p class="text-xs text-gray-300 mt-1">Reason: ${escapeHtml(maint.reason)}</p>` : ''}
                                         </div>
-                                        <div class="shrink-0">
+                                        <div class="shrink-0 flex flex-wrap gap-2 justify-end">
                                             ${maint.enabled
-                                                ? `<button onclick="adminToggleMaintenance('${section}', false)" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Disable Maintenance</button>`
+                                                ? `<button onclick="adminToggleMaintenance('${section}', false)" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Disable Maintenance</button>
+                                                   <button onclick="adminEditMaintenanceReasonPrompt('${section}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
                                                 : `<button onclick="adminToggleMaintenance('${section}', true)" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 text-xs rounded-lg transition font-medium">Enable Maintenance</button>`
                                             }
                                         </div>
@@ -2616,7 +2781,8 @@
                                                     ${u.isAdmin ? 'Demote' : 'Promote Admin'}
                                                 </button>
                                                 ${ban
-                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>`
+                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>
+                                                       <button onclick="adminEditBanReasonPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
                                                     : `<button onclick="adminBanUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
                                                 }
                                                 <button onclick="adminDeleteUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
@@ -2793,6 +2959,30 @@
             }
         }
 
+        window.adminEditMaintenanceReasonPrompt = function(section) {
+            const maint = getMaintenanceConfig(section);
+            if (!maint.enabled) return;
+            const label = MAINTAINABLE_SECTION_LABELS[section] || section;
+
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Maintenance Reason</label>
+                    <textarea id="edit-maint-reason-input" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none">${escapeHtml(maint.reason)}</textarea>
+                </div>
+            `;
+
+            openModal(`Edit Maintenance Reason: ${label}`, "Update the reason shown to users while this section is under maintenance.", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const reason = document.getElementById('edit-maint-reason-input').value.trim();
+                if (!reason) { showToast("Please provide a maintenance reason", "error"); return; }
+
+                await db.ref('settings/maintenance/' + section).update({ reason });
+                showToast("Maintenance reason updated");
+            });
+        }
+
         window.adminEditUserPrompt = function(usernameKey) {
             const user = usersData.find(u => u.username.toLowerCase() === usernameKey);
             if (!user) return;
@@ -2963,6 +3153,29 @@
 
                 await db.ref('users/' + usernameKey + '/ban').remove();
                 showToast("User unbanned");
+            });
+        }
+
+        window.adminEditBanReasonPrompt = function(usernameKey) {
+            const user = usersData.find(u => u.username.toLowerCase() === usernameKey);
+            if (!user || !user.ban || !user.ban.isBanned) return;
+
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Ban Reason</label>
+                    <textarea id="edit-ban-reason-input" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none">${escapeHtml(user.ban.reason || '')}</textarea>
+                </div>
+            `;
+
+            openModal(`Edit Ban Reason: ${user.username}`, "Update the reason shown to this banned user on their ban screen.", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const reason = document.getElementById('edit-ban-reason-input').value.trim();
+                if (!reason) { showToast("Please provide a ban reason", "error"); return; }
+
+                await db.ref('users/' + usernameKey + '/ban').update({ reason });
+                showToast("Ban reason updated");
             });
         }
 
