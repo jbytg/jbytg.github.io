@@ -2694,7 +2694,7 @@
                                     <input type="color" onchange="applyColorToTextarea('admin-about-input', this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="Custom Color">
                                 </div>
                             </div>
-                            <textarea id="admin-about-input" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.aboutText || ''}</textarea>
+                            <textarea id="admin-about-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.aboutText || ''}</textarea>
                         </div>
 
                         <div>
@@ -2711,12 +2711,12 @@
                                     <input type="color" onchange="applyColorToTextarea('admin-rules-input', this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="Custom Color">
                                 </div>
                             </div>
-                            <textarea id="admin-rules-input" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.rulesText || ''}</textarea>
+                            <textarea id="admin-rules-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.rulesText || ''}</textarea>
                         </div>
 
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Special Thanks Names (one per line, or comma separated — shown as centered highlighted badges)</label>
-                            <textarea id="admin-thanks-input" placeholder="e.g.&#10;JB YT GAMER&#10;Alex&#10;Sam" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.specialThanks || ''}</textarea>
+                            <textarea id="admin-thanks-input" placeholder="e.g.&#10;JB YT GAMER&#10;Alex&#10;Sam" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.specialThanks || ''}</textarea>
                         </div>
 
                         <button onclick="adminSaveSettings()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">Save System Content</button>
