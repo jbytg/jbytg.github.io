@@ -162,6 +162,53 @@
             border-color: rgba(74, 222, 128, 0.7);
             box-shadow: 0 0 14px rgba(74, 222, 128, 0.5);
         }
+
+        /* --- Interactivity Pass ---
+           Everything below only activates on hover / focus / active / selection.
+           Nothing here changes how any element looks at rest, so the existing
+           design is untouched until someone actually interacts with it. */
+
+        /* Buttons: respond to the person's hand with a little lift and glow */
+        button:not(:disabled) { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+        button:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.08); }
+        button:not(:disabled):active { transform: translateY(0) scale(0.97); filter: brightness(0.95); }
+
+        /* Color-matched glow on hover for buttons that already use the app's own palette */
+        button[class*="bg-purple-600"]:hover, button[class*="bg-purple-700"]:hover { box-shadow: 0 0 16px rgba(168, 85, 247, 0.55); }
+        button[class*="bg-pink-600"]:hover, button[class*="bg-pink-500"]:hover { box-shadow: 0 0 16px rgba(236, 72, 153, 0.55); }
+        button[class*="bg-red-500"]:hover, button[class*="bg-rose-600"]:hover { box-shadow: 0 0 14px rgba(248, 113, 113, 0.5); }
+        button[class*="bg-emerald-500"]:hover, button[class*="bg-emerald-600"]:hover { box-shadow: 0 0 14px rgba(52, 211, 153, 0.5); }
+        button[class*="bg-amber-500"]:hover { box-shadow: 0 0 14px rgba(251, 191, 36, 0.5); }
+        button[class*="bg-orange-500"]:hover { box-shadow: 0 0 14px rgba(251, 146, 60, 0.5); }
+
+        /* Inputs/selects/textareas: a quiet neon focus ring layered on top of whatever border color is already set */
+        input:not([type="checkbox"]):not([type="radio"]):focus,
+        textarea:focus,
+        select:focus {
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15), 0 0 14px rgba(168, 85, 247, 0.35);
+            transition: box-shadow 0.2s ease;
+        }
+
+        /* Checkboxes/radios get a small interactive scale-in on check */
+        input[type="checkbox"], input[type="radio"] { transition: transform 0.15s ease; }
+        input[type="checkbox"]:checked, input[type="radio"]:checked { transform: scale(1.1); }
+
+        /* Custom text selection color, matching the theme instead of the browser default */
+        ::selection { background: rgba(168, 85, 247, 0.4); color: #fff; }
+
+        /* Firefox scrollbar to match the webkit styling above (was left at browser default) */
+        * { scrollbar-width: thin; scrollbar-color: rgba(168, 85, 247, 0.5) rgba(0,0,0,0.1); }
+
+        /* Visible keyboard focus ring for accessibility, additive to any existing focus style */
+        a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+            outline: 2px solid #22d3ee;
+            outline-offset: 2px;
+        }
+
+        /* Respect the person's OS-level reduced-motion preference for the interactive glows above */
+        @media (prefers-reduced-motion: reduce) {
+            button:not(:disabled):hover, button:not(:disabled):active { transform: none; }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
