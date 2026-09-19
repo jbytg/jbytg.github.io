@@ -235,7 +235,8 @@
         button:hover i[class*="fa-sign-out-alt"], button:active i[class*="fa-sign-out-alt"] { transform: translateX(2px); }
         button:hover i[class*="fa-eye"], button:active i[class*="fa-eye"] { transform: scale(1.15); }
         button:hover i[class*="fa-pause"], button:active i[class*="fa-pause"] { transform: scale(1.15); }
-        button:hover i[class*="fa-cog"], button:active i[class*="fa-cog"] { transform: rotate(45deg); }
+        button:hover i[class*="fa-cog"], button:active i[class*="fa-cog"] { animation: spinGear 0.8s linear infinite; }
+        @keyframes spinGear { to { transform: rotate(360deg); } }
         button:hover i[class*="fa-clock-rotate-left"], button:active i[class*="fa-clock-rotate-left"] { transform: rotate(-25deg); }
 
         /* D-pad: nudge each arrow in the direction it points, on hover (mouse) and press (touch) */
@@ -288,9 +289,36 @@
         }
         span.animate-pulse[class*="bg-emerald-400"] { animation: radarPing 1.6s ease-out infinite, pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
+        /* --- Interactivity Pass 4 --- */
+
+        /* Tab bar: each tab pops in with a staggered bounce the moment the dashboard appears (login, or returning to it) */
+        @keyframes tabBtnPopIn {
+            0% { transform: scale(0.4); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .tab-btn { animation: tabBtnPopIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) backwards; }
+        .tab-btn:nth-child(1) { animation-delay: 0.03s; }
+        .tab-btn:nth-child(2) { animation-delay: 0.07s; }
+        .tab-btn:nth-child(3) { animation-delay: 0.11s; }
+        .tab-btn:nth-child(4) { animation-delay: 0.15s; }
+        .tab-btn:nth-child(5) { animation-delay: 0.19s; }
+        .tab-btn:nth-child(6) { animation-delay: 0.23s; }
+        .tab-btn:nth-child(7) { animation-delay: 0.27s; }
+        .tab-btn:nth-child(8) { animation-delay: 0.31s; }
+        .tab-btn:nth-child(9) { animation-delay: 0.35s; }
+
+        /* Full-screen overlays (welcome, ban, other-device, and the dashboard itself on logout) fade out instead of snapping away */
+        @keyframes fadeOutScreen {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.94); }
+        }
+        .screen-fade-out { animation: fadeOutScreen 0.4s ease forwards; }
+
         @media (prefers-reduced-motion: reduce) {
             .active-tab, #custom-modal:not(.hidden) > .glass, button:hover i, button:active i { animation: none !important; transform: none !important; }
             button[class*="bg-purple-600"], span[class*="bg-red-500/20"], span[class*="bg-amber-500/20"], span.animate-pulse[class*="bg-emerald-400"] { animation: none !important; }
+            .tab-btn, .screen-fade-out, .win-welcome { animation: none !important; opacity: 1 !important; transform: none !important; }
         }
     </style>
 </head>
@@ -368,7 +396,7 @@
 
     <div id="app" class="w-full max-w-4xl z-10 flex flex-col items-center">
         <!-- Auth View -->
-        <div id="auth-view" class="glass p-6 sm:p-8 w-full max-w-md my-auto">
+        <div id="auth-view" class="glass p-6 sm:p-8 w-full max-w-md my-auto win-welcome">
             <div class="text-center mb-6">
                 <!-- Glowing & Moving Colour Changing Wave Logo -->
                 <h1 id="auth-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight glowing-logo">JB HUB</h1>
@@ -668,15 +696,16 @@
 
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('dashboard-view').classList.add('hidden');
-            document.getElementById('auth-view').classList.remove('hidden');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
-            initAllWaveLogos();
 
-            showBanScreen(ban);
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                showBanScreen(ban);
+            });
         }
 
         // --- Single Device Login Enforcement ---
@@ -728,19 +757,20 @@
 
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('dashboard-view').classList.add('hidden');
-            document.getElementById('auth-view').classList.remove('hidden');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
-            initAllWaveLogos();
 
-            document.getElementById('other-device-screen').classList.remove('hidden');
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                document.getElementById('other-device-screen').classList.remove('hidden');
+            });
         }
 
         window.closeOtherDeviceScreen = function() {
-            document.getElementById('other-device-screen').classList.add('hidden');
+            fadeOutAndHide(document.getElementById('other-device-screen'));
             document.getElementById('password').value = '';
         }
 
@@ -1112,7 +1142,7 @@
         }
 
         window.closeBanScreen = function() {
-            document.getElementById('ban-screen').classList.add('hidden');
+            fadeOutAndHide(document.getElementById('ban-screen'));
             document.getElementById('password').value = '';
         }
 
@@ -1138,6 +1168,22 @@
             return "Supercentenarian (110+ years)";
         }
 
+        // Plays the .screen-fade-out animation on a full-screen overlay, then
+        // hides it (and runs an optional callback) once the fade finishes —
+        // used so welcome/ban/other-device/dashboard transitions fade out
+        // instead of snapping away via the instant 'hidden' class. The delay
+        // is deliberately a bit longer than the CSS animation (0.4s) so the
+        // fade is never cut off a frame early.
+        function fadeOutAndHide(element, callback) {
+            if (!element) { if (callback) callback(); return; }
+            element.classList.add('screen-fade-out');
+            setTimeout(() => {
+                element.classList.add('hidden');
+                element.classList.remove('screen-fade-out');
+                if (callback) callback();
+            }, 430);
+        }
+
         function triggerWinWelcome(username, dob) {
             document.getElementById('auth-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
@@ -1155,8 +1201,7 @@
             welcomeScreen.classList.remove('hidden');
 
             setTimeout(() => {
-                welcomeScreen.classList.add('hidden');
-                enterDashboard();
+                fadeOutAndHide(welcomeScreen, enterDashboard);
             }, 2500);
         }
 
@@ -1288,14 +1333,16 @@
             mySessionId = null;
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('dashboard-view').classList.add('hidden');
-            document.getElementById('auth-view').classList.remove('hidden');
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
             showToast("Logged out successfully");
-            initAllWaveLogos();
+
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+            });
         }
 
         window.switchTab = function(tab) {
