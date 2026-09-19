@@ -173,13 +173,17 @@
         button:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.08); }
         button:not(:disabled):active { transform: translateY(0) scale(0.97); filter: brightness(0.95); }
 
-        /* Color-matched glow on hover for buttons that already use the app's own palette */
-        button[class*="bg-purple-600"]:hover, button[class*="bg-purple-700"]:hover { box-shadow: 0 0 16px rgba(168, 85, 247, 0.55); }
-        button[class*="bg-pink-600"]:hover, button[class*="bg-pink-500"]:hover { box-shadow: 0 0 16px rgba(236, 72, 153, 0.55); }
-        button[class*="bg-red-500"]:hover, button[class*="bg-rose-600"]:hover { box-shadow: 0 0 14px rgba(248, 113, 113, 0.5); }
-        button[class*="bg-emerald-500"]:hover, button[class*="bg-emerald-600"]:hover { box-shadow: 0 0 14px rgba(52, 211, 153, 0.5); }
-        button[class*="bg-amber-500"]:hover { box-shadow: 0 0 14px rgba(251, 191, 36, 0.5); }
-        button[class*="bg-orange-500"]:hover { box-shadow: 0 0 14px rgba(251, 146, 60, 0.5); }
+        /* Color-matched glow for buttons that already use the app's own palette — on hover for mouse, on tap (:active) for touch, so it matches on mobile too */
+        button[class*="bg-purple-600"]:hover, button[class*="bg-purple-600"]:active,
+        button[class*="bg-purple-700"]:hover, button[class*="bg-purple-700"]:active { box-shadow: 0 0 16px rgba(168, 85, 247, 0.55); }
+        button[class*="bg-pink-600"]:hover, button[class*="bg-pink-600"]:active,
+        button[class*="bg-pink-500"]:hover, button[class*="bg-pink-500"]:active { box-shadow: 0 0 16px rgba(236, 72, 153, 0.55); }
+        button[class*="bg-red-500"]:hover, button[class*="bg-red-500"]:active,
+        button[class*="bg-rose-600"]:hover, button[class*="bg-rose-600"]:active { box-shadow: 0 0 14px rgba(248, 113, 113, 0.5); }
+        button[class*="bg-emerald-500"]:hover, button[class*="bg-emerald-500"]:active,
+        button[class*="bg-emerald-600"]:hover, button[class*="bg-emerald-600"]:active { box-shadow: 0 0 14px rgba(52, 211, 153, 0.5); }
+        button[class*="bg-amber-500"]:hover, button[class*="bg-amber-500"]:active { box-shadow: 0 0 14px rgba(251, 191, 36, 0.5); }
+        button[class*="bg-orange-500"]:hover, button[class*="bg-orange-500"]:active { box-shadow: 0 0 14px rgba(251, 146, 60, 0.5); }
 
         /* Inputs/selects/textareas: a quiet neon focus ring layered on top of whatever border color is already set */
         input:not([type="checkbox"]):not([type="radio"]):focus,
@@ -208,6 +212,85 @@
         /* Respect the person's OS-level reduced-motion preference for the interactive glows above */
         @media (prefers-reduced-motion: reduce) {
             button:not(:disabled):hover, button:not(:disabled):active { transform: none; }
+        }
+
+        /* --- Interactivity Pass 2 ---
+           Same rule as before: everything below only plays on hover, or in
+           direct response to something the person just clicked (switching a
+           tab, opening a modal). Resting appearance is untouched. */
+
+        /* Icons get a tiny bit of life on hover, matched to what each one means */
+        button i.fa, button i.fas, button i.fa-solid { display: inline-block; transition: transform 0.2s ease; }
+
+        @keyframes iconShake {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-10deg); }
+            75% { transform: rotate(10deg); }
+        }
+        button:hover i[class*="fa-trash"], button:active i[class*="fa-trash"],
+        button:hover i[class*="fa-ban"], button:active i[class*="fa-ban"] { animation: iconShake 0.4s ease; }
+
+        button:hover i[class*="fa-paper-plane"], button:active i[class*="fa-paper-plane"] { transform: translate(2px, -2px); }
+        button:hover i[class*="fa-reply"], button:active i[class*="fa-reply"] { transform: translateX(-2px); }
+        button:hover i[class*="fa-sign-out-alt"], button:active i[class*="fa-sign-out-alt"] { transform: translateX(2px); }
+        button:hover i[class*="fa-eye"], button:active i[class*="fa-eye"] { transform: scale(1.15); }
+        button:hover i[class*="fa-pause"], button:active i[class*="fa-pause"] { transform: scale(1.15); }
+        button:hover i[class*="fa-cog"], button:active i[class*="fa-cog"] { transform: rotate(45deg); }
+        button:hover i[class*="fa-clock-rotate-left"], button:active i[class*="fa-clock-rotate-left"] { transform: rotate(-25deg); }
+
+        /* D-pad: nudge each arrow in the direction it points, on hover (mouse) and press (touch) */
+        .dpad-btn:hover i.fa-chevron-up, .dpad-btn:active i.fa-chevron-up { transform: translateY(-2px); }
+        .dpad-btn:hover i.fa-chevron-down, .dpad-btn:active i.fa-chevron-down { transform: translateY(2px); }
+        .dpad-btn:hover i.fa-chevron-left, .dpad-btn:active i.fa-chevron-left { transform: translateX(-2px); }
+        .dpad-btn:hover i.fa-chevron-right, .dpad-btn:active i.fa-chevron-right { transform: translateX(2px); }
+
+        /* Tab switch: a quick, deliberate pop when a tab becomes active — plays once per click, not continuously */
+        @keyframes tabPop {
+            0% { transform: scale(0.92); }
+            60% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+        .active-tab { animation: tabPop 0.25s ease; }
+
+        /* Modal: reuse the app's own fadeIn entrance (already used for the welcome/ban screens) so opening one feels like part of the same design language */
+        #custom-modal:not(.hidden) > .glass { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        /* --- Interactivity Pass 3: Ambient Animation ---
+           These play automatically, so they look identical on mobile (no
+           mouse, no :hover) and desktop alike — reserved for elements that
+           are genuinely "live" or need attention, not decoration everywhere. */
+
+        /* Primary action buttons get a slow breathing glow so the main CTA on any screen reads as alive */
+        @keyframes breatheGlow {
+            0%, 100% { box-shadow: 0 0 0 rgba(168, 85, 247, 0); }
+            50% { box-shadow: 0 0 14px rgba(168, 85, 247, 0.45); }
+        }
+        button[class*="bg-purple-600"]:not(:disabled) { animation: breatheGlow 3.2s ease-in-out infinite; }
+        button[class*="bg-purple-600"]:not(:disabled):hover,
+        button[class*="bg-purple-600"]:not(:disabled):active { animation: none; }
+
+        /* Status badges that signal an ongoing state (banned / under maintenance) get a soft pulsing ring to draw the eye */
+        @keyframes statusPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.35); }
+            50% { box-shadow: 0 0 0 4px rgba(248, 113, 113, 0); }
+        }
+        @keyframes statusPulseAmber {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.35); }
+            50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0); }
+        }
+        span[class*="bg-red-500/20"] { animation: statusPulse 2s ease-in-out infinite; }
+        span[class*="bg-amber-500/20"] { animation: statusPulseAmber 2s ease-in-out infinite; }
+
+        /* Online presence dots get a matching soft radar-style ping, layered on top of the existing Tailwind pulse */
+        @keyframes radarPing {
+            0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.5); }
+            100% { box-shadow: 0 0 0 8px rgba(52, 211, 153, 0); }
+        }
+        span.animate-pulse[class*="bg-emerald-400"] { animation: radarPing 1.6s ease-out infinite, pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        @media (prefers-reduced-motion: reduce) {
+            .active-tab, #custom-modal:not(.hidden) > .glass, button:hover i, button:active i { animation: none !important; transform: none !important; }
+            button[class*="bg-purple-600"], span[class*="bg-red-500/20"], span[class*="bg-amber-500/20"], span.animate-pulse[class*="bg-emerald-400"] { animation: none !important; }
         }
     </style>
 </head>
