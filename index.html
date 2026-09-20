@@ -237,6 +237,10 @@
         button:hover i[class*="fa-pause"], button:active i[class*="fa-pause"] { transform: scale(1.15); }
         button:hover i[class*="fa-cog"], button:active i[class*="fa-cog"] { animation: spinGear 0.8s linear infinite; }
         @keyframes spinGear { to { transform: rotate(360deg); } }
+
+        /* One-shot circle for the settings gear when the settings panel closes (desktop and mobile alike — triggered from JS, not hover) */
+        @keyframes spinOnceClose { to { transform: rotate(360deg); } }
+        #settings-gear-icon.spin-on-close { animation: spinOnceClose 0.5s ease; }
         button:hover i[class*="fa-clock-rotate-left"], button:active i[class*="fa-clock-rotate-left"] { transform: rotate(-25deg); }
 
         /* D-pad: nudge each arrow in the direction it points, on hover (mouse) and press (touch) */
@@ -333,6 +337,7 @@
             button[class*="bg-purple-600"], span[class*="bg-red-500/20"], span[class*="bg-amber-500/20"], span.animate-pulse[class*="bg-emerald-400"] { animation: none !important; }
             .tab-btn, .screen-fade-out, .win-welcome { animation: none !important; opacity: 1 !important; transform: none !important; }
             #auth-view:hover, #auth-view:active, #auth-view:focus-within { transform: none !important; }
+            #settings-gear-icon.spin-on-close { animation: none !important; }
         }
     </style>
 </head>
@@ -341,7 +346,7 @@
 
     <!-- Global Top-Left Settings Button -->
     <button onclick="openPerformanceSettingsModal()" class="fixed top-4 left-4 z-40 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md" title="Performance Settings">
-        <i class="fa fa-cog text-lg"></i>
+        <i id="settings-gear-icon" class="fa fa-cog text-lg"></i>
     </button>
 
     <!-- Notification Toast -->
@@ -525,6 +530,9 @@
             disableBg: localStorage.getItem('perf_disableBg') === 'true',
             disableAnim: localStorage.getItem('perf_disableAnim') === 'true'
         };
+        // Tracks whether the open custom-modal is specifically the settings
+        // panel, so closeModal() knows when to spin the gear icon shut.
+        let settingsModalOpen = false;
 
         function applyPerformanceSettings() {
             if (perfSettings.disableBg) {
@@ -542,6 +550,7 @@
         applyPerformanceSettings();
 
         window.openPerformanceSettingsModal = function() {
+            settingsModalOpen = true;
             const inputsHtml = `
                 <div class="space-y-3 text-left">
                     <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
@@ -886,6 +895,16 @@
 
         window.closeModal = function() {
             document.getElementById('custom-modal').classList.add('hidden');
+
+            if (settingsModalOpen) {
+                settingsModalOpen = false;
+                const gearIcon = document.getElementById('settings-gear-icon');
+                if (gearIcon) {
+                    gearIcon.classList.remove('spin-on-close');
+                    void gearIcon.offsetWidth; // force reflow so the animation restarts even if triggered twice in a row
+                    gearIcon.classList.add('spin-on-close');
+                }
+            }
         }
 
         // Canvas Particle Background
@@ -1791,6 +1810,12 @@
                         <button onclick="switchArcadeGame('flappy')" id="arcade-mode-flappy-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'flappy' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
                             <i class="fa fa-kiwi-bird mr-1"></i> Flappy Bird
                         </button>
+                        <button onclick="switchArcadeGame('breakout')" id="arcade-mode-breakout-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'breakout' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-square mr-1"></i> Breakout
+                        </button>
+                        <button onclick="switchArcadeGame('2048')" id="arcade-mode-2048-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === '2048' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-hashtag mr-1"></i> 2048
+                        </button>
                     </div>
 
                     <div id="arcade-game-area" class="w-full flex flex-col items-center space-y-4"></div>
@@ -1813,6 +1838,11 @@
             } else if (arcadeGameMode === 'flappy') {
                 cancelAnimationFrame(flappyBird.rafId);
                 flappyBird.running = false;
+            } else if (arcadeGameMode === 'breakout') {
+                cancelAnimationFrame(breakoutGame.rafId);
+                breakoutGame.running = false;
+            } else if (arcadeGameMode === '2048') {
+                game2048.running = false;
             }
 
             arcadeGameMode = mode;
@@ -1829,6 +1859,12 @@
             } else if (arcadeGameMode === 'flappy') {
                 area.innerHTML = flappyGameMarkup();
                 initFlappyCanvas();
+            } else if (arcadeGameMode === 'breakout') {
+                area.innerHTML = breakoutGameMarkup();
+                initBreakoutCanvas();
+            } else if (arcadeGameMode === '2048') {
+                area.innerHTML = game2048Markup();
+                initGame2048();
             } else {
                 area.innerHTML = snakeGameMarkup();
                 initCyberCanvas();
@@ -1972,6 +2008,90 @@
                         <li><strong class="text-gray-200">Mobile / Touch:</strong> Tap the board or the flap button above.</li>
                         <li><strong class="text-gray-200">Speed Mechanics:</strong> Starts slow and gradually speeds up the further you fly!</li>
                         <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function breakoutGameMarkup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="breakout-score" class="text-pink-400">0</span></span>
+                    <span>Lives: <span id="breakout-lives" class="text-emerald-400">3</span></span>
+                    <span>Best: <span id="breakout-best" class="text-purple-200">0</span></span>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md">
+                    <canvas id="breakout-canvas" width="320" height="360" class="block select-none"></canvas>
+                    <div id="breakout-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="breakout-overlay-title" class="text-2xl font-black glowing-logo">BRICK BREAKER</h3>
+                        <p class="text-xs text-gray-400 max-w-[220px]">Move the paddle to bounce the ball and smash every brick. Lose all 3 lives and it's game over.</p>
+                        <button id="breakout-overlay-btn" onclick="startBreakoutGame()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
+                    </div>
+                </div>
+
+                <!-- On-Screen Directional Touch Controls for Mobile Users -->
+                <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 flex flex-col items-center space-y-2 select-none">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Paddle Control (Drag the board, or use the buttons)</span>
+                    <div class="flex space-x-3">
+                        <button
+                            onmousedown="setBreakoutMove('LEFT')" onmouseup="setBreakoutMove(null)" onmouseleave="setBreakoutMove(null)"
+                            ontouchstart="event.preventDefault(); setBreakoutMove('LEFT')" ontouchend="event.preventDefault(); setBreakoutMove(null)"
+                            class="dpad-btn w-14 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                        <button
+                            onmousedown="setBreakoutMove('RIGHT')" onmouseup="setBreakoutMove(null)" onmouseleave="setBreakoutMove(null)"
+                            ontouchstart="event.preventDefault(); setBreakoutMove('RIGHT')" ontouchend="event.preventDefault(); setBreakoutMove(null)"
+                            class="dpad-btn w-14 h-12 bg-purple-600/40 hover:bg-purple-600/70 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-lg text-white shadow-lg transition">
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or A/D to move the paddle. Press <strong>Enter</strong> to Restart.</li>
+                        <li><strong class="text-gray-200">Mobile / Touch:</strong> Drag your finger across the board, or use the buttons above.</li>
+                        <li><strong class="text-gray-200">Scoring:</strong> Every brick you break adds to your score — clear the board for a bonus!</li>
+                        <li><strong class="text-gray-200">Best Score:</strong> Your best is saved on this device.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function game2048Markup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="g2048-score" class="text-pink-400">0</span></span>
+                    <span>Best: <span id="g2048-best" class="text-purple-200">0</span></span>
+                    <button onclick="startGame2048()" class="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 rounded-lg text-xs text-purple-200 transition"><i class="fa fa-clock-rotate-left mr-1"></i>New Game</button>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md p-3">
+                    <div id="g2048-board" class="grid grid-cols-4 gap-2 w-[280px] sm:w-[320px] aspect-square select-none"></div>
+                    <div id="g2048-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center hidden">
+                        <h3 id="g2048-overlay-title" class="text-2xl font-black glowing-logo">NO MOVES LEFT</h3>
+                        <button onclick="startGame2048()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Try Again</button>
+                    </div>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">PC / Laptop:</strong> Use Arrow Keys or W/A/S/D to slide the tiles.</li>
+                        <li><strong class="text-gray-200">Mobile / Touch:</strong> Swipe up, down, left, or right on the board.</li>
+                        <li><strong class="text-gray-200">Goal:</strong> Slide matching tiles together to merge them — reach 2048 and beyond!</li>
+                        <li><strong class="text-gray-200">Best Score:</strong> Your best is saved on this device.</li>
                     </ul>
                 </div>
             `;
@@ -2243,6 +2363,24 @@
             score: 0, running: false, gameOver: false, rafId: null
         };
 
+        // --- BREAKOUT GAME (Cyber Arcade fourth game) ---
+        const BREAKOUT_W = 320, BREAKOUT_H = 360;
+        let breakoutCanvas, brCtx;
+        let breakoutGame = {
+            paddleX: 0, paddleWidth: 64, paddleHeight: 10,
+            ballX: 0, ballY: 0, ballRadius: 6, ballDX: 3.2, ballDY: -3.2,
+            bricks: [], brickRows: 5, brickCols: 8, brickWidth: 0, brickHeight: 16, brickPadding: 4, brickOffsetTop: 30, brickOffsetLeft: 4,
+            score: 0, lives: 3, running: false, gameOver: false, rafId: null,
+            moveDir: null, best: 0
+        };
+
+        // --- 2048 GAME (Cyber Arcade fifth game) ---
+        const G2048_COLORS = {
+            2: '#3f3b5c', 4: '#4c4372', 8: '#a855f7', 16: '#c026d3', 32: '#ec4899',
+            64: '#f472b6', 128: '#6366f1', 256: '#22d3ee', 512: '#34d399', 1024: '#fbbf24', 2048: '#f59e0b'
+        };
+        let game2048 = { grid: [], score: 0, best: 0, running: false, gameOver: false, touchStartX: 0, touchStartY: 0 };
+
         function initFlappyCanvas() {
             flappyCanvas = document.getElementById('flappy-canvas');
             if (!flappyCanvas) return;
@@ -2439,6 +2577,413 @@
             if (overlayBtn) overlayBtn.innerText = "Restart Game";
             if (overlay) overlay.classList.remove('hidden');
         }
+
+        // ============== BREAKOUT (paddle/ball, keyboard + drag/touch) ==============
+
+        function initBreakoutCanvas() {
+            breakoutCanvas = document.getElementById('breakout-canvas');
+            if (!breakoutCanvas) return;
+            brCtx = breakoutCanvas.getContext('2d');
+            cancelAnimationFrame(breakoutGame.rafId);
+            breakoutGame.running = false;
+            breakoutGame.gameOver = false;
+            breakoutGame.score = 0;
+            breakoutGame.lives = 3;
+            breakoutGame.best = parseInt(localStorage.getItem('breakout_best') || '0', 10);
+            const bestEl = document.getElementById('breakout-best');
+            if (bestEl) bestEl.innerText = breakoutGame.best;
+
+            resetBreakoutBallAndPaddle();
+            buildBreakoutBricks();
+            drawBreakoutBoard();
+
+            breakoutCanvas.onmousemove = e => moveBreakoutPaddleToClientX(e.clientX);
+            breakoutCanvas.ontouchmove = e => {
+                e.preventDefault();
+                if (e.touches[0]) moveBreakoutPaddleToClientX(e.touches[0].clientX);
+            };
+        }
+
+        function moveBreakoutPaddleToClientX(clientX) {
+            if (!breakoutGame.running || !breakoutCanvas) return;
+            const rect = breakoutCanvas.getBoundingClientRect();
+            const scaleX = BREAKOUT_W / rect.width;
+            const x = (clientX - rect.left) * scaleX;
+            breakoutGame.paddleX = Math.max(0, Math.min(BREAKOUT_W - breakoutGame.paddleWidth, x - breakoutGame.paddleWidth / 2));
+        }
+
+        function resetBreakoutBallAndPaddle() {
+            breakoutGame.paddleX = (BREAKOUT_W - breakoutGame.paddleWidth) / 2;
+            breakoutGame.ballX = BREAKOUT_W / 2;
+            breakoutGame.ballY = BREAKOUT_H - 40;
+            breakoutGame.ballDX = 3.2 * (Math.random() < 0.5 ? 1 : -1);
+            breakoutGame.ballDY = -3.2;
+        }
+
+        function buildBreakoutBricks() {
+            breakoutGame.brickWidth = (BREAKOUT_W - breakoutGame.brickOffsetLeft * 2 - breakoutGame.brickPadding * (breakoutGame.brickCols - 1)) / breakoutGame.brickCols;
+            breakoutGame.bricks = [];
+            const colors = ['#a855f7', '#c026d3', '#ec4899', '#6366f1', '#22d3ee'];
+            for (let r = 0; r < breakoutGame.brickRows; r++) {
+                for (let c = 0; c < breakoutGame.brickCols; c++) {
+                    breakoutGame.bricks.push({
+                        x: breakoutGame.brickOffsetLeft + c * (breakoutGame.brickWidth + breakoutGame.brickPadding),
+                        y: breakoutGame.brickOffsetTop + r * (breakoutGame.brickHeight + breakoutGame.brickPadding),
+                        alive: true,
+                        color: colors[r % colors.length]
+                    });
+                }
+            }
+        }
+
+        window.startBreakoutGame = function() {
+            const overlay = document.getElementById('breakout-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            breakoutGame.score = 0;
+            breakoutGame.lives = 3;
+            breakoutGame.running = true;
+            breakoutGame.gameOver = false;
+            resetBreakoutBallAndPaddle();
+            buildBreakoutBricks();
+
+            const scoreEl = document.getElementById('breakout-score');
+            const livesEl = document.getElementById('breakout-lives');
+            if (scoreEl) scoreEl.innerText = '0';
+            if (livesEl) livesEl.innerText = '3';
+
+            cancelAnimationFrame(breakoutGame.rafId);
+            breakoutGame.rafId = requestAnimationFrame(breakoutLoop);
+        }
+
+        window.setBreakoutMove = function(dir) {
+            breakoutGame.moveDir = dir;
+        }
+
+        function breakoutLoop() {
+            if (!breakoutGame.running) return;
+            updateBreakoutPhysics();
+            if (!breakoutGame.running) return; // a life lost or a win may have ended the game this frame
+            drawBreakoutBoard();
+            breakoutGame.rafId = requestAnimationFrame(breakoutLoop);
+        }
+
+        function updateBreakoutPhysics() {
+            const paddleSpeed = 6;
+            if (breakoutGame.moveDir === 'LEFT') breakoutGame.paddleX = Math.max(0, breakoutGame.paddleX - paddleSpeed);
+            if (breakoutGame.moveDir === 'RIGHT') breakoutGame.paddleX = Math.min(BREAKOUT_W - breakoutGame.paddleWidth, breakoutGame.paddleX + paddleSpeed);
+
+            breakoutGame.ballX += breakoutGame.ballDX;
+            breakoutGame.ballY += breakoutGame.ballDY;
+
+            if (breakoutGame.ballX - breakoutGame.ballRadius < 0 || breakoutGame.ballX + breakoutGame.ballRadius > BREAKOUT_W) {
+                breakoutGame.ballDX *= -1;
+            }
+            if (breakoutGame.ballY - breakoutGame.ballRadius < 0) {
+                breakoutGame.ballDY *= -1;
+            }
+
+            const paddleY = BREAKOUT_H - 16;
+            if (breakoutGame.ballY + breakoutGame.ballRadius > paddleY &&
+                breakoutGame.ballY + breakoutGame.ballRadius < paddleY + breakoutGame.paddleHeight + 6 &&
+                breakoutGame.ballX > breakoutGame.paddleX &&
+                breakoutGame.ballX < breakoutGame.paddleX + breakoutGame.paddleWidth &&
+                breakoutGame.ballDY > 0) {
+                breakoutGame.ballDY *= -1;
+                const hitPos = (breakoutGame.ballX - (breakoutGame.paddleX + breakoutGame.paddleWidth / 2)) / (breakoutGame.paddleWidth / 2);
+                breakoutGame.ballDX = hitPos * 4.5;
+            }
+
+            for (const b of breakoutGame.bricks) {
+                if (!b.alive) continue;
+                if (breakoutGame.ballX + breakoutGame.ballRadius > b.x && breakoutGame.ballX - breakoutGame.ballRadius < b.x + breakoutGame.brickWidth &&
+                    breakoutGame.ballY + breakoutGame.ballRadius > b.y && breakoutGame.ballY - breakoutGame.ballRadius < b.y + breakoutGame.brickHeight) {
+                    b.alive = false;
+                    breakoutGame.ballDY *= -1;
+                    breakoutGame.score += 10;
+                    const scoreEl = document.getElementById('breakout-score');
+                    if (scoreEl) scoreEl.innerText = breakoutGame.score;
+                    break;
+                }
+            }
+
+            if (breakoutGame.ballY - breakoutGame.ballRadius > BREAKOUT_H) {
+                breakoutGame.lives--;
+                const livesEl = document.getElementById('breakout-lives');
+                if (livesEl) livesEl.innerText = breakoutGame.lives;
+                if (breakoutGame.lives <= 0) {
+                    endBreakoutGame(false);
+                    return;
+                }
+                resetBreakoutBallAndPaddle();
+            }
+
+            if (breakoutGame.bricks.every(b => !b.alive)) {
+                breakoutGame.score += 100;
+                const scoreEl = document.getElementById('breakout-score');
+                if (scoreEl) scoreEl.innerText = breakoutGame.score;
+                endBreakoutGame(true);
+            }
+        }
+
+        function drawBreakoutBoard() {
+            if (!brCtx) return;
+            const grad = brCtx.createLinearGradient(0, 0, 0, BREAKOUT_H);
+            grad.addColorStop(0, '#0c0a18');
+            grad.addColorStop(1, '#140c26');
+            brCtx.fillStyle = grad;
+            brCtx.fillRect(0, 0, BREAKOUT_W, BREAKOUT_H);
+
+            breakoutGame.bricks.forEach(b => {
+                if (!b.alive) return;
+                brCtx.save();
+                brCtx.shadowColor = b.color;
+                brCtx.shadowBlur = 6;
+                brCtx.fillStyle = b.color;
+                brCtx.fillRect(b.x, b.y, breakoutGame.brickWidth, breakoutGame.brickHeight);
+                brCtx.restore();
+            });
+
+            const paddleY = BREAKOUT_H - 16;
+            brCtx.save();
+            brCtx.shadowColor = 'rgba(236, 72, 153, 0.7)';
+            brCtx.shadowBlur = 8;
+            brCtx.fillStyle = '#f472b6';
+            brCtx.fillRect(breakoutGame.paddleX, paddleY, breakoutGame.paddleWidth, breakoutGame.paddleHeight);
+            brCtx.restore();
+
+            brCtx.save();
+            brCtx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            brCtx.shadowBlur = 10;
+            brCtx.fillStyle = '#fff';
+            brCtx.beginPath();
+            brCtx.arc(breakoutGame.ballX, breakoutGame.ballY, breakoutGame.ballRadius, 0, Math.PI * 2);
+            brCtx.fill();
+            brCtx.restore();
+        }
+
+        function endBreakoutGame(won) {
+            breakoutGame.running = false;
+            breakoutGame.gameOver = true;
+            cancelAnimationFrame(breakoutGame.rafId);
+
+            if (breakoutGame.score > breakoutGame.best) {
+                breakoutGame.best = breakoutGame.score;
+                localStorage.setItem('breakout_best', breakoutGame.best);
+                const bestEl = document.getElementById('breakout-best');
+                if (bestEl) bestEl.innerText = breakoutGame.best;
+            }
+
+            const overlayTitle = document.getElementById('breakout-overlay-title');
+            const overlayBtn = document.getElementById('breakout-overlay-btn');
+            const overlay = document.getElementById('breakout-overlay');
+            if (overlayTitle) applyWaveEffect(overlayTitle, won ? "BOARD CLEARED!" : "GAME OVER");
+            if (overlayBtn) overlayBtn.innerText = "Play Again";
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== 'breakout') return;
+
+            if (e.key === 'Enter') {
+                if (breakoutGame.gameOver || !breakoutGame.running) {
+                    e.preventDefault();
+                    startBreakoutGame();
+                    return;
+                }
+            }
+
+            if (!breakoutGame.running) return;
+            if (['ArrowLeft', 'KeyA', 'a', 'A'].includes(e.key) || e.code === 'ArrowLeft' || e.code === 'KeyA') { breakoutGame.moveDir = 'LEFT'; e.preventDefault(); }
+            if (['ArrowRight', 'KeyD', 'd', 'D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { breakoutGame.moveDir = 'RIGHT'; e.preventDefault(); }
+        });
+
+        window.addEventListener('keyup', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== 'breakout') return;
+            const isLeft = e.key === 'ArrowLeft' || e.code === 'ArrowLeft' || e.key === 'a' || e.key === 'A' || e.code === 'KeyA';
+            const isRight = e.key === 'ArrowRight' || e.code === 'ArrowRight' || e.key === 'd' || e.key === 'D' || e.code === 'KeyD';
+            if (isLeft || isRight) breakoutGame.moveDir = null;
+        });
+
+        // ============== 2048 (grid slide/merge, keyboard + swipe) ==============
+
+        function initGame2048() {
+            game2048.best = parseInt(localStorage.getItem('2048_best') || '0', 10);
+            const bestEl = document.getElementById('g2048-best');
+            if (bestEl) bestEl.innerText = game2048.best;
+
+            startGame2048();
+
+            const board = document.getElementById('g2048-board');
+            if (board) {
+                board.ontouchstart = e => {
+                    if (e.touches[0]) { game2048.touchStartX = e.touches[0].clientX; game2048.touchStartY = e.touches[0].clientY; }
+                };
+                board.ontouchend = e => {
+                    if (!e.changedTouches[0]) return;
+                    const dx = e.changedTouches[0].clientX - game2048.touchStartX;
+                    const dy = e.changedTouches[0].clientY - game2048.touchStartY;
+                    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return; // too small to count as a swipe
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        move2048(dx > 0 ? 'RIGHT' : 'LEFT');
+                    } else {
+                        move2048(dy > 0 ? 'DOWN' : 'UP');
+                    }
+                };
+            }
+        }
+
+        window.startGame2048 = function() {
+            game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+            game2048.score = 0;
+            game2048.running = true;
+            game2048.gameOver = false;
+            spawn2048Tile();
+            spawn2048Tile();
+
+            const scoreEl = document.getElementById('g2048-score');
+            if (scoreEl) scoreEl.innerText = '0';
+            const overlay = document.getElementById('g2048-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            render2048Board();
+        }
+
+        function spawn2048Tile() {
+            const empty = [];
+            for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (game2048.grid[r][c] === 0) empty.push([r, c]);
+            if (empty.length === 0) return;
+            const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+            game2048.grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+        }
+
+        function slideAndMergeRow(row) {
+            let vals = row.filter(v => v !== 0);
+            let gained = 0;
+            for (let i = 0; i < vals.length - 1; i++) {
+                if (vals[i] === vals[i + 1]) {
+                    vals[i] *= 2;
+                    gained += vals[i];
+                    vals.splice(i + 1, 1);
+                }
+            }
+            while (vals.length < 4) vals.push(0);
+            return { row: vals, gained };
+        }
+
+        window.move2048 = function(direction) {
+            if (!game2048.running) return;
+            const grid = game2048.grid;
+            let moved = false;
+            let totalGained = 0;
+
+            function getRows(dir) {
+                if (dir === 'LEFT') return grid.map(r => [...r]);
+                if (dir === 'RIGHT') return grid.map(r => [...r].reverse());
+                if (dir === 'UP') return [0, 1, 2, 3].map(c => [0, 1, 2, 3].map(r => grid[r][c]));
+                return [0, 1, 2, 3].map(c => [0, 1, 2, 3].map(r => grid[3 - r][c])); // DOWN
+            }
+
+            const rows = getRows(direction);
+            const newRows = rows.map(row => {
+                const { row: merged, gained } = slideAndMergeRow(row);
+                totalGained += gained;
+                return merged;
+            });
+
+            if (direction === 'LEFT') {
+                newRows.forEach((row, r) => { if (row.join() !== grid[r].join()) moved = true; grid[r] = row; });
+            } else if (direction === 'RIGHT') {
+                newRows.forEach((row, r) => { const rev = [...row].reverse(); if (rev.join() !== grid[r].join()) moved = true; grid[r] = rev; });
+            } else if (direction === 'UP') {
+                for (let c = 0; c < 4; c++) {
+                    for (let r = 0; r < 4; r++) {
+                        if (grid[r][c] !== newRows[c][r]) moved = true;
+                        grid[r][c] = newRows[c][r];
+                    }
+                }
+            } else if (direction === 'DOWN') {
+                for (let c = 0; c < 4; c++) {
+                    for (let r = 0; r < 4; r++) {
+                        if (grid[3 - r][c] !== newRows[c][r]) moved = true;
+                        grid[3 - r][c] = newRows[c][r];
+                    }
+                }
+            }
+
+            if (!moved) return;
+
+            game2048.score += totalGained;
+            spawn2048Tile();
+            render2048Board();
+
+            const scoreEl = document.getElementById('g2048-score');
+            if (scoreEl) scoreEl.innerText = game2048.score;
+
+            if (game2048.score > game2048.best) {
+                game2048.best = game2048.score;
+                localStorage.setItem('2048_best', game2048.best);
+                const bestEl = document.getElementById('g2048-best');
+                if (bestEl) bestEl.innerText = game2048.best;
+            }
+
+            if (!has2048MovesLeft()) {
+                endGame2048();
+            }
+        }
+
+        function has2048MovesLeft() {
+            const grid = game2048.grid;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    if (grid[r][c] === 0) return true;
+                    if (c < 3 && grid[r][c] === grid[r][c + 1]) return true;
+                    if (r < 3 && grid[r][c] === grid[r + 1][c]) return true;
+                }
+            }
+            return false;
+        }
+
+        function render2048Board() {
+            const board = document.getElementById('g2048-board');
+            if (!board) return;
+            board.innerHTML = '';
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    const val = game2048.grid[r][c];
+                    const cell = document.createElement('div');
+                    cell.className = 'rounded-lg flex items-center justify-center font-black transition-all';
+                    cell.style.background = val === 0 ? 'rgba(255,255,255,0.05)' : (G2048_COLORS[val] || '#f59e0b');
+                    cell.style.color = val > 0 && val <= 4 ? '#c4b5fd' : '#fff';
+                    cell.style.fontSize = val >= 1024 ? '0.9rem' : (val >= 128 ? '1.1rem' : '1.3rem');
+                    if (val > 0) {
+                        cell.style.boxShadow = `0 0 10px ${(G2048_COLORS[val] || '#f59e0b')}66`;
+                        cell.innerText = val;
+                    }
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        function endGame2048() {
+            game2048.running = false;
+            game2048.gameOver = true;
+            const overlay = document.getElementById('g2048-overlay');
+            const overlayTitle = document.getElementById('g2048-overlay-title');
+            if (overlayTitle) applyWaveEffect(overlayTitle, "NO MOVES LEFT");
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== '2048') return;
+            if (!game2048.running) return;
+
+            if (['ArrowUp', 'KeyW', 'w', 'W'].includes(e.key) || e.code === 'ArrowUp' || e.code === 'KeyW') { move2048('UP'); e.preventDefault(); }
+            else if (['ArrowDown', 'KeyS', 's', 'S'].includes(e.key) || e.code === 'ArrowDown' || e.code === 'KeyS') { move2048('DOWN'); e.preventDefault(); }
+            else if (['ArrowLeft', 'KeyA', 'a', 'A'].includes(e.key) || e.code === 'ArrowLeft' || e.code === 'KeyA') { move2048('LEFT'); e.preventDefault(); }
+            else if (['ArrowRight', 'KeyD', 'd', 'D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { move2048('RIGHT'); e.preventDefault(); }
+        });
+
 
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
