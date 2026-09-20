@@ -315,10 +315,24 @@
         }
         .screen-fade-out { animation: fadeOutScreen 0.4s ease forwards; }
 
+        /* Login card: reacts to mouse hover, touch, and typing — a transition
+           (not a fixed-duration animation) so it stays elevated for however
+           long the interaction actually lasts, on any device. */
+        #auth-view {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+        #auth-view:hover,
+        #auth-view:active,
+        #auth-view:focus-within {
+            transform: translateY(-4px);
+            box-shadow: 0 18px 45px rgba(168, 85, 247, 0.35), 0 0 0 1px rgba(168, 85, 247, 0.4);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .active-tab, #custom-modal:not(.hidden) > .glass, button:hover i, button:active i { animation: none !important; transform: none !important; }
             button[class*="bg-purple-600"], span[class*="bg-red-500/20"], span[class*="bg-amber-500/20"], span.animate-pulse[class*="bg-emerald-400"] { animation: none !important; }
             .tab-btn, .screen-fade-out, .win-welcome { animation: none !important; opacity: 1 !important; transform: none !important; }
+            #auth-view:hover, #auth-view:active, #auth-view:focus-within { transform: none !important; }
         }
     </style>
 </head>
