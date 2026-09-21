@@ -332,12 +332,55 @@
             box-shadow: 0 18px 45px rgba(168, 85, 247, 0.35), 0 0 0 1px rgba(168, 85, 247, 0.4);
         }
 
+        /* Glitch Hunter: the glowing tile pulses so it's unmistakable which cell to hit */
+        @keyframes glitchPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.06); }
+        }
+        .glitch-active {
+            background: rgba(236, 72, 153, 0.25) !important;
+            border-color: rgba(236, 72, 153, 0.75) !important;
+            color: #f9a8d4;
+            box-shadow: 0 0 18px rgba(236, 72, 153, 0.6);
+            animation: glitchPulse 0.3s ease-in-out infinite alternate;
+        }
+
+        /* --- Interactivity Pass 5 --- */
+
+        /* Text "links" (onclick + cursor-pointer, e.g. Create Account / About Us) get an animated underline on hover */
+        p[onclick][class*="cursor-pointer"] {
+            position: relative;
+            display: inline-block;
+        }
+        p[onclick][class*="cursor-pointer"]::after {
+            content: '';
+            position: absolute;
+            left: 0; bottom: -2px;
+            width: 0;
+            height: 1px;
+            background: currentColor;
+            transition: width 0.25s ease;
+        }
+        p[onclick][class*="cursor-pointer"]:hover::after {
+            width: 100%;
+        }
+
+        /* The app's recurring "list item" card pattern (notes, chat messages, leaderboard rows, admin entries) brightens on hover so the row you're looking at is obvious */
+        div[class*="bg-white/5"][class*="border-white/10"] {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        div[class*="bg-white/5"][class*="border-white/10"]:hover {
+            background-color: rgba(255, 255, 255, 0.09);
+            border-color: rgba(168, 85, 247, 0.4);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .active-tab, #custom-modal:not(.hidden) > .glass, button:hover i, button:active i { animation: none !important; transform: none !important; }
             button[class*="bg-purple-600"], span[class*="bg-red-500/20"], span[class*="bg-amber-500/20"], span.animate-pulse[class*="bg-emerald-400"] { animation: none !important; }
             .tab-btn, .screen-fade-out, .win-welcome { animation: none !important; opacity: 1 !important; transform: none !important; }
             #auth-view:hover, #auth-view:active, #auth-view:focus-within { transform: none !important; }
             #settings-gear-icon.spin-on-close { animation: none !important; }
+            .glitch-active { animation: none !important; transform: none !important; }
         }
     </style>
 </head>
@@ -551,6 +594,7 @@
 
         window.openPerformanceSettingsModal = function() {
             settingsModalOpen = true;
+            const osReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const inputsHtml = `
                 <div class="space-y-3 text-left">
                     <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
@@ -561,6 +605,13 @@
                         <input type="checkbox" id="perf-toggle-anim" ${perfSettings.disableAnim ? 'checked' : ''} class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
                         <span class="text-xs text-gray-200">Disable Animations & Glow Effects (Reduces Lag)</span>
                     </label>
+                    <div class="p-2.5 rounded-lg border ${osReducedMotion ? 'border-amber-500/40 bg-amber-500/10' : 'border-white/10 bg-white/5'} text-[11px] leading-relaxed">
+                        <p class="${osReducedMotion ? 'text-amber-300' : 'text-gray-400'} font-semibold mb-0.5">
+                            <i class="fa fa-${osReducedMotion ? 'triangle-exclamation' : 'circle-check'} mr-1"></i>
+                            This browser/OS's "Reduce Motion" setting: ${osReducedMotion ? 'ON' : 'off'}
+                        </p>
+                        <p class="text-gray-500">${osReducedMotion ? "This is a setting on this device (not this site) — it's why fades, spins, and other motion look disabled here even though the app supports them. Turn it off in your OS/browser accessibility settings if you want to see them." : "Motion is not being suppressed by your system on this device."}</p>
+                    </div>
                 </div>
             `;
 
@@ -631,6 +682,7 @@
         let leaderboardData = [];
         let memoryLeaderboardData = [];
         let flappyLeaderboardData = [];
+        let glitchLeaderboardData = [];
         let leaderboardGameMode = 'snake';
         let usersData = [];
         let globalSettings = { 
@@ -1282,6 +1334,15 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
+            db.ref('glitchLeaderboard').on('value', snap => {
+                glitchLeaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { glitchLeaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            });
+
             db.ref('notes').on('value', snap => {
                 notesData = [];
                 if (snap.exists()) {
@@ -1816,6 +1877,9 @@
                         <button onclick="switchArcadeGame('2048')" id="arcade-mode-2048-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === '2048' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
                             <i class="fa fa-hashtag mr-1"></i> 2048
                         </button>
+                        <button onclick="switchArcadeGame('glitch')" id="arcade-mode-glitch-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'glitch' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-bolt mr-1"></i> Glitch Hunter
+                        </button>
                     </div>
 
                     <div id="arcade-game-area" class="w-full flex flex-col items-center space-y-4"></div>
@@ -1843,6 +1907,9 @@
                 breakoutGame.running = false;
             } else if (arcadeGameMode === '2048') {
                 game2048.running = false;
+            } else if (arcadeGameMode === 'glitch') {
+                clearTimeout(glitchGame.spawnTimer);
+                glitchGame.running = false;
             }
 
             arcadeGameMode = mode;
@@ -1865,6 +1932,9 @@
             } else if (arcadeGameMode === '2048') {
                 area.innerHTML = game2048Markup();
                 initGame2048();
+            } else if (arcadeGameMode === 'glitch') {
+                area.innerHTML = glitchGameMarkup();
+                initGlitchGame();
             } else {
                 area.innerHTML = snakeGameMarkup();
                 initCyberCanvas();
@@ -2092,6 +2162,45 @@
                         <li><strong class="text-gray-200">Mobile / Touch:</strong> Swipe up, down, left, or right on the board.</li>
                         <li><strong class="text-gray-200">Goal:</strong> Slide matching tiles together to merge them — reach 2048 and beyond!</li>
                         <li><strong class="text-gray-200">Best Score:</strong> Your best is saved on this device.</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        function glitchGameMarkup() {
+            let cellsHtml = '';
+            for (let i = 0; i < 9; i++) {
+                cellsHtml += `<div id="glitch-cell-${i}" onclick="hitGlitch(${i})" class="relative aspect-square rounded-xl bg-white/5 border border-white/10 flex items-center justify-center cursor-pointer select-none"><span class="absolute top-1 left-1.5 text-[9px] text-gray-600 font-mono">${i + 1}</span></div>`;
+            }
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="glitch-score" class="text-pink-400">0</span></span>
+                    <span>Misses: <span id="glitch-misses" class="text-red-400">0</span>/3</span>
+                    <span>Best: <span id="glitch-best" class="text-purple-200">0</span></span>
+                </div>
+
+                <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md p-3">
+                    <div id="glitch-grid" class="grid grid-cols-3 gap-2 w-[280px] sm:w-[320px] aspect-square select-none">
+                        ${cellsHtml}
+                    </div>
+                    <div id="glitch-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="glitch-overlay-title" class="text-2xl font-black glowing-logo">GLITCH HUNTER</h3>
+                        <p class="text-xs text-gray-400 max-w-[220px]">Tap the glowing glitch before it vanishes. Miss 3 and it's game over — it speeds up the more you score!</p>
+                        <button id="glitch-overlay-btn" onclick="startGlitchGame()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
+                    </div>
+                </div>
+
+                <!-- Game Instructions & Information -->
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5">
+                        <i class="fa fa-circle-info text-pink-400"></i>
+                        <span>How to Play & Game Info</span>
+                    </h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">
+                        <li><strong class="text-gray-200">PC / Laptop:</strong> Press number keys 1-9 to hit the matching tile. Press <strong>Enter</strong> to Restart.</li>
+                        <li><strong class="text-gray-200">Mobile / Touch:</strong> Tap the glowing tile directly.</li>
+                        <li><strong class="text-gray-200">Scoring:</strong> +1 for every glitch you hit in time — the pace ramps up as you go.</li>
+                        <li><strong class="text-gray-200">Leaderboard Sync:</strong> High scores automatically update on your profile and global leaderboard.</li>
                     </ul>
                 </div>
             `;
@@ -2380,6 +2489,12 @@
             64: '#f472b6', 128: '#6366f1', 256: '#22d3ee', 512: '#34d399', 1024: '#fbbf24', 2048: '#f59e0b'
         };
         let game2048 = { grid: [], score: 0, best: 0, running: false, gameOver: false, touchStartX: 0, touchStartY: 0 };
+
+        // --- GLITCH HUNTER GAME (Cyber Arcade sixth game) ---
+        let glitchGame = {
+            activeIndex: -1, score: 0, misses: 0, maxMisses: 3,
+            running: false, gameOver: false, spawnTimer: null, roundMs: 1400, best: 0
+        };
 
         function initFlappyCanvas() {
             flappyCanvas = document.getElementById('flappy-canvas');
@@ -2984,6 +3099,140 @@
             else if (['ArrowRight', 'KeyD', 'd', 'D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { move2048('RIGHT'); e.preventDefault(); }
         });
 
+        // ============== GLITCH HUNTER (reflex tap/click, keyboard 1-9 + touch, Firebase leaderboard) ==============
+
+        function glitchCellIdleHtml(i) {
+            return `<span class="absolute top-1 left-1.5 text-[9px] text-gray-600 font-mono">${i + 1}</span>`;
+        }
+
+        function resetGlitchCellVisual(i) {
+            const cell = document.getElementById(`glitch-cell-${i}`);
+            if (!cell) return;
+            cell.classList.remove('glitch-active');
+            cell.innerHTML = glitchCellIdleHtml(i);
+        }
+
+        function initGlitchGame() {
+            clearTimeout(glitchGame.spawnTimer);
+            glitchGame.running = false;
+            glitchGame.gameOver = false;
+            glitchGame.activeIndex = -1;
+            glitchGame.best = parseInt(localStorage.getItem('glitch_best') || '0', 10);
+            const bestEl = document.getElementById('glitch-best');
+            if (bestEl) bestEl.innerText = glitchGame.best;
+        }
+
+        window.startGlitchGame = function() {
+            const overlay = document.getElementById('glitch-overlay');
+            if (overlay) overlay.classList.add('hidden');
+
+            glitchGame.score = 0;
+            glitchGame.misses = 0;
+            glitchGame.roundMs = 1400;
+            glitchGame.running = true;
+            glitchGame.gameOver = false;
+
+            const scoreEl = document.getElementById('glitch-score');
+            const missesEl = document.getElementById('glitch-misses');
+            if (scoreEl) scoreEl.innerText = '0';
+            if (missesEl) missesEl.innerText = '0';
+
+            for (let i = 0; i < 9; i++) resetGlitchCellVisual(i);
+
+            spawnGlitch();
+        }
+
+        function spawnGlitch() {
+            if (!glitchGame.running) return;
+            clearTimeout(glitchGame.spawnTimer);
+
+            if (glitchGame.activeIndex > -1) resetGlitchCellVisual(glitchGame.activeIndex);
+
+            let next;
+            do { next = Math.floor(Math.random() * 9); } while (next === glitchGame.activeIndex);
+            glitchGame.activeIndex = next;
+
+            const cell = document.getElementById(`glitch-cell-${next}`);
+            if (cell) {
+                cell.classList.add('glitch-active');
+                cell.innerHTML = `<i class="fa fa-bolt text-2xl"></i>`;
+            }
+
+            glitchGame.spawnTimer = setTimeout(missGlitch, glitchGame.roundMs);
+        }
+
+        window.hitGlitch = function(index) {
+            if (!glitchGame.running || index !== glitchGame.activeIndex) return;
+
+            clearTimeout(glitchGame.spawnTimer);
+            glitchGame.score++;
+            const scoreEl = document.getElementById('glitch-score');
+            if (scoreEl) scoreEl.innerText = glitchGame.score;
+
+            glitchGame.roundMs = Math.max(550, glitchGame.roundMs - 35); // ramps up difficulty, with a floor
+            spawnGlitch();
+        }
+
+        function missGlitch() {
+            if (!glitchGame.running) return;
+            glitchGame.misses++;
+            const missesEl = document.getElementById('glitch-misses');
+            if (missesEl) missesEl.innerText = glitchGame.misses;
+
+            if (glitchGame.misses >= glitchGame.maxMisses) {
+                endGlitchGame();
+            } else {
+                spawnGlitch();
+            }
+        }
+
+        async function endGlitchGame() {
+            glitchGame.running = false;
+            glitchGame.gameOver = true;
+            clearTimeout(glitchGame.spawnTimer);
+
+            if (glitchGame.activeIndex > -1) resetGlitchCellVisual(glitchGame.activeIndex);
+
+            if (glitchGame.score > glitchGame.best) {
+                glitchGame.best = glitchGame.score;
+                localStorage.setItem('glitch_best', glitchGame.best);
+                const bestEl = document.getElementById('glitch-best');
+                if (bestEl) bestEl.innerText = glitchGame.best;
+            }
+
+            if (glitchGame.score > 0 && navigator.onLine && isFirebaseConnected) {
+                const userLbRef = db.ref('glitchLeaderboard/' + currentUser.username.toLowerCase());
+                const snap = await userLbRef.once('value');
+                if (!snap.exists() || snap.val().score < glitchGame.score) {
+                    await userLbRef.set({ username: currentUser.username, score: glitchGame.score });
+                }
+            }
+
+            const overlayTitle = document.getElementById('glitch-overlay-title');
+            const overlayBtn = document.getElementById('glitch-overlay-btn');
+            const overlay = document.getElementById('glitch-overlay');
+            if (overlayTitle) applyWaveEffect(overlayTitle, "GAME OVER");
+            if (overlayBtn) overlayBtn.innerText = "Play Again";
+            if (overlay) overlay.classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== 'glitch') return;
+
+            if (e.key === 'Enter' && (glitchGame.gameOver || !glitchGame.running)) {
+                e.preventDefault();
+                startGlitchGame();
+                return;
+            }
+
+            if (!glitchGame.running) return;
+            const num = parseInt(e.key, 10);
+            if (!isNaN(num) && num >= 1 && num <= 9) {
+                hitGlitch(num - 1);
+                e.preventDefault();
+            }
+        });
+
 
         window.setSnakeDir = function(dir) {
             if (!cyberSnake.running || isGamePaused) return;
@@ -3169,6 +3418,7 @@
                         <button onclick="switchLeaderboardGame('snake')" id="lb-mode-snake-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'snake' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-worm mr-1"></i>Snake</button>
                         <button onclick="switchLeaderboardGame('memory')" id="lb-mode-memory-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-brain mr-1"></i>Memory</button>
                         <button onclick="switchLeaderboardGame('flappy')" id="lb-mode-flappy-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'flappy' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-kiwi-bird mr-1"></i>Flappy Bird</button>
+                        <button onclick="switchLeaderboardGame('glitch')" id="lb-mode-glitch-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'glitch' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-bolt mr-1"></i>Glitch Hunter</button>
                     </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
@@ -3185,7 +3435,7 @@
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : leaderboardData);
+            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : leaderboardData));
             const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
@@ -3634,6 +3884,25 @@
                         </div>
                     </div>
 
+                    <!-- Leaderboard Management (Glitch Hunter) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-bolt mr-1"></i>Glitch Hunter Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${glitchLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : glitchLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditGlitchLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteGlitchLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
                     <!-- All Notes Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Global Notes Control</h2>
@@ -3865,6 +4134,7 @@
                 await db.ref(`leaderboard/${usernameKey}`).remove();
                 await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
                 await db.ref(`flappyLeaderboard/${usernameKey}`).remove();
+                await db.ref(`glitchLeaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -4079,6 +4349,47 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref('flappyLeaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditGlitchLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Display Username</label>
+                    <input type="text" id="admin-glb-username" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input type="number" id="admin-glb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+
+            openModal("Edit Glitch Hunter Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const newUsername = document.getElementById('admin-glb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-glb-score').value) || 0;
+
+                if (!newUsername) { showToast("Username required", "error"); return; }
+
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) {
+                    await db.ref('glitchLeaderboard/' + userKey).remove();
+                }
+
+                await db.ref('glitchLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteGlitchLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove glitch hunter leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('glitchLeaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
