@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us | Ad-Free Cloud Gaming & Chat Platform</title>
+    <title>About Us | JB HUB - Ad-Free Workspace & Games</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,12 +11,11 @@
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Custom CSS Styles -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -51,7 +50,7 @@
             background: radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.15) 0%, rgba(13, 17, 23, 0) 70%);
         }
 
-        /* Floating Animation */
+        /* Floating Animations */
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
@@ -61,16 +60,6 @@
             animation: float 4s ease-in-out infinite;
         }
 
-        @keyframes float-delayed {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(10px); }
-        }
-
-        .animate-float-delayed {
-            animation: float-delayed 5s ease-in-out infinite;
-        }
-
-        /* Smooth Transition */
         .transition-all-custom {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
@@ -83,24 +72,64 @@
 
     <div class="relative z-10">
 
-        <!-- HERO SECTION -->
-        <header class="max-w-6xl mx-auto px-6 pt-20 pb-16 text-center">
-            <!-- Ad-Free Badge -->
-            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-xs font-semibold text-sky-400 mb-8 border border-sky-500/20 shadow-lg animate-float">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                <span>100% Ad-Free Cloud Experience</span>
-                <span class="bg-sky-500/10 text-sky-300 text-[10px] px-2 py-0.5 rounded-full border border-sky-500/30">Free Forever</span>
+        <nav class="sticky top-0 z-50 glass-card border-b border-slate-800/80 bg-[#0d1117]/80 backdrop-blur-md px-6 py-4">
+            <div class="max-w-6xl mx-auto flex items-center justify-between">
+                <!-- Brand Logo / Home Link -->
+                <a href="https://jbytg.github.io/" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-slate-950 text-xl font-black shadow-lg shadow-sky-500/20 group-hover:scale-105 transition-transform">
+                        JB
+                    </div>
+                    <div>
+                        <span class="text-xl font-extrabold text-white tracking-tight group-hover:text-sky-400 transition-colors">JB HUB</span>
+                        <span class="text-[10px] block text-sky-400 font-medium tracking-widest uppercase">Cloud Workspace & Web App</span>
+                    </div>
+                </a>
+
+                <!-- Redirect Button to Main Site -->
+                <div class="flex items-center gap-3">
+                    <a href="https://jbytg.github.io/" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-xs sm:text-sm font-semibold hover:opacity-90 shadow-md shadow-sky-500/20 transition-all">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        <span>Login to JB HUB</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <header class="max-w-6xl mx-auto px-6 pt-16 pb-16 text-center">
+            <!-- Ad-Free & Auth Badges -->
+            <div class="flex flex-wrap justify-center gap-3 mb-8">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-xs font-semibold text-sky-400 border border-sky-500/20 shadow-lg animate-float">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                    <span>100% Ad-Free Cloud Experience</span>
+                    <span class="bg-sky-500/10 text-sky-300 text-[10px] px-2 py-0.5 rounded-full border border-sky-500/30">Free Forever</span>
+                </div>
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-xs font-semibold text-amber-400 border border-amber-500/20 shadow-lg">
+                    <i class="fa-solid fa-lock text-amber-400"></i>
+                    <span>Login Required to Access</span>
+                </div>
             </div>
 
             <!-- Main Heading -->
             <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
-                Connected Cloud Gaming & Global Socializing — <span class="gradient-text">Zero Ads. Zero Limits.</span>
+                Welcome to <span class="gradient-text">JB HUB</span> — Your All-in-One Cloud Workspace & Games
             </h1>
 
             <!-- Subtitle -->
             <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-400 leading-relaxed font-normal mb-10">
-                Welcome to your all-in-one web hub. Designed to run blazingly fast on both mobile and desktop browsers, we bring people together through instant games, global leaderboards, and real-time open chat channels.
+                Designed to run blazingly fast on both mobile and desktop browsers, JB HUB brings productivity and enjoyment together. Store secure cloud notes, compete on game leaderboards, and chat globally in one seamless place.
             </p>
+
+            <!-- Prominent Call-To-Action Buttons Redirecting to Website -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-10">
+                <a href="https://jbytg.github.io/" class="px-8 py-4 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 text-white text-base font-bold hover:scale-105 transition-all shadow-xl shadow-sky-500/25 flex items-center gap-3">
+                    <i class="fa-solid fa-right-to-bracket text-lg"></i>
+                    <span>Login & Launch JB HUB</span>
+                </a>
+                <a href="https://jbytg.github.io/" class="px-6 py-4 rounded-xl glass-card text-white text-base font-semibold hover:bg-slate-800 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-note-sticky text-sky-400"></i>
+                    <span>Notes, Games & Chat</span>
+                </a>
+            </div>
 
             <!-- Tech Badges -->
             <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
@@ -118,7 +147,6 @@
             </div>
         </header>
 
-        <!-- STATS / IMPACT SECTION -->
         <section class="max-w-6xl mx-auto px-6 py-8">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                 <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
@@ -126,69 +154,83 @@
                     <div class="text-xs md:text-sm text-slate-400 font-medium">Ad-Free Browsing</div>
                 </div>
                 <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">0.0 ms</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">Install Required</div>
+                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">Cloud</div>
+                    <div class="text-xs md:text-sm text-slate-400 font-medium">Note Facility</div>
                 </div>
                 <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
                     <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">24 / 7</div>
                     <div class="text-xs md:text-sm text-slate-400 font-medium">Global Chat Online</div>
                 </div>
                 <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">$0</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">Subscription Fees</div>
+                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">Secure</div>
+                    <div class="text-xs md:text-sm text-slate-400 font-medium">User Login Required</div>
                 </div>
             </div>
         </section>
 
-        <!-- CORE FEATURES SECTION -->
         <section class="max-w-6xl mx-auto px-6 py-16">
             <div class="text-center mb-12">
-                <h2 class="text-2xl md:text-4xl font-bold text-white mb-3">Everything You Need In One Tab</h2>
+                <h2 class="text-2xl md:text-4xl font-bold text-white mb-3">Everything You Need In One Platform</h2>
                 <p class="text-slate-400 text-sm md:text-base">Built natively for the modern web using cloud-first technologies.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 
-                <!-- Feature 1: Instant Gaming & Leaderboards -->
-                <div class="glass-card rounded-3xl p-8 transition-all-custom relative overflow-hidden group">
-                    <div class="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-2xl mb-6 group-hover:scale-110 transition-transform">
+                <!-- Feature 1: Cloud Note Facility -->
+                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl mb-5 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-note-sticky"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Cloud Notes Facility</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                        Create, edit, and organize your personal notes securely in the cloud. Access your workspace from any mobile or desktop browser without losing your data.
+                    </p>
+                    <div class="flex items-center gap-2 text-[11px] font-semibold text-amber-400">
+                        <i class="fa-solid fa-cloud"></i>
+                        <span>Auto-Synced to Account</span>
+                    </div>
+                </div>
+
+                <!-- Feature 2: Instant Gaming & Leaderboards -->
+                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
+                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-5 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-gamepad"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Instant Cloud Games</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6">
-                        No downloads or heavy hardware required. Jump into lightweight, highly responsive web games designed to test your skills and pass the time anywhere.
+                    <h3 class="text-lg font-bold text-white mb-2">Instant Cloud Games</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                        No downloads required. Jump into lightweight, highly responsive web games designed to test your skills and pass the time anywhere.
                     </p>
-                    <div class="flex items-center gap-2 text-xs font-semibold text-sky-400">
+                    <div class="flex items-center gap-2 text-[11px] font-semibold text-sky-400">
                         <i class="fa-solid fa-trophy text-amber-400"></i>
                         <span>Live Global Leaderboards</span>
                     </div>
                 </div>
 
-                <!-- Feature 2: Global Chatroom -->
-                <div class="glass-card rounded-3xl p-8 transition-all-custom relative overflow-hidden group">
-                    <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-2xl mb-6 group-hover:scale-110 transition-transform">
+                <!-- Feature 3: Global Chatroom -->
+                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl mb-5 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-comments"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Global Stranger Chat</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6">
-                        Break geographic boundaries. Join our real-time global chat rooms to instantly talk, share ideas, and connect with strangers from across the world safely.
+                    <h3 class="text-lg font-bold text-white mb-2">Global Stranger Chat</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                        Break geographic boundaries. Join our real-time global chat rooms to instantly talk, share ideas, and connect with strangers worldwide.
                     </p>
-                    <div class="flex items-center gap-2 text-xs font-semibold text-indigo-400">
+                    <div class="flex items-center gap-2 text-[11px] font-semibold text-indigo-400">
                         <i class="fa-solid fa-earth-americas"></i>
-                        <span>Real-Time Cloud Socket Chat</span>
+                        <span>Real-Time Cloud Socket</span>
                     </div>
                 </div>
 
-                <!-- Feature 3: Cross-Platform Sync -->
-                <div class="glass-card rounded-3xl p-8 transition-all-custom relative overflow-hidden group">
-                    <div class="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-2xl mb-6 group-hover:scale-110 transition-transform">
+                <!-- Feature 4: Cross-Platform Sync -->
+                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
+                    <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl mb-5 group-hover:scale-110 transition-transform">
                         <i class="fa-solid fa-mobile-screen-button"></i>
                     </div>
-                    <h3 class="text-xl font-bold text-white mb-3">Mobile & Desktop Sync</h3>
-                    <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                    <h3 class="text-lg font-bold text-white mb-2">Mobile & Desktop Sync</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
                         Enjoy the exact same smooth experience whether you are on a high-end desktop workstation or a mobile phone on low-bandwidth connections.
                     </p>
-                    <div class="flex items-center gap-2 text-xs font-semibold text-purple-400">
+                    <div class="flex items-center gap-2 text-[11px] font-semibold text-purple-400">
                         <i class="fa-solid fa-bolt"></i>
                         <span>Ultra-Fast Cloud Infrastructure</span>
                     </div>
@@ -197,7 +239,6 @@
             </div>
         </section>
 
-        <!-- OUR MISSION / COMMUNITY SECTION -->
         <section class="max-w-6xl mx-auto px-6 py-12">
             <div class="glass-card rounded-3xl p-8 md:p-12 border border-slate-800 relative overflow-hidden">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -207,11 +248,17 @@
                         </div>
                         <h2 class="text-3xl font-extrabold text-white mb-4">Built by the Open Community, For the Community</h2>
                         <p class="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
-                            We believe the web should be clean, fast, and accessible to everyone. That is why our platform operates completely free of intrusive advertisements, hidden paywalls, or forced tracking scripts.
+                            We believe the web should be clean, fast, and accessible to everyone. That is why **JB HUB** operates completely free of intrusive advertisements, hidden paywalls, or forced tracking scripts.
                         </p>
                         <p class="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
-                            Leveraging modern **Google Cloud services** for ultra-fast response times and **GitHub community contributions** for open code development, our platform continuously evolves thanks to users and developers around the globe.
+                            Leveraging modern <strong>Google Cloud services</strong> for ultra-fast response times and <strong>GitHub community contributions</strong> for open code development, JB HUB provides a safe, secure login environment for your notes, games, and conversations.
                         </p>
+
+                        <!-- Direct Website Launch Link -->
+                        <a href="https://jbytg.github.io/" class="inline-flex items-center gap-2 text-sm font-bold text-sky-400 hover:text-sky-300 transition-colors">
+                            <span>Login to JB HUB at https://jbytg.github.io/</span>
+                            <i class="fa-solid fa-arrow-right text-xs"></i>
+                        </a>
                     </div>
 
                     <!-- Tech Badge Grid Visual -->
@@ -235,31 +282,36 @@
                         </div>
 
                         <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                            <i class="fa-solid fa-display text-indigo-400 text-3xl mb-2"></i>
-                            <div class="text-white font-bold text-sm">Universal Access</div>
-                            <div class="text-slate-500 text-xs mt-1">Any Screen, Any Device</div>
+                            <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
+                            <div class="text-white font-bold text-sm">Protected Workspace</div>
+                            <div class="text-slate-500 text-xs mt-1">Login Required</div>
                         </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- CALL TO ACTION & FOOTER -->
         <footer class="max-w-6xl mx-auto px-6 py-12 text-center border-t border-slate-800/60 mt-12">
-            <h3 class="text-xl font-bold text-white mb-4">Ready to jump in?</h3>
-            <p class="text-slate-400 text-sm mb-6">Play instant games, check top leaderboard ranks, or start chatting right now.</p>
+            <h3 class="text-xl font-bold text-white mb-4">Ready to enter JB HUB?</h3>
+            <p class="text-slate-400 text-sm mb-6">Log in to manage your cloud notes, play instant games, or chat with people around the world.</p>
             
-            <div class="flex items-center justify-center gap-4 mb-8">
-                <a href="#" class="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-sky-500/20">
-                    <i class="fa-solid fa-gamepad mr-2"></i> Play Games Now
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-8">
+                <a href="https://jbytg.github.io/" class="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-sky-500/20">
+                    <i class="fa-solid fa-right-to-bracket mr-2"></i> Login to JB HUB
                 </a>
-                <a href="#" class="px-6 py-3 rounded-xl glass-card text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-comments mr-2"></i> Join Global Chat
+                <a href="https://jbytg.github.io/" class="px-6 py-3 rounded-xl glass-card text-white text-sm font-semibold hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-note-sticky mr-2"></i> Access Cloud Notes
+                </a>
+                <a href="https://jbytg.github.io/" class="px-6 py-3 rounded-xl bg-slate-800 border border-slate-700 text-sky-400 text-sm font-semibold hover:border-sky-400 transition-colors">
+                    <i class="fa-solid fa-arrow-up-right-from-square mr-2"></i> Go to Main Website
                 </a>
             </div>
 
-            <p class="text-xs text-slate-600">
-                &copy; 2026 Cloud Workspaces & Entertainment Platform. Free & Ad-Free Forever.
+            <p class="text-xs text-slate-500">
+                Main Domain: <a href="https://jbytg.github.io/" class="text-sky-400 hover:underline font-mono">https://jbytg.github.io/</a>
+            </p>
+            <p class="text-xs text-slate-600 mt-2">
+                &copy; 2026 JB HUB Cloud Workspace & Gaming Platform. Free & Ad-Free Forever.
             </p>
         </footer>
 
