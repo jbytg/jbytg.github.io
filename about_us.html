@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth dark overflow-x-hidden">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About Us | JB HUB - Ad-Free Workspace & Games</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>About Us | JB HUB - Legendary Cloud Workspace & Arcade</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logo.png">
@@ -11,296 +11,628 @@
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Google Fonts: Inter -->
+    <!-- Google Fonts: Orbitron & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
 
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0d1117;
+        :root {
+            --font-orbitron: 'Orbitron', sans-serif;
+            --font-inter: 'Inter', sans-serif;
+        }
+
+        html, body {
+            max-width: 100vw;
+            overflow-x: hidden !important;
+            position: relative;
+            background-color: #05070f;
             color: #c9d1d9;
-            overflow-x: hidden;
+            font-family: var(--font-inter);
         }
 
-        /* Glassmorphism Effect */
-        .glass-card {
-            background: rgba(22, 27, 34, 0.75);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+        .font-orbitron {
+            font-family: var(--font-orbitron);
+        }
+
+        /* Animated Grid Background */
+        .bg-cyber-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* Glassmorphism Ultra */
+        .glass-card-legendary {
+            background: rgba(13, 17, 23, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform-style: preserve-3d;
         }
 
-        .glass-card:hover {
-            border-color: rgba(56, 189, 248, 0.4);
-            transform: translateY(-4px);
-            box-shadow: 0 12px 40px 0 rgba(56, 189, 248, 0.15);
+        .glass-card-legendary:hover {
+            border-color: rgba(56, 189, 248, 0.6);
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.1);
         }
 
-        /* Custom Gradients */
-        .gradient-text {
-            background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+        /* Animated Glowing Text */
+        .gradient-text-legendary {
+            background: linear-gradient(135deg, #38bdf8 0%, #a855f7 50%, #ec4899 100%);
+            background-size: 200% auto;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            animation: textShimmer 4s linear infinite;
         }
 
-        .gradient-bg-glow {
-            background: radial-gradient(circle at 50% 20%, rgba(56, 189, 248, 0.15) 0%, rgba(13, 17, 23, 0) 70%);
+        @keyframes textShimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
         }
 
-        /* Floating Animations */
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+        /* Responsive Glowing Pulse FX */
+        .glow-orb-1 {
+            position: absolute;
+            width: min(300px, 70vw);
+            height: min(300px, 70vw);
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(0,0,0,0) 70%);
+            filter: blur(50px);
+            animation: floatOrb 8s infinite alternate ease-in-out;
         }
 
-        .animate-float {
-            animation: float 4s ease-in-out infinite;
+        .glow-orb-2 {
+            position: absolute;
+            width: min(350px, 80vw);
+            height: min(350px, 80vw);
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, rgba(0,0,0,0) 70%);
+            filter: blur(60px);
+            animation: floatOrb 12s infinite alternate-reverse ease-in-out;
         }
 
-        .transition-all-custom {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -20px) scale(1.1); }
+        }
+
+        /* Custom Neon Button */
+        .btn-neon {
+            position: relative;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+            background-size: 200% auto;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .btn-neon:hover {
+            background-position: right center;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 0 40px rgba(192, 132, 252, 0.4);
+            transform: translateY(-2px);
+        }
+
+        /* Tab button active state */
+        .tab-btn.active {
+            border-color: #38bdf8;
+            background: rgba(56, 189, 248, 0.15);
+            color: #ffffff;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #05070f;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #38bdf8;
         }
     </style>
 </head>
-<body class="bg-[#0d1117] text-slate-300 antialiased selection:bg-sky-500 selection:text-white">
+<body class="bg-[#05070f] text-slate-300 antialiased selection:bg-sky-500 selection:text-white relative min-h-screen overflow-x-hidden w-full">
 
-    <!-- Background Ambient Light -->
-    <div class="fixed inset-0 gradient-bg-glow pointer-events-none z-0"></div>
+    <div class="overflow-x-hidden w-full relative">
 
-    <div class="relative z-10">
+        <!-- Interactive Canvas Background for Particles (Responds to Cursor) -->
+        <canvas id="particleCanvas" class="fixed inset-0 z-0"></canvas>
 
-        <nav class="sticky top-0 z-50 glass-card border-b border-slate-800/80 bg-[#0d1117]/80 backdrop-blur-md px-6 py-4">
-            <div class="max-w-6xl mx-auto flex items-center justify-between">
-                <!-- Brand Logo / Home Link -->
-                <a href="https://jbhub.ryzn.pro/" class="flex items-center gap-3 group">
-                    <img src="/logo.png" alt="JB HUB Logo" class="w-10 h-10 object-contain rounded-xl group-hover:scale-105 transition-transform">
-                    <div>
-                        <span class="text-xl font-extrabold text-white tracking-tight group-hover:text-sky-400 transition-colors">JB HUB</span>
-                        <span class="text-[10px] block text-sky-400 font-medium tracking-widest uppercase">Cloud Workspace & Web App</span>
+        <!-- Ambient Glowing Orbs -->
+        <div class="glow-orb-1 top-10 left-0 pointer-events-none z-0"></div>
+        <div class="glow-orb-2 top-1/2 right-0 pointer-events-none z-0"></div>
+
+        <!-- Cyber Background Overlay -->
+        <div class="fixed inset-0 bg-cyber-grid pointer-events-none z-0"></div>
+
+        <div class="relative z-10 w-full">
+
+            <!-- NAVBAR -->
+            <nav class="sticky top-0 z-50 border-b border-slate-800/80 bg-[#05070f]/80 backdrop-blur-xl px-4 sm:px-6 py-4">
+                <div class="max-w-7xl mx-auto flex items-center justify-between">
+                    <a href="https://jbhub.ryzn.pro/" class="flex items-center gap-2 sm:gap-3 group">
+                        <div class="relative shrink-0">
+                            <div class="absolute -inset-1 rounded-xl bg-gradient-to-r from-sky-500 to-purple-600 opacity-70 blur group-hover:opacity-100 transition duration-300"></div>
+                            <img src="/logo.png" alt="JB HUB Logo" class="relative w-9 h-9 sm:w-10 sm:h-10 object-contain rounded-xl bg-slate-900 p-1">
+                        </div>
+                        <div>
+                            <span class="text-xl sm:text-2xl font-black text-white tracking-wider font-orbitron group-hover:text-sky-400 transition-colors">JB HUB</span>
+                            <span class="text-[8px] sm:text-[9px] block text-sky-400 font-bold tracking-widest uppercase">Cloud Workspace & Arcade</span>
+                        </div>
+                    </a>
+
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <a href="https://jbhub.ryzn.pro/" class="btn-neon px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 tracking-wide shadow-lg">
+                            <i class="fa-solid fa-bolt text-amber-300 animate-bounce"></i>
+                            <span>LAUNCH APP</span>
+                        </a>
                     </div>
-                </a>
+                </div>
+            </nav>
 
-                <!-- Single Primary Nav Action Button -->
-                <div class="flex items-center gap-3">
-                    <a href="https://jbhub.ryzn.pro/" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-xs sm:text-sm font-semibold hover:opacity-90 shadow-md shadow-sky-500/20 transition-all">
+            <!-- HERO SECTION -->
+            <header class="max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-12 sm:pb-16 text-center relative">
+                <div class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                    <div class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass-card-legendary text-[11px] sm:text-xs font-bold text-sky-400 border border-sky-500/30">
+                        <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                        <span>100% AD-FREE ZONE</span>
+                        <span class="bg-sky-500/20 text-sky-300 text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full border border-sky-400/30 font-orbitron">LEGENDARY</span>
+                    </div>
+                    <div class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass-card-legendary text-[11px] sm:text-xs font-bold text-amber-400 border border-amber-500/30">
+                        <i class="fa-solid fa-lock text-amber-400"></i>
+                        <span>ENCRYPTED CLOUD LOGIN</span>
+                    </div>
+                </div>
+
+                <h1 class="text-3xl sm:text-5xl md:text-7xl font-black text-white tracking-tight leading-tight mb-4 sm:mb-6 font-orbitron break-words">
+                    THE NEXT-GEN <br class="hidden sm:inline">
+                    <span class="gradient-text-legendary">CLOUD WORKSPACE</span>
+                </h1>
+
+                <p class="max-w-3xl mx-auto text-sm sm:text-base md:text-xl text-slate-400 leading-relaxed font-normal mb-8 sm:mb-10">
+                    Engineered for maximum performance and hyper-speed execution. Experience seamless cloud notes, intense multiplayer games, and a global live hub—completely untethered by ads.
+                </p>
+
+                <div class="flex flex-wrap justify-center gap-4 mb-8 sm:mb-12">
+                    <a href="https://jbhub.ryzn.pro/" class="btn-neon px-7 py-3.5 sm:px-10 sm:py-5 rounded-2xl text-white text-base sm:text-lg font-black tracking-wider flex items-center gap-3 sm:gap-4 group shadow-2xl font-orbitron">
+                        <i class="fa-solid fa-right-to-bracket text-lg sm:text-xl group-hover:translate-x-1 transition-transform"></i>
+                        <span>ENTER THE HUB</span>
+                    </a>
+                    <button onclick="document.getElementById('demo-playground').scrollIntoView({behavior: 'smooth'})" class="px-7 py-3.5 sm:px-8 sm:py-5 rounded-2xl glass-card-legendary text-sky-400 hover:text-white text-base font-bold tracking-wider flex items-center gap-2 font-orbitron">
+                        <i class="fa-solid fa-flask"></i>
+                        <span>TRY LIVE DEMO</span>
+                    </button>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-2">
+                    <span class="text-[11px] sm:text-xs uppercase tracking-widest text-slate-500 font-bold w-full md:w-auto font-orbitron mb-1 md:mb-0">POWERED BY:</span>
+                    <div class="tilt-card flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl glass-card-legendary text-xs sm:text-sm font-semibold text-slate-200">
+                        <i class="fa-brands fa-google text-red-500 text-lg sm:text-xl"></i>
+                        <span>Google Cloud Tech</span>
+                    </div>
+                    <div class="tilt-card flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl glass-card-legendary text-xs sm:text-sm font-semibold text-slate-200">
+                        <i class="fa-brands fa-github text-white text-lg sm:text-xl"></i>
+                        <span>GitHub Open Source</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- STATS SECTION WITH ANIMATED COUNTERS -->
+            <section class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+                    <div class="tilt-card glass-card-legendary rounded-2xl p-4 sm:p-6 text-center">
+                        <div class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-1 gradient-text-legendary font-orbitron">
+                            <span class="counter" data-target="100">0</span>%
+                        </div>
+                        <div class="text-[10px] sm:text-xs md:text-sm text-slate-400 font-medium uppercase tracking-wider">Ad-Free Gaming</div>
+                    </div>
+                    <div class="tilt-card glass-card-legendary rounded-2xl p-4 sm:p-6 text-center">
+                        <div class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-1 gradient-text-legendary font-orbitron">
+                            <span class="counter" data-target="99">0</span>.9%
+                        </div>
+                        <div class="text-[10px] sm:text-xs md:text-sm text-slate-400 font-medium uppercase tracking-wider">Cloud Uptime</div>
+                    </div>
+                    <div class="tilt-card glass-card-legendary rounded-2xl p-4 sm:p-6 text-center">
+                        <div class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-1 gradient-text-legendary font-orbitron">24/7</div>
+                        <div class="text-[10px] sm:text-xs md:text-sm text-slate-400 font-medium uppercase tracking-wider">Global Chat</div>
+                    </div>
+                    <div class="tilt-card glass-card-legendary rounded-2xl p-4 sm:p-6 text-center">
+                        <div class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-1 gradient-text-legendary font-orbitron">100%</div>
+                        <div class="text-[10px] sm:text-xs md:text-sm text-slate-400 font-medium uppercase tracking-wider">Data Protection</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- INTERACTIVE FEATURES SECTION -->
+            <section class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
+                <div class="text-center mb-10 sm:mb-16">
+                    <h2 class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-3 sm:mb-4 font-orbitron tracking-tight">PLATFORM FEATURES</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm md:text-base max-w-xl mx-auto">Click any card below to explore real-time feature details.</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <div onclick="openFeatureModal('Cloud Notes', 'Create, edit, and categorize your notes instantly. Fully encrypted and saved in real-time across your account.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-note-sticky"></i>
+                        </div>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3 font-orbitron">Cloud Notes</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">Create, edit, and organize your personal notes securely in the cloud.</p>
+                        <span class="text-xs font-bold text-amber-400 flex items-center gap-1">Click to Inspect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                    </div>
+
+                    <div onclick="openFeatureModal('Instant Arcade', 'Zero installation needed. Play high-FPS browser arcade games directly with online multiplayer leaderboards.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-gamepad"></i>
+                        </div>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3 font-orbitron">Instant Arcade</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">Dive straight into fast-paced cloud web games with rank tracking.</p>
+                        <span class="text-xs font-bold text-sky-400 flex items-center gap-1">Click to Inspect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                    </div>
+
+                    <div onclick="openFeatureModal('Global Hub', 'Connect with members worldwide in encrypted, low-latency live chatrooms powered by WebSockets.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-comments"></i>
+                        </div>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3 font-orbitron">Global Hub</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">Talk real-time with users across the world in low-latency chatrooms.</p>
+                        <span class="text-xs font-bold text-indigo-400 flex items-center gap-1">Click to Inspect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                    </div>
+
+                    <div onclick="openFeatureModal('Cross-Sync', 'Adaptive responsive state engine keeps your active sessions synced seamlessly between smartphone and desktop.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                        <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <h3 class="text-lg sm:text-xl font-bold text-white mb-2 sm:mb-3 font-orbitron">Cross-Sync</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">Experience pure speed on high-end rigs or mobile phones.</p>
+                        <span class="text-xs font-bold text-purple-400 flex items-center gap-1">Click to Inspect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- LIVE INTERACTIVE PLAYGROUND (NEW) -->
+            <section id="demo-playground" class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+                <div class="glass-card-legendary rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-sky-500/20">
+                    <div class="text-center mb-6">
+                        <span class="text-xs font-bold text-sky-400 uppercase tracking-widest font-orbitron">Interactive Sandbox</span>
+                        <h2 class="text-2xl sm:text-3xl font-black text-white font-orbitron mt-1">TEST THE PLATFORM LIVE</h2>
+                    </div>
+
+                    <!-- Interactive Tabs -->
+                    <div class="flex justify-center gap-2 mb-6 flex-wrap">
+                        <button onclick="switchTab('tab-notes')" id="btn-tab-notes" class="tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
+                            <i class="fa-solid fa-sticky-note mr-1 text-amber-400"></i> Cloud Notes Demo
+                        </button>
+                        <button onclick="switchTab('tab-chat')" id="btn-tab-chat" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
+                            <i class="fa-solid fa-paper-plane mr-1 text-sky-400"></i> Live Chat Demo
+                        </button>
+                        <button onclick="switchTab('tab-game')" id="btn-tab-game" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
+                            <i class="fa-solid fa-gamepad mr-1 text-purple-400"></i> Mini Arcade Demo
+                        </button>
+                    </div>
+
+                    <!-- Tab 1: Cloud Notes Interactive Widget -->
+                    <div id="tab-notes" class="tab-content">
+                        <div class="max-w-md mx-auto space-y-3">
+                            <div class="flex gap-2">
+                                <input id="demo-note-input" type="text" placeholder="Type a test note..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500">
+                                <button onclick="addDemoNote()" class="btn-neon px-4 py-2 rounded-xl text-white font-bold text-xs">Save</button>
+                            </div>
+                            <ul id="demo-notes-list" class="space-y-2 max-h-48 overflow-y-auto">
+                                <li class="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs flex justify-between items-center">
+                                    <span>🚀 Welcome to JB HUB interactive notes test!</span>
+                                    <i class="fa-solid fa-check text-emerald-400"></i>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Live Chat Interactive Widget -->
+                    <div id="tab-chat" class="tab-content hidden">
+                        <div class="max-w-md mx-auto space-y-3">
+                            <div id="demo-chat-box" class="h-40 overflow-y-auto p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-2 text-xs">
+                                <div class="text-sky-400"><strong>System:</strong> Connected to JB HUB Global Channel.</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <input id="demo-chat-input" type="text" placeholder="Send a broadcast..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500">
+                                <button onclick="sendDemoChat()" class="btn-neon px-4 py-2 rounded-xl text-white font-bold text-xs">Send</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Mini Arcade Game Widget -->
+                    <div id="tab-game" class="tab-content hidden">
+                        <div class="text-center space-y-3">
+                            <p class="text-xs text-slate-400">Tap the targets fast to test click response latency!</p>
+                            <div class="text-2xl font-black font-orbitron text-sky-400">SCORE: <span id="game-score">0</span></div>
+                            <button id="game-target" onclick="hitTarget()" class="btn-neon px-8 py-4 rounded-2xl font-black text-white font-orbitron shadow-lg">
+                                <i class="fa-solid fa-crosshairs"></i> CLICK ME!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- COMMUNITY SHOWCASE SECTION -->
+            <section class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+                <div class="glass-card-legendary rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 relative overflow-hidden border border-slate-700/50">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-center">
+                        <div>
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-bold mb-4 font-orbitron">
+                                <i class="fa-solid fa-code-branch"></i> OPEN COMMUNITY
+                            </div>
+                            <h2 class="text-2xl sm:text-3xl font-black text-white mb-3 sm:mb-4 font-orbitron">BUILT FOR GAMERS & PROS</h2>
+                            <p class="text-slate-400 text-xs sm:text-sm md:text-base leading-relaxed mb-4 sm:mb-6">
+                                We believe the web should be ultra-fast, visually breathtaking, and completely free of annoying popups or hidden paywalls.
+                            </p>
+                            <p class="text-slate-400 text-xs sm:text-sm md:text-base leading-relaxed mb-4 sm:mb-6">
+                                Powered by <strong>Google Cloud Architecture</strong> and backed by open-source innovation on <strong>GitHub</strong>, JB HUB delivers an elite cloud experience.
+                            </p>
+                        </div>
+
+                        <!-- Tech Grid -->
+                        <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <i class="fa-brands fa-google text-red-500 text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Google Cloud</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Real-Time Core</div>
+                            </div>
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <i class="fa-brands fa-github text-white text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">GitHub Hub</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Open Source</div>
+                            </div>
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <i class="fa-solid fa-ban text-sky-400 text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Zero Ads</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">100% Pure Web</div>
+                            </div>
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <i class="fa-solid fa-shield-halved text-amber-400 text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Vault Lock</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Secured Data</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FOOTER -->
+            <footer class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 text-center border-t border-slate-800/80 mt-8 sm:mt-12">
+                <h3 class="text-xl sm:text-2xl font-black text-white mb-3 sm:mb-4 font-orbitron">READY TO ENTER THE ARENA?</h3>
+                <p class="text-slate-400 text-xs sm:text-sm mb-6 sm:mb-8">Launch your cloud notes, conquer the leaderboards, and chat globally now.</p>
+                
+                <div class="flex justify-center mb-6 sm:mb-8">
+                    <a href="https://jbhub.ryzn.pro/" class="btn-neon px-6 py-3.5 sm:px-8 sm:py-4 rounded-xl text-white text-xs sm:text-sm font-black tracking-wider flex items-center gap-2.5 font-orbitron shadow-xl">
                         <i class="fa-solid fa-right-to-bracket"></i>
-                        <span>Login to JB HUB</span>
+                        <span>LOGIN TO JB HUB</span>
                     </a>
                 </div>
-            </div>
-        </nav>
 
-        <header class="max-w-6xl mx-auto px-6 pt-16 pb-16 text-center">
-            <!-- Ad-Free & Auth Badges -->
-            <div class="flex flex-wrap justify-center gap-3 mb-8">
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-xs font-semibold text-sky-400 border border-sky-500/20 shadow-lg animate-float">
-                    <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                    <span>100% Ad-Free Cloud Experience</span>
-                    <span class="bg-sky-500/10 text-sky-300 text-[10px] px-2 py-0.5 rounded-full border border-sky-500/30">Free Forever</span>
-                </div>
-                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-xs font-semibold text-amber-400 border border-amber-500/20 shadow-lg">
-                    <i class="fa-solid fa-lock text-amber-400"></i>
-                    <span>Login Required to Access</span>
-                </div>
-            </div>
+                <p class="text-[11px] sm:text-xs text-slate-500">
+                    Main Portal: <a href="https://jbhub.ryzn.pro/" class="text-sky-400 hover:underline font-mono">https://jbhub.ryzn.pro/</a>
+                </p>
+                <p class="text-[10px] sm:text-xs text-slate-600 mt-2 font-mono">
+                    &copy; 2026 JB HUB Cloud Workspace & Gaming Platform. Legendary & Free Forever.
+                </p>
+            </footer>
 
-            <!-- Main Heading -->
-            <h1 class="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight mb-6">
-                Welcome to <span class="gradient-text">JB HUB</span> — Your All-in-One Cloud Workspace & Games
-            </h1>
-
-            <!-- Subtitle -->
-            <p class="max-w-3xl mx-auto text-lg md:text-xl text-slate-400 leading-relaxed font-normal mb-10">
-                Designed to run blazingly fast on both mobile and desktop browsers, JB HUB brings productivity and enjoyment together. Store secure cloud notes, compete on game leaderboards, and chat globally in one seamless place.
-            </p>
-
-            <!-- Single Clean Call-To-Action Button in Hero -->
-            <div class="flex justify-center mb-10">
-                <a href="https://jbhub.ryzn.pro/" class="px-8 py-4 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-600 text-white text-base font-bold hover:scale-105 transition-all shadow-xl shadow-sky-500/25 flex items-center gap-3">
-                    <i class="fa-solid fa-right-to-bracket text-lg"></i>
-                    <span>Login & Launch JB HUB</span>
-                </a>
-            </div>
-
-            <!-- Tech Badges -->
-            <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
-                <span class="text-xs uppercase tracking-widest text-slate-500 font-semibold w-full md:w-auto mb-2 md:mb-0">Powered & Backed By:</span>
-                
-                <div class="flex items-center gap-2 px-4 py-2 rounded-xl glass-card text-sm font-medium text-slate-200 transition-all-custom">
-                    <i class="fa-brands fa-google text-red-400 text-lg"></i>
-                    <span>Google Cloud Tech</span>
-                </div>
-
-                <div class="flex items-center gap-2 px-4 py-2 rounded-xl glass-card text-sm font-medium text-slate-200 transition-all-custom">
-                    <i class="fa-brands fa-github text-white text-lg"></i>
-                    <span>GitHub Open Source</span>
-                </div>
-            </div>
-        </header>
-
-        <section class="max-w-6xl mx-auto px-6 py-8">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">100%</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">Ad-Free Browsing</div>
-                </div>
-                <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">Cloud</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">Note Facility</div>
-                </div>
-                <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">24 / 7</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">Global Chat Online</div>
-                </div>
-                <div class="glass-card rounded-2xl p-6 text-center transition-all-custom">
-                    <div class="text-3xl md:text-4xl font-extrabold text-white mb-1 gradient-text">Secure</div>
-                    <div class="text-xs md:text-sm text-slate-400 font-medium">User Login Required</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="max-w-6xl mx-auto px-6 py-16">
-            <div class="text-center mb-12">
-                <h2 class="text-2xl md:text-4xl font-bold text-white mb-3">Everything You Need In One Platform</h2>
-                <p class="text-slate-400 text-sm md:text-base">Built natively for the modern web using cloud-first technologies.</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                <!-- Feature 1: Cloud Note Facility -->
-                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl mb-5 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-note-sticky"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2">Cloud Notes Facility</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
-                        Create, edit, and organize your personal notes securely in the cloud. Access your workspace from any mobile or desktop browser without losing your data.
-                    </p>
-                    <div class="flex items-center gap-2 text-[11px] font-semibold text-amber-400">
-                        <i class="fa-solid fa-cloud"></i>
-                        <span>Auto-Synced to Account</span>
-                    </div>
-                </div>
-
-                <!-- Feature 2: Instant Gaming & Leaderboards -->
-                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 text-xl mb-5 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-gamepad"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2">Instant Cloud Games</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
-                        No downloads required. Jump into lightweight, highly responsive web games designed to test your skills and pass the time anywhere.
-                    </p>
-                    <div class="flex items-center gap-2 text-[11px] font-semibold text-sky-400">
-                        <i class="fa-solid fa-trophy text-amber-400"></i>
-                        <span>Live Global Leaderboards</span>
-                    </div>
-                </div>
-
-                <!-- Feature 3: Global Chatroom -->
-                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl mb-5 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-comments"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2">Global Stranger Chat</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
-                        Break geographic boundaries. Join our real-time global chat rooms to instantly talk, share ideas, and connect with strangers worldwide.
-                    </p>
-                    <div class="flex items-center gap-2 text-[11px] font-semibold text-indigo-400">
-                        <i class="fa-solid fa-earth-americas"></i>
-                        <span>Real-Time Cloud Socket</span>
-                    </div>
-                </div>
-
-                <!-- Feature 4: Cross-Platform Sync -->
-                <div class="glass-card rounded-3xl p-6 transition-all-custom relative overflow-hidden group">
-                    <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl mb-5 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid fa-mobile-screen-button"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-white mb-2">Mobile & Desktop Sync</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-4">
-                        Enjoy the exact same smooth experience whether you are on a high-end desktop workstation or a mobile phone on low-bandwidth connections.
-                    </p>
-                    <div class="flex items-center gap-2 text-[11px] font-semibold text-purple-400">
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>Ultra-Fast Cloud Infrastructure</span>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-        <section class="max-w-6xl mx-auto px-6 py-12">
-            <div class="glass-card rounded-3xl p-8 md:p-12 border border-slate-800 relative overflow-hidden">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-                    <div>
-                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-emerald-500/10 text-emerald-400 text-xs font-medium mb-4">
-                            <i class="fa-solid fa-code-branch"></i> Community Driven
-                        </div>
-                        <h2 class="text-3xl font-extrabold text-white mb-4">Built by the Open Community, For the Community</h2>
-                        <p class="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
-                            We believe the web should be clean, fast, and accessible to everyone. That is why <strong>JB HUB</strong> operates completely free of intrusive advertisements, hidden paywalls, or forced tracking scripts.
-                        </p>
-                        <p class="text-slate-400 text-sm md:text-base leading-relaxed mb-6">
-                            Leveraging modern <strong>Google Cloud services</strong> for ultra-fast response times and <strong>GitHub community contributions</strong> for open code development, JB HUB provides a safe, secure login environment for your notes, games, and conversations.
-                        </p>
-                    </div>
-
-                    <!-- Tech Badge Grid Visual -->
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                            <i class="fa-brands fa-google text-red-400 text-3xl mb-2"></i>
-                            <div class="text-white font-bold text-sm">Google Infrastructure</div>
-                            <div class="text-slate-500 text-xs mt-1">Realtime Cloud Sync</div>
-                        </div>
-
-                        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                            <i class="fa-brands fa-github text-white text-3xl mb-2"></i>
-                            <div class="text-white font-bold text-sm">GitHub Contributions</div>
-                            <div class="text-slate-500 text-xs mt-1">Open Collaboration</div>
-                        </div>
-
-                        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                            <i class="fa-solid fa-ban text-sky-400 text-3xl mb-2"></i>
-                            <div class="text-white font-bold text-sm">Zero Popups / Ads</div>
-                            <div class="text-slate-500 text-xs mt-1">Clean Web Experience</div>
-                        </div>
-
-                        <div class="p-5 rounded-2xl bg-slate-900/80 border border-slate-800 text-center">
-                            <i class="fa-solid fa-lock text-amber-400 text-3xl mb-2"></i>
-                            <div class="text-white font-bold text-sm">Protected Workspace</div>
-                            <div class="text-slate-500 text-xs mt-1">Login Required</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <footer class="max-w-6xl mx-auto px-6 py-12 text-center border-t border-slate-800/60 mt-12">
-            <h3 class="text-xl font-bold text-white mb-4">Ready to enter JB HUB?</h3>
-            <p class="text-slate-400 text-sm mb-6">Log in to manage your cloud notes, play instant games, or chat with people around the world.</p>
-            
-            <div class="flex justify-center mb-8">
-                <a href="https://jbhub.ryzn.pro/" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-lg shadow-sky-500/20">
-                    <i class="fa-solid fa-right-to-bracket mr-2"></i> Login to JB HUB
-                </a>
-            </div>
-
-            <p class="text-xs text-slate-500">
-                Main Domain: <a href="https://jbhub.ryzn.pro/" class="text-sky-400 hover:underline font-mono">https://jbhub.ryzn.pro/</a>
-            </p>
-            <p class="text-xs text-slate-600 mt-2">
-                &copy; 2026 JB HUB Cloud Workspace & Gaming Platform. Free & Ad-Free Forever.
-            </p>
-        </footer>
-
+        </div>
     </div>
 
+    <!-- MODAL POPUP FOR FEATURES -->
+    <div id="feature-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
+        <div class="glass-card-legendary max-w-md w-full rounded-2xl p-6 relative border border-sky-500/40">
+            <button onclick="closeFeatureModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 id="modal-title" class="text-xl font-bold font-orbitron text-white mb-2"></h3>
+            <p id="modal-body" class="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6"></p>
+            <a href="https://jbhub.ryzn.pro/" class="btn-neon w-full py-2.5 rounded-xl text-white font-bold text-center block text-xs tracking-wider">TRY IN JB HUB APPS</a>
+        </div>
+    </div>
+
+    <!-- INTERACTIVE JAVASCRIPT ENGINE -->
+    <script>
+        // --- 1. Interactive Particle Canvas (Follows & Responds to Mouse/Touch) ---
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let mouse = { x: null, y: null, radius: 120 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 0) {
+                mouse.x = e.touches[0].clientX;
+                mouse.y = e.touches[0].clientY;
+            }
+        });
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const particles = [];
+        const particleCount = window.innerWidth < 640 ? 30 : 60;
+
+        for (let i = 0; i < particleCount; i++) {
+            particles.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2 + 1,
+                vx: (Math.random() - 0.5) * 0.8,
+                vy: (Math.random() - 0.5) * 0.8,
+                alpha: Math.random() * 0.5 + 0.3
+            });
+        }
+
+        function drawParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+
+                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+
+                // Mouse Interaction Push Effect
+                if (mouse.x && mouse.y) {
+                    let dx = mouse.x - p.x;
+                    let dy = mouse.y - p.y;
+                    let distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < mouse.radius) {
+                        let force = (mouse.radius - distance) / mouse.radius;
+                        p.x -= (dx / distance) * force * 3;
+                        p.y -= (dy / distance) * force * 3;
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
+                ctx.fill();
+
+                // Connect nearby particles with dynamic web lines
+                for (let j = index + 1; j < particles.length; j++) {
+                    let p2 = particles[j];
+                    let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+                    if (dist < 100) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.strokeStyle = `rgba(56, 189, 248, ${0.15 * (1 - dist / 100)})`;
+                        ctx.lineWidth = 0.6;
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            requestAnimationFrame(drawParticles);
+        }
+        drawParticles();
+
+        // --- 2. Interactive Tilt Cards ---
+        const cards = document.querySelectorAll('.tilt-card');
+        cards.forEach(card => {
+            const handleMove = (x, y) => {
+                const rect = card.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = (y - rect.top - centerY) / 10;
+                const rotateY = (centerX - (x - rect.left)) / 10;
+                card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-4px)`;
+            };
+
+            card.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0px)';
+            });
+        });
+
+        // --- 3. Intersection Observer Animated Counter ---
+        const counters = document.querySelectorAll('.counter');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const counter = entry.target;
+                    const target = +counter.getAttribute('data-target');
+                    let count = 0;
+                    const step = Math.max(1, Math.ceil(target / 40));
+
+                    const updateCounter = () => {
+                        count += step;
+                        if (count < target) {
+                            counter.innerText = count;
+                            setTimeout(updateCounter, 30);
+                        } else {
+                            counter.innerText = target;
+                        }
+                    };
+                    updateCounter();
+                    observer.unobserve(counter);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        counters.forEach(c => observer.observe(c));
+
+        // --- 4. Interactive Sandbox Playground Tabs & Controls ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById(`btn-${tabId}`).classList.add('active');
+        }
+
+        function addDemoNote() {
+            const input = document.getElementById('demo-note-input');
+            if (!input.value.trim()) return;
+            const list = document.getElementById('demo-notes-list');
+            const li = document.createElement('li');
+            li.className = 'p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs flex justify-between items-center text-white animate-fade-in';
+            li.innerHTML = `<span>${input.value}</span><i class="fa-solid fa-cloud text-sky-400"></i>`;
+            list.prepend(li);
+            input.value = '';
+        }
+
+        function sendDemoChat() {
+            const input = document.getElementById('demo-chat-input');
+            if (!input.value.trim()) return;
+            const box = document.getElementById('demo-chat-box');
+            
+            const userMsg = document.createElement('div');
+            userMsg.innerHTML = `<strong class="text-purple-400">You:</strong> ${input.value}`;
+            box.appendChild(userMsg);
+            
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+
+            setTimeout(() => {
+                const botMsg = document.createElement('div');
+                botMsg.className = 'text-emerald-400';
+                botMsg.innerHTML = `<strong>Bot Node:</strong> Message received across JB HUB test grid!`;
+                box.appendChild(botMsg);
+                box.scrollTop = box.scrollHeight;
+            }, 600);
+        }
+
+        let score = 0;
+        function hitTarget() {
+            score++;
+            document.getElementById('game-score').innerText = score;
+            const btn = document.getElementById('game-target');
+            btn.style.transform = `scale(${0.9 + Math.random() * 0.2})`;
+        }
+
+        // --- 5. Modal Controllers ---
+        function openFeatureModal(title, body) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerText = body;
+            const modal = document.getElementById('feature-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeFeatureModal() {
+            const modal = document.getElementById('feature-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    </script>
 </body>
 </html>
