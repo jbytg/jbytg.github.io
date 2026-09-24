@@ -122,6 +122,31 @@
             color: #ffffff;
         }
 
+        /* FAQ Accordion Transitions */
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 300px;
+            transition: max-height 0.3s ease-in-out;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Typing cursor */
+        .typing-cursor::after {
+            content: '|';
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
@@ -142,8 +167,8 @@
 
     <div class="overflow-x-hidden w-full relative">
 
-        <!-- Interactive Canvas Background for Particles (Responds to Cursor) -->
-        <canvas id="particleCanvas" class="fixed inset-0 z-0"></canvas>
+        <!-- Interactive Canvas Background for Particles -->
+        <canvas id="particleCanvas" class="fixed inset-0 z-0 cursor-crosshair"></canvas>
 
         <!-- Ambient Glowing Orbs -->
         <div class="glow-orb-1 top-10 left-0 pointer-events-none z-0"></div>
@@ -169,7 +194,7 @@
                     </a>
 
                     <div class="flex items-center gap-2 sm:gap-3">
-                        <a href="https://jbhub.ryzn.pro/" class="btn-neon px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 tracking-wide shadow-lg">
+                        <a href="https://jbhub.ryzn.pro/" class="btn-neon px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 tracking-wide shadow-lg hover:scale-105">
                             <i class="fa-solid fa-bolt text-amber-300 animate-bounce"></i>
                             <span>LAUNCH APP</span>
                         </a>
@@ -185,9 +210,13 @@
                         <span>100% AD-FREE ZONE</span>
                         <span class="bg-sky-500/20 text-sky-300 text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded-full border border-sky-400/30 font-orbitron">LEGENDARY</span>
                     </div>
+                    <div class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass-card-legendary text-[11px] sm:text-xs font-bold text-purple-400 border border-purple-500/30">
+                        <i class="fa-brands fa-github text-purple-400"></i>
+                        <span>GITHUB PAGES HOSTED</span>
+                    </div>
                     <div class="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-full glass-card-legendary text-[11px] sm:text-xs font-bold text-amber-400 border border-amber-500/30">
-                        <i class="fa-solid fa-lock text-amber-400"></i>
-                        <span>ENCRYPTED CLOUD LOGIN</span>
+                        <i class="fa-solid fa-database text-amber-400"></i>
+                        <span>FIREBASE DRIVEN</span>
                     </div>
                 </div>
 
@@ -197,7 +226,7 @@
                 </h1>
 
                 <p class="max-w-3xl mx-auto text-sm sm:text-base md:text-xl text-slate-400 leading-relaxed font-normal mb-8 sm:mb-10">
-                    Engineered for maximum performance and hyper-speed execution. Experience seamless cloud notes, intense multiplayer games, and a global live hub—completely untethered by ads.
+                    Engineered for maximum performance and hyper-speed execution. Experience seamless cloud notes, intense arcade games, and a global live hub—completely untethered by ads.
                 </p>
 
                 <div class="flex flex-wrap justify-center gap-4 mb-8 sm:mb-12">
@@ -205,7 +234,7 @@
                         <i class="fa-solid fa-right-to-bracket text-lg sm:text-xl group-hover:translate-x-1 transition-transform"></i>
                         <span>ENTER THE HUB</span>
                     </a>
-                    <button onclick="document.getElementById('demo-playground').scrollIntoView({behavior: 'smooth'})" class="px-7 py-3.5 sm:px-8 sm:py-5 rounded-2xl glass-card-legendary text-sky-400 hover:text-white text-base font-bold tracking-wider flex items-center gap-2 font-orbitron">
+                    <button onclick="document.getElementById('demo-playground').scrollIntoView({behavior: 'smooth'})" class="px-7 py-3.5 sm:px-8 sm:py-5 rounded-2xl glass-card-legendary text-sky-400 hover:text-white text-base font-bold tracking-wider flex items-center gap-2 font-orbitron hover:scale-105 transition-transform">
                         <i class="fa-solid fa-flask"></i>
                         <span>TRY LIVE DEMO</span>
                     </button>
@@ -214,17 +243,21 @@
                 <div class="flex flex-wrap items-center justify-center gap-2.5 sm:gap-4 pt-2">
                     <span class="text-[11px] sm:text-xs uppercase tracking-widest text-slate-500 font-bold w-full md:w-auto font-orbitron mb-1 md:mb-0">POWERED BY:</span>
                     <div class="tilt-card flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl glass-card-legendary text-xs sm:text-sm font-semibold text-slate-200">
-                        <i class="fa-brands fa-google text-red-500 text-lg sm:text-xl"></i>
-                        <span>Google Cloud Tech</span>
+                        <i class="fa-brands fa-github text-white text-lg sm:text-xl"></i>
+                        <span>GitHub Pages</span>
                     </div>
                     <div class="tilt-card flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl glass-card-legendary text-xs sm:text-sm font-semibold text-slate-200">
-                        <i class="fa-brands fa-github text-white text-lg sm:text-xl"></i>
-                        <span>GitHub Open Source</span>
+                        <img src="https://www.vectorlogo.zone/logos/firebase/firebase-icon.svg" class="w-5 h-5" alt="Firebase">
+                        <span>Google Firebase</span>
+                    </div>
+                    <div class="tilt-card flex items-center gap-2.5 px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl glass-card-legendary text-xs sm:text-sm font-semibold text-slate-200">
+                        <i class="fa-brands fa-google text-red-500 text-lg sm:text-xl"></i>
+                        <span>Google Cloud Tech</span>
                     </div>
                 </div>
             </header>
 
-            <!-- STATS SECTION WITH ANIMATED COUNTERS -->
+            <!-- STATS SECTION -->
             <section class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                     <div class="tilt-card glass-card-legendary rounded-2xl p-4 sm:p-6 text-center">
@@ -250,15 +283,15 @@
                 </div>
             </section>
 
-            <!-- INTERACTIVE FEATURES SECTION -->
+            <!-- CORE FEATURES SECTION -->
             <section class="max-w-6xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
                 <div class="text-center mb-10 sm:mb-16">
                     <h2 class="text-2xl sm:text-4xl md:text-5xl font-black text-white mb-3 sm:mb-4 font-orbitron tracking-tight">PLATFORM FEATURES</h2>
-                    <p class="text-slate-400 text-xs sm:text-sm md:text-base max-w-xl mx-auto">Click any card below to explore real-time feature details.</p>
+                    <p class="text-slate-400 text-xs sm:text-sm md:text-base max-w-xl mx-auto">Click any card below to explore feature details.</p>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                    <div onclick="openFeatureModal('Cloud Notes', 'Create, edit, and categorize your notes instantly. Fully encrypted and saved in real-time across your account.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                    <div onclick="openFeatureModal('Cloud Notes', 'Create, edit, and categorize your notes instantly. Fully encrypted and saved in real-time across your account using Firebase Database.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
                         <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-note-sticky"></i>
                         </div>
@@ -276,7 +309,7 @@
                         <span class="text-xs font-bold text-sky-400 flex items-center gap-1">Click to Inspect <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
                     </div>
 
-                    <div onclick="openFeatureModal('Global Hub', 'Connect with members worldwide in encrypted, low-latency live chatrooms powered by WebSockets.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
+                    <div onclick="openFeatureModal('Global Hub', 'Connect with members worldwide in encrypted, low-latency live chatrooms powered by WebSockets and Firebase.')" class="tilt-card glass-card-legendary rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer group hover:scale-[1.02]">
                         <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-xl sm:text-2xl mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
                             <i class="fa-solid fa-comments"></i>
                         </div>
@@ -296,7 +329,7 @@
                 </div>
             </section>
 
-            <!-- LIVE INTERACTIVE PLAYGROUND (NEW) -->
+            <!-- LIVE INTERACTIVE PLAYGROUND -->
             <section id="demo-playground" class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
                 <div class="glass-card-legendary rounded-2xl sm:rounded-3xl p-6 sm:p-8 border border-sky-500/20">
                     <div class="text-center mb-6">
@@ -306,14 +339,17 @@
 
                     <!-- Interactive Tabs -->
                     <div class="flex justify-center gap-2 mb-6 flex-wrap">
-                        <button onclick="switchTab('tab-notes')" id="btn-tab-notes" class="tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
+                        <button onclick="switchTab('tab-notes')" id="btn-tab-notes" class="tab-btn active px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition hover:scale-105">
                             <i class="fa-solid fa-sticky-note mr-1 text-amber-400"></i> Cloud Notes Demo
                         </button>
-                        <button onclick="switchTab('tab-chat')" id="btn-tab-chat" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
+                        <button onclick="switchTab('tab-chat')" id="btn-tab-chat" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition hover:scale-105">
                             <i class="fa-solid fa-paper-plane mr-1 text-sky-400"></i> Live Chat Demo
                         </button>
-                        <button onclick="switchTab('tab-game')" id="btn-tab-game" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition">
-                            <i class="fa-solid fa-gamepad mr-1 text-purple-400"></i> Mini Arcade Demo
+                        <button onclick="switchTab('tab-game')" id="btn-tab-game" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition hover:scale-105">
+                            <i class="fa-solid fa-crosshairs mr-1 text-purple-400"></i> Reflex Arcade
+                        </button>
+                        <button onclick="switchTab('tab-snake')" id="btn-tab-snake" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-bold border border-slate-700 bg-slate-900/50 transition hover:scale-105">
+                            <i class="fa-solid fa-worm mr-1 text-emerald-400"></i> Cyber Snake
                         </button>
                     </div>
 
@@ -321,7 +357,7 @@
                     <div id="tab-notes" class="tab-content">
                         <div class="max-w-md mx-auto space-y-3">
                             <div class="flex gap-2">
-                                <input id="demo-note-input" type="text" placeholder="Type a test note..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500">
+                                <input id="demo-note-input" type="text" placeholder="Type a test note..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
                                 <button onclick="addDemoNote()" class="btn-neon px-4 py-2 rounded-xl text-white font-bold text-xs">Save</button>
                             </div>
                             <ul id="demo-notes-list" class="space-y-2 max-h-48 overflow-y-auto">
@@ -340,20 +376,76 @@
                                 <div class="text-sky-400"><strong>System:</strong> Connected to JB HUB Global Channel.</div>
                             </div>
                             <div class="flex gap-2">
-                                <input id="demo-chat-input" type="text" placeholder="Send a broadcast..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500">
+                                <input id="demo-chat-input" type="text" placeholder="Send a broadcast..." class="w-full px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-sky-500 transition-colors">
                                 <button onclick="sendDemoChat()" class="btn-neon px-4 py-2 rounded-xl text-white font-bold text-xs">Send</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Tab 3: Mini Arcade Game Widget -->
+                    <!-- Tab 3: Reflex Arcade Widget -->
                     <div id="tab-game" class="tab-content hidden">
-                        <div class="text-center space-y-3">
-                            <p class="text-xs text-slate-400">Tap the targets fast to test click response latency!</p>
-                            <div class="text-2xl font-black font-orbitron text-sky-400">SCORE: <span id="game-score">0</span></div>
-                            <button id="game-target" onclick="hitTarget()" class="btn-neon px-8 py-4 rounded-2xl font-black text-white font-orbitron shadow-lg">
+                        <div class="text-center space-y-3 relative h-48 overflow-hidden rounded-xl border border-dashed border-slate-700">
+                            <p class="text-xs text-slate-400 absolute top-2 w-full text-center pointer-events-none">Tap the target fast as it moves to test reflex latency!</p>
+                            <div class="text-2xl font-black font-orbitron text-sky-400 absolute bottom-2 w-full text-center pointer-events-none">SCORE: <span id="game-score">0</span></div>
+                            <button id="game-target" onclick="hitTarget()" class="btn-neon px-6 py-3 rounded-2xl font-black text-white font-orbitron shadow-lg absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-200">
                                 <i class="fa-solid fa-crosshairs"></i> CLICK ME!
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Cyber Snake Game Widget -->
+                    <div id="tab-snake" class="tab-content hidden">
+                        <div class="flex flex-col items-center">
+                            <div class="flex items-center justify-between w-full max-w-[300px] mb-2 text-xs font-orbitron">
+                                <span class="text-emerald-400">SNAKE SCORE: <span id="snake-score">0</span></span>
+                                <span class="text-slate-400">USE ARROW KEYS</span>
+                            </div>
+                            <div class="relative bg-slate-950 border border-emerald-500/30 rounded-xl overflow-hidden">
+                                <canvas id="snakeCanvas" width="300" height="200" class="block"></canvas>
+                                <div id="snake-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-4">
+                                    <p class="text-sm font-orbitron text-emerald-400 mb-2 font-bold" id="snake-msg">CYBER SNAKE</p>
+                                    <button onclick="startSnakeGame()" class="btn-neon px-4 py-2 rounded-xl text-xs font-bold text-white font-orbitron">START GAME</button>
+                                </div>
+                            </div>
+                            <!-- Mobile Controls -->
+                            <div class="grid grid-cols-3 gap-1 mt-3 w-36 sm:hidden">
+                                <div></div>
+                                <button onclick="setSnakeDir('UP')" class="bg-slate-800 p-2 rounded text-xs text-white text-center"><i class="fa-solid fa-arrow-up"></i></button>
+                                <div></div>
+                                <button onclick="setSnakeDir('LEFT')" class="bg-slate-800 p-2 rounded text-xs text-white text-center"><i class="fa-solid fa-arrow-left"></i></button>
+                                <button onclick="setSnakeDir('DOWN')" class="bg-slate-800 p-2 rounded text-xs text-white text-center"><i class="fa-solid fa-arrow-down"></i></button>
+                                <button onclick="setSnakeDir('RIGHT')" class="bg-slate-800 p-2 rounded text-xs text-white text-center"><i class="fa-solid fa-arrow-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- CREATOR & ARCHITECTURE SECTION -->
+            <section id="creator-section" class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+                <div class="glass-card-legendary rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 relative overflow-hidden border border-purple-500/20">
+                    <div class="flex flex-col md:flex-row items-center gap-8">
+                        <div class="w-28 h-28 sm:w-36 sm:h-36 shrink-0 rounded-3xl bg-slate-900 border-2 border-purple-500/40 p-2 flex items-center justify-center relative shadow-2xl group hover:border-purple-400 transition-colors cursor-pointer">
+                            <img src="/logo.png" alt="Johan Biju Avatar" class="w-full h-full object-contain rounded-2xl group-hover:scale-105 transition-transform duration-300">
+                            <div class="absolute -bottom-2 -right-2 bg-purple-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full font-orbitron shadow-lg">BUILDER</div>
+                        </div>
+
+                        <div class="space-y-3 text-center md:text-left">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-purple-500/10 text-purple-400 text-xs font-bold font-orbitron">
+                                <i class="fa-solid fa-laptop-code"></i> CRAFTED WITH PASSION
+                            </div>
+                            <h2 class="text-2xl sm:text-3xl font-black text-white font-orbitron uppercase">
+                                <span id="typewriter-text" class="typing-cursor"></span>
+                            </h2>
+                            <p class="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-2xl">
+                                Built from the ground up by Johan Biju to combine seamless productivity workflows with instant gaming entertainment. Hosted directly on GitHub Pages and driven by Google Firebase, JB HUB delivers high performance across all devices.
+                            </p>
+                            <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-2">
+                                <span class="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-purple-400"><i class="fa-brands fa-github"></i> GitHub Pages</span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-amber-400"><i class="fa-solid fa-database"></i> Firebase Realtime</span>
+                                <span class="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono text-emerald-400"><i class="fa-solid fa-bolt"></i> Low Latency</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -372,21 +464,31 @@
                                 We believe the web should be ultra-fast, visually breathtaking, and completely free of annoying popups or hidden paywalls.
                             </p>
                             <p class="text-slate-400 text-xs sm:text-sm md:text-base leading-relaxed mb-4 sm:mb-6">
-                                Powered by <strong>Google Cloud Architecture</strong> and backed by open-source innovation on <strong>GitHub</strong>, JB HUB delivers an elite cloud experience.
+                                Developed by <strong>Johan Biju</strong>, hosted on <strong>GitHub Pages</strong>, and backed by <strong>Google Firebase</strong>, JB HUB delivers an elite cloud experience.
                             </p>
                         </div>
 
                         <!-- Tech Grid -->
-                        <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <i class="fa-brands fa-github text-white text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">GitHub Pages</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Hosting Core</div>
+                            </div>
+                            <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
+                                <img src="https://www.vectorlogo.zone/logos/firebase/firebase-icon.svg" class="w-8 h-8 sm:w-10 sm:h-10 mx-auto mb-2" alt="Firebase">
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Firebase</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Real-Time DB</div>
+                            </div>
                             <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
                                 <i class="fa-brands fa-google text-red-500 text-2xl sm:text-3xl mb-2"></i>
                                 <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Google Cloud</div>
-                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Real-Time Core</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Services</div>
                             </div>
                             <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
-                                <i class="fa-brands fa-github text-white text-2xl sm:text-3xl mb-2"></i>
-                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">GitHub Hub</div>
-                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Open Source</div>
+                                <i class="fa-solid fa-code text-blue-400 text-2xl sm:text-3xl mb-2"></i>
+                                <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Tailwind</div>
+                                <div class="text-slate-500 text-[10px] sm:text-xs mt-1">UI Engine</div>
                             </div>
                             <div class="tilt-card p-4 sm:p-5 rounded-2xl bg-slate-900/90 border border-slate-800 text-center">
                                 <i class="fa-solid fa-ban text-sky-400 text-2xl sm:text-3xl mb-2"></i>
@@ -398,6 +500,46 @@
                                 <div class="text-white font-bold text-xs sm:text-sm font-orbitron">Vault Lock</div>
                                 <div class="text-slate-500 text-[10px] sm:text-xs mt-1">Secured Data</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- FAQ SECTION -->
+            <section class="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+                <div class="text-center mb-10">
+                    <h2 class="text-2xl sm:text-4xl font-black text-white font-orbitron tracking-tight mb-2">FREQUENTLY ASKED</h2>
+                    <p class="text-slate-400 text-xs sm:text-sm">Everything you need to know about JB HUB.</p>
+                </div>
+
+                <div class="space-y-3">
+                    <div class="faq-item glass-card-legendary rounded-2xl border border-slate-800 cursor-pointer overflow-hidden" onclick="toggleFaq(this)">
+                        <div class="p-4 sm:p-5 flex justify-between items-center text-white font-bold text-sm sm:text-base font-orbitron">
+                            <span>Is JB HUB completely free to use?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon transition-transform duration-300 text-sky-400"></i>
+                        </div>
+                        <div class="faq-answer px-4 sm:px-5 pb-5 text-slate-400 text-xs sm:text-sm leading-relaxed border-t border-slate-800/50 pt-3">
+                            Yes, 100%! All core workspace features, arcade games, and live chat features are completely free with zero ad interruptions.
+                        </div>
+                    </div>
+
+                    <div class="faq-item glass-card-legendary rounded-2xl border border-slate-800 cursor-pointer overflow-hidden" onclick="toggleFaq(this)">
+                        <div class="p-4 sm:p-5 flex justify-between items-center text-white font-bold text-sm sm:text-base font-orbitron">
+                            <span>How is my data protected?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon transition-transform duration-300 text-sky-400"></i>
+                        </div>
+                        <div class="faq-answer px-4 sm:px-5 pb-5 text-slate-400 text-xs sm:text-sm leading-relaxed border-t border-slate-800/50 pt-3">
+                            Your sessions and cloud notes are handled securely using Google Firebase real-time database, hosted reliably on GitHub Pages.
+                        </div>
+                    </div>
+
+                    <div class="faq-item glass-card-legendary rounded-2xl border border-slate-800 cursor-pointer overflow-hidden" onclick="toggleFaq(this)">
+                        <div class="p-4 sm:p-5 flex justify-between items-center text-white font-bold text-sm sm:text-base font-orbitron">
+                            <span>Who built and hosts JB HUB?</span>
+                            <i class="fa-solid fa-chevron-down faq-icon transition-transform duration-300 text-sky-400"></i>
+                        </div>
+                        <div class="faq-answer px-4 sm:px-5 pb-5 text-slate-400 text-xs sm:text-sm leading-relaxed border-t border-slate-800/50 pt-3">
+                            JB HUB was architected and developed by Johan Biju, hosted on GitHub Pages, and synced via Google Firebase.
                         </div>
                     </div>
                 </div>
@@ -419,7 +561,7 @@
                     Main Portal: <a href="https://jbhub.ryzn.pro/" class="text-sky-400 hover:underline font-mono">https://jbhub.ryzn.pro/</a>
                 </p>
                 <p class="text-[10px] sm:text-xs text-slate-600 mt-2 font-mono">
-                    &copy; 2026 JB HUB Cloud Workspace & Gaming Platform. Legendary & Free Forever.
+                    &copy; 2026 Built by Johan Biju. Hosted on GitHub Pages. Legendary & Free Forever.
                 </p>
             </footer>
 
@@ -429,7 +571,7 @@
     <!-- MODAL POPUP FOR FEATURES -->
     <div id="feature-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4">
         <div class="glass-card-legendary max-w-md w-full rounded-2xl p-6 relative border border-sky-500/40">
-            <button onclick="closeFeatureModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+            <button onclick="closeFeatureModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg transition-transform hover:rotate-90">
                 <i class="fa-solid fa-xmark"></i>
             </button>
             <h3 id="modal-title" class="text-xl font-bold font-orbitron text-white mb-2"></h3>
@@ -438,9 +580,53 @@
         </div>
     </div>
 
+    <!-- FLOATING AI ASSISTANT WIDGET -->
+    <div id="ai-widget" class="fixed bottom-5 right-5 z-50">
+        <!-- AI Toggle Button -->
+        <button onclick="toggleAiChat()" class="btn-neon w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl shadow-2xl relative group">
+            <i class="fa-solid fa-robot"></i>
+            <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-slate-900 rounded-full animate-ping"></span>
+            <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-emerald-400 border-2 border-slate-900 rounded-full"></span>
+        </button>
+
+        <!-- AI Chat Window -->
+        <div id="ai-chat-window" class="hidden absolute bottom-16 right-0 w-[88vw] sm:w-80 glass-card-legendary rounded-2xl p-4 border border-sky-500/40 shadow-2xl flex-col">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold font-orbitron text-white">JB-AI Assistant</div>
+                        <div class="text-[9px] text-emerald-400 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span> Online</div>
+                    </div>
+                </div>
+                <button onclick="toggleAiChat()" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div id="ai-chat-body" class="h-48 overflow-y-auto space-y-2 text-xs pr-1 mb-3">
+                <div class="bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl text-slate-300">
+                    👋 Hi! I'm <strong>JB-AI</strong>. Ask me what this website is or how to use JB HUB!
+                </div>
+            </div>
+
+            <!-- Suggested Quick Questions -->
+            <div class="flex flex-wrap gap-1 mb-2">
+                <button onclick="askAiQuestion('what is this website')" class="text-[10px] bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 px-2 py-0.5 rounded-full">What is this?</button>
+                <button onclick="askAiQuestion('who built this')" class="text-[10px] bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">Who built it?</button>
+                <button onclick="askAiQuestion('is it free')" class="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">Is it free?</button>
+            </div>
+
+            <div class="flex gap-1.5">
+                <input id="ai-input" type="text" placeholder="Ask AI..." onkeypress="if(event.key==='Enter') sendAiMessage()" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                <button onclick="sendAiMessage()" class="btn-neon px-3 rounded-xl text-white text-xs"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
     <!-- INTERACTIVE JAVASCRIPT ENGINE -->
     <script>
-        // --- 1. Interactive Particle Canvas (Follows & Responds to Mouse/Touch) ---
+        // --- 1. Interactive Particle Canvas with Explosion FX ---
         const canvas = document.getElementById('particleCanvas');
         const ctx = canvas.getContext('2d');
 
@@ -455,6 +641,21 @@
             if (e.touches.length > 0) {
                 mouse.x = e.touches[0].clientX;
                 mouse.y = e.touches[0].clientY;
+            }
+        });
+
+        // Click explosion effect
+        let explosions = [];
+        window.addEventListener('click', (e) => {
+            for(let i = 0; i < 20; i++) {
+                explosions.push({
+                    x: e.clientX, 
+                    y: e.clientY,
+                    vx: (Math.random() - 0.5) * 15,
+                    vy: (Math.random() - 0.5) * 15,
+                    life: 1, 
+                    color: `hsl(${Math.random() * 60 + 190}, 100%, 60%)`
+                });
             }
         });
 
@@ -489,7 +690,6 @@
                 if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                 if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
 
-                // Mouse Interaction Push Effect
                 if (mouse.x && mouse.y) {
                     let dx = mouse.x - p.x;
                     let dy = mouse.y - p.y;
@@ -506,7 +706,6 @@
                 ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
                 ctx.fill();
 
-                // Connect nearby particles with dynamic web lines
                 for (let j = index + 1; j < particles.length; j++) {
                     let p2 = particles[j];
                     let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
@@ -520,6 +719,22 @@
                     }
                 }
             });
+
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                let p = explosions[i];
+                p.x += p.vx; 
+                p.y += p.vy; 
+                p.life -= 0.02;
+                
+                ctx.beginPath(); 
+                ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI * 2);
+                ctx.fillStyle = p.color; 
+                ctx.globalAlpha = p.life > 0 ? p.life : 0; 
+                ctx.fill(); 
+                ctx.globalAlpha = 1;
+                
+                if (p.life <= 0) explosions.splice(i, 1);
+            }
 
             requestAnimationFrame(drawParticles);
         }
@@ -543,11 +758,10 @@
             });
         });
 
-        // --- 3. Intersection Observer Animated Counter ---
-        const counters = document.querySelectorAll('.counter');
+        // --- 3. Intersection Observer (Counters & Typewriter) ---
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
-                if (entry.isIntersecting) {
+                if (entry.isIntersecting && entry.target.classList.contains('counter')) {
                     const counter = entry.target;
                     const target = +counter.getAttribute('data-target');
                     let count = 0;
@@ -565,10 +779,27 @@
                     updateCounter();
                     observer.unobserve(counter);
                 }
+                
+                if (entry.isIntersecting && entry.target.id === 'creator-section') {
+                    const el = document.getElementById('typewriter-text');
+                    const text = "Meet the Builder: Johan Biju";
+                    let i = 0;
+                    el.innerHTML = "";
+                    function typeWriter() {
+                        if (i < text.length) {
+                            el.innerHTML += text.charAt(i);
+                            i++;
+                            setTimeout(typeWriter, 50);
+                        }
+                    }
+                    if(el.innerHTML === "") typeWriter();
+                    observer.unobserve(entry.target);
+                }
             });
         }, { threshold: 0.5 });
 
-        counters.forEach(c => observer.observe(c));
+        document.querySelectorAll('.counter').forEach(c => observer.observe(c));
+        observer.observe(document.getElementById('creator-section'));
 
         // --- 4. Interactive Sandbox Playground Tabs & Controls ---
         function switchTab(tabId) {
@@ -585,7 +816,7 @@
             const list = document.getElementById('demo-notes-list');
             const li = document.createElement('li');
             li.className = 'p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs flex justify-between items-center text-white animate-fade-in';
-            li.innerHTML = `<span>${input.value}</span><i class="fa-solid fa-cloud text-sky-400"></i>`;
+            li.innerHTML = `<span>${input.value}</span><i class="fa-solid fa-cloud text-amber-400"></i>`;
             list.prepend(li);
             input.value = '';
         }
@@ -605,7 +836,7 @@
             setTimeout(() => {
                 const botMsg = document.createElement('div');
                 botMsg.className = 'text-emerald-400';
-                botMsg.innerHTML = `<strong>Bot Node:</strong> Message received across JB HUB test grid!`;
+                botMsg.innerHTML = `<strong>Firebase Bot:</strong> Broadcast stored and synced!`;
                 box.appendChild(botMsg);
                 box.scrollTop = box.scrollHeight;
             }, 600);
@@ -616,10 +847,169 @@
             score++;
             document.getElementById('game-score').innerText = score;
             const btn = document.getElementById('game-target');
-            btn.style.transform = `scale(${0.9 + Math.random() * 0.2})`;
+            
+            const maxOffset = 60;
+            const randX = (Math.random() * maxOffset * 2) - maxOffset;
+            const randY = (Math.random() * maxOffset * 2) - maxOffset;
+            
+            btn.style.transform = `translate(calc(-50% + ${randX}px), calc(-50% + ${randY}px)) scale(${0.8 + Math.random() * 0.4})`;
         }
 
-        // --- 5. Modal Controllers ---
+        // --- 5. Snake Mini Game Engine ---
+        let snakeCanvas = document.getElementById('snakeCanvas');
+        let snakeCtx = snakeCanvas.getContext('2d');
+        let snakeGameInterval;
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 5, y: 5};
+        let snakeDir = 'RIGHT';
+        let snakeScore = 0;
+        const gridSize = 10;
+        const tileCountX = 30;
+        const tileCountY = 20;
+
+        function startSnakeGame() {
+            document.getElementById('snake-overlay').classList.add('hidden');
+            snake = [{x: 10, y: 10}, {x: 9, y: 10}];
+            snakeDir = 'RIGHT';
+            snakeScore = 0;
+            document.getElementById('snake-score').innerText = snakeScore;
+            spawnSnakeFood();
+            if(snakeGameInterval) clearInterval(snakeGameInterval);
+            snakeGameInterval = setInterval(updateSnakeGame, 100);
+        }
+
+        function spawnSnakeFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCountX),
+                y: Math.floor(Math.random() * tileCountY)
+            };
+        }
+
+        function setSnakeDir(dir) {
+            if (dir === 'LEFT' && snakeDir !== 'RIGHT') snakeDir = 'LEFT';
+            if (dir === 'UP' && snakeDir !== 'DOWN') snakeDir = 'UP';
+            if (dir === 'RIGHT' && snakeDir !== 'LEFT') snakeDir = 'RIGHT';
+            if (dir === 'DOWN' && snakeDir !== 'UP') snakeDir = 'DOWN';
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') setSnakeDir('LEFT');
+            if (e.key === 'ArrowUp') setSnakeDir('UP');
+            if (e.key === 'ArrowRight') setSnakeDir('RIGHT');
+            if (e.key === 'ArrowDown') setSnakeDir('DOWN');
+        });
+
+        function updateSnakeGame() {
+            let head = { ...snake[0] };
+            if (snakeDir === 'LEFT') head.x--;
+            if (snakeDir === 'UP') head.y--;
+            if (snakeDir === 'RIGHT') head.x++;
+            if (snakeDir === 'DOWN') head.y++;
+
+            // Wall collisions
+            if (head.x < 0 || head.x >= tileCountX || head.y < 0 || head.y >= tileCountY) {
+                endSnakeGame();
+                return;
+            }
+
+            // Self collision
+            for (let segment of snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    endSnakeGame();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Eat food
+            if (head.x === food.x && head.y === food.y) {
+                snakeScore += 10;
+                document.getElementById('snake-score').innerText = snakeScore;
+                spawnSnakeFood();
+            } else {
+                snake.pop();
+            }
+
+            // Draw game
+            snakeCtx.fillStyle = '#020617';
+            snakeCtx.fillRect(0, 0, snakeCanvas.width, snakeCanvas.height);
+
+            // Draw Snake
+            snake.forEach((seg, i) => {
+                snakeCtx.fillStyle = i === 0 ? '#38bdf8' : '#34d399';
+                snakeCtx.fillRect(seg.x * gridSize, seg.y * gridSize, gridSize - 1, gridSize - 1);
+            });
+
+            // Draw Food
+            snakeCtx.fillStyle = '#f43f5e';
+            snakeCtx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 1, gridSize - 1);
+        }
+
+        function endSnakeGame() {
+            clearInterval(snakeGameInterval);
+            document.getElementById('snake-msg').innerText = `GAME OVER! SCORE: ${snakeScore}`;
+            document.getElementById('snake-overlay').classList.remove('hidden');
+        }
+
+        // --- 6. AI Assistant Logic ---
+        function toggleAiChat() {
+            const chat = document.getElementById('ai-chat-window');
+            chat.classList.toggle('hidden');
+            chat.classList.toggle('flex');
+        }
+
+        function askAiQuestion(q) {
+            document.getElementById('ai-input').value = q;
+            sendAiMessage();
+        }
+
+        function sendAiMessage() {
+            const input = document.getElementById('ai-input');
+            const text = input.value.trim().toLowerCase();
+            if (!text) return;
+
+            const chatBody = document.getElementById('ai-chat-body');
+            
+            // Add user message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'bg-sky-500/20 border border-sky-500/40 p-2 rounded-xl text-sky-200 self-end ml-4 text-right';
+            userMsg.innerText = input.value;
+            chatBody.appendChild(userMsg);
+
+            input.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            // Generate AI Response
+            setTimeout(() => {
+                let reply = "I'm not sure about that, but JB HUB offers Cloud Notes, Instant Arcade games, and Global Chat!";
+                
+                if (text.includes('what') || text.includes('about') || text.includes('website') || text.includes('jb hub')) {
+                    reply = "<strong>JB HUB</strong> is a Next-Gen Cloud Workspace & Arcade built by <strong>Johan Biju</strong>. It provides 100% ad-free cloud notes, browser games, and live chat!";
+                } else if (text.includes('who') || text.includes('builder') || text.includes('creator') || text.includes('johan')) {
+                    reply = "JB HUB was designed and engineered from scratch by <strong>Johan Biju</strong>!";
+                } else if (text.includes('free') || text.includes('cost') || text.includes('pay')) {
+                    reply = "Yes! JB HUB is <strong>100% free forever</strong> and completely ad-free.";
+                } else if (text.includes('game') || text.includes('arcade') || text.includes('play')) {
+                    reply = "You can play instant web arcade games like <strong>Reflex Arcade</strong> and <strong>Cyber Snake</strong> directly in the sandbox above, or launch the full hub app!";
+                } else if (text.includes('note') || text.includes('cloud')) {
+                    reply = "The Cloud Notes module lets you create and save notes real-time across your devices powered by Google Firebase.";
+                }
+
+                const aiMsg = document.createElement('div');
+                aiMsg.className = 'bg-slate-900/90 border border-slate-800 p-2.5 rounded-xl text-slate-300 mr-4';
+                aiMsg.innerHTML = reply;
+                chatBody.appendChild(aiMsg);
+                chatBody.scrollTop = chatBody.scrollHeight;
+            }, 400);
+        }
+
+        // --- 7. FAQ Accordion Controller ---
+        function toggleFaq(element) {
+            element.classList.toggle('active');
+        }
+
+        // --- 8. Modal Controllers ---
         function openFeatureModal(title, body) {
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-body').innerText = body;
