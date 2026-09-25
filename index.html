@@ -551,7 +551,7 @@
                     <button onclick="switchTab('notes')" class="tab-btn active-tab pb-2 px-2 text-xs sm:text-sm whitespace-nowrap transition hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)]">Notes</button>
                     <button onclick="switchTab('chat')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Global Chat</button>
                     <button onclick="switchTab('arcade')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Cyber Arcade</button>
-                    <button onclick="switchTab('bugs')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Bug Reports</button>
+                    <button onclick="switchTab('bugs')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Bug & Suggest</button>
                     <button onclick="switchTab('leaderboard')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Leaderboard</button>
                     <button onclick="switchTab('rules')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Admin Message</button>
                     <button onclick="switchTab('account')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Account</button>
@@ -698,7 +698,7 @@
 
         // Sections that admins can lock behind a maintenance notice
         const MAINTAINABLE_SECTIONS = ['notes', 'chat', 'arcade', 'bugs', 'leaderboard'];
-        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug Reports', leaderboard: 'Leaderboard' };
+        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard' };
 
         function getMaintenanceConfig(section) {
             const m = (globalSettings.maintenance && globalSettings.maintenance[section]) || {};
@@ -1669,10 +1669,10 @@
             container.innerHTML = `
                 <div class="space-y-4 max-w-2xl mx-auto">
                     <div class="glass p-4 rounded-xl space-y-3">
-                        <h2 class="font-bold text-lg text-purple-300">Submit Bug Report</h2>
+                        <h2 class="font-bold text-lg text-purple-300">Have an idea or found a bug? Tell us here.</h2>
                         <input type="text" id="bug-title-input" placeholder="Issue Title or Summary..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
                         <textarea id="bug-desc-input" placeholder="Describe the bug or issue in detail..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
-                        <button onclick="submitBugReport()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition">Submit Report</button>
+                        <button onclick="submitBugReport()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition">Submit</button>
                     </div>
                     <div id="bug-reports-list" class="space-y-3"></div>
                 </div>
@@ -4020,9 +4020,9 @@
                         </div>
                     </div>
 
-                    <!-- Bug Reports Management -->
+                    <!-- Bug & Suggest Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
-                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Manage Bug Reports & Replies</h2>
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Manage Bug & Suggest & Replies</h2>
                         <div class="space-y-3">
                             ${bugReportsData.length === 0 ? '<p class="text-xs text-gray-400 italic">No bug reports submitted.</p>' : bugReportsData.map(b => {
                                 const isSolved = b.status === 'Solved';
@@ -4216,6 +4216,44 @@
                                     <div class="space-x-2">
                                         <button onclick="adminEditGame2048LeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteGame2048Leaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Management (Neon Dodger) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-bolt mr-1"></i>Neon Dodger Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${neonDodgerLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : neonDodgerLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditNeonDodgerLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteNeonDodgerLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Management (Space Invaders) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-space-shuttle mr-1"></i>Space Invaders Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${spaceInvadersLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : spaceInvadersLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditSpaceInvadersLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteSpaceInvadersLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -4793,6 +4831,72 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref('game2048Leaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditNeonDodgerLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Username</label>
+                    <input id="admin-ndlb-username" type="text" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input id="admin-ndlb-score" type="number" min="0" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+            openModal("Edit Neon Dodger Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+                const newUsername = document.getElementById('admin-ndlb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-ndlb-score').value) || 0;
+                if (!newUsername) { showToast("Username required", "error"); return; }
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) await db.ref('neonDodgerLeaderboard/' + userKey).remove();
+                await db.ref('neonDodgerLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteNeonDodgerLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove Neon Dodger leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+                await db.ref('neonDodgerLeaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditSpaceInvadersLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Username</label>
+                    <input id="admin-silb-username" type="text" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input id="admin-silb-score" type="number" min="0" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+            openModal("Edit Space Invaders Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+                const newUsername = document.getElementById('admin-silb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-silb-score').value) || 0;
+                if (!newUsername) { showToast("Username required", "error"); return; }
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) await db.ref('spaceInvadersLeaderboard/' + userKey).remove();
+                await db.ref('spaceInvadersLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteSpaceInvadersLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove Space Invaders leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+                await db.ref('spaceInvadersLeaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
