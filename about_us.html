@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>About Us | JB HUB - Legendary Cloud Workspace & Arcade</title>
     
+    <!-- Essential Meta Tags for Indexing & SEO -->
+    <meta name="description" content="JB HUB - Next-Gen Cloud Workspace & Arcade built by Johan Biju. Experience 100% ad-free cloud notes, instant high-FPS browser games, and real-time global chat.">
+    <meta name="keywords" content="JB HUB, Cloud Workspace, Cloud Notes, Arcade Games, Online Gaming, Real-time Chat, Free Browser Games, Johan Biju">
+    <meta name="author" content="Johan Biju">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://jbhub.ryzn.pro/">
+
+    <!-- Open Graph / Facebook / WhatsApp Meta Tags -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://jbhub.ryzn.pro/">
+    <meta property="og:title" content="JB HUB - Legendary Cloud Workspace & Arcade">
+    <meta property="og:description" content="100% Ad-Free Cloud Workspace. Secure notes, instant arcade gaming, and global live chat powered by Firebase.">
+    <meta property="og:image" content="https://jbhub.ryzn.pro/logo.png">
+
+    <!-- Twitter / X Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://jbhub.ryzn.pro/">
+    <meta name="twitter:title" content="JB HUB - Legendary Cloud Workspace & Arcade">
+    <meta name="twitter:description" content="100% Ad-Free Cloud Workspace. Secure notes, instant arcade gaming, and global live chat powered by Firebase.">
+    <meta name="twitter:image" content="https://jbhub.ryzn.pro/logo.png">
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/logo.png">
 
@@ -626,15 +647,20 @@
 
     <!-- INTERACTIVE JAVASCRIPT ENGINE -->
     <script>
-        // --- 1. Interactive Particle Canvas with Explosion FX ---
+        // --- 1. Interactive Particle Canvas (Fixed Boundary & Disappearance Issues) ---
         const canvas = document.getElementById('particleCanvas');
         const ctx = canvas.getContext('2d');
 
-        let mouse = { x: null, y: null, radius: 120 };
+        let mouse = { x: null, y: null, radius: 100 };
 
         window.addEventListener('mousemove', (e) => {
             mouse.x = e.clientX;
             mouse.y = e.clientY;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
         });
 
         window.addEventListener('touchmove', (e) => {
@@ -644,15 +670,20 @@
             }
         });
 
+        window.addEventListener('touchend', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
         // Click explosion effect
         let explosions = [];
         window.addEventListener('click', (e) => {
-            for(let i = 0; i < 20; i++) {
+            for(let i = 0; i < 15; i++) {
                 explosions.push({
                     x: e.clientX, 
                     y: e.clientY,
-                    vx: (Math.random() - 0.5) * 15,
-                    vy: (Math.random() - 0.5) * 15,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
                     life: 1, 
                     color: `hsl(${Math.random() * 60 + 190}, 100%, 60%)`
                 });
@@ -662,23 +693,27 @@
         function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            initParticles();
         }
-        resizeCanvas();
+
+        let particles = [];
+        function initParticles() {
+            particles = [];
+            const particleCount = window.innerWidth < 640 ? 35 : 70;
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2 + 1,
+                    vx: (Math.random() - 0.5) * 0.8,
+                    vy: (Math.random() - 0.5) * 0.8,
+                    alpha: Math.random() * 0.5 + 0.3
+                });
+            }
+        }
+
         window.addEventListener('resize', resizeCanvas);
-
-        const particles = [];
-        const particleCount = window.innerWidth < 640 ? 30 : 60;
-
-        for (let i = 0; i < particleCount; i++) {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                radius: Math.random() * 2 + 1,
-                vx: (Math.random() - 0.5) * 0.8,
-                vy: (Math.random() - 0.5) * 0.8,
-                alpha: Math.random() * 0.5 + 0.3
-            });
-        }
+        resizeCanvas();
 
         function drawParticles() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -687,17 +722,23 @@
                 p.x += p.vx;
                 p.y += p.vy;
 
-                if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                // Infinite bounce inside window boundaries
+                if (p.x <= 0) { p.x = 0; p.vx *= -1; }
+                if (p.x >= canvas.width) { p.x = canvas.width; p.vx *= -1; }
+                if (p.y <= 0) { p.y = 0; p.vy *= -1; }
+                if (p.y >= canvas.height) { p.y = canvas.height; p.vy *= -1; }
 
-                if (mouse.x && mouse.y) {
+                // Safe Mouse interaction
+                if (mouse.x !== null && mouse.y !== null) {
                     let dx = mouse.x - p.x;
                     let dy = mouse.y - p.y;
                     let distance = Math.sqrt(dx * dx + dy * dy);
-                    if (distance < mouse.radius) {
+                    if (distance < mouse.radius && distance > 0) {
                         let force = (mouse.radius - distance) / mouse.radius;
-                        p.x -= (dx / distance) * force * 3;
-                        p.y -= (dy / distance) * force * 3;
+                        let moveX = (dx / distance) * force * 1.5;
+                        let moveY = (dy / distance) * force * 1.5;
+                        p.x -= moveX;
+                        p.y -= moveY;
                     }
                 }
 
@@ -706,6 +747,7 @@
                 ctx.fillStyle = `rgba(56, 189, 248, ${p.alpha})`;
                 ctx.fill();
 
+                // Draw connecting lines
                 for (let j = index + 1; j < particles.length; j++) {
                     let p2 = particles[j];
                     let dist = Math.hypot(p.x - p2.x, p.y - p2.y);
@@ -720,6 +762,7 @@
                 }
             });
 
+            // Explosions cleanup
             for (let i = explosions.length - 1; i >= 0; i--) {
                 let p = explosions[i];
                 p.x += p.vx; 
@@ -727,9 +770,9 @@
                 p.life -= 0.02;
                 
                 ctx.beginPath(); 
-                ctx.arc(p.x, p.y, 3 * p.life, 0, Math.PI * 2);
+                ctx.arc(p.x, p.y, Math.max(0, 3 * p.life), 0, Math.PI * 2);
                 ctx.fillStyle = p.color; 
-                ctx.globalAlpha = p.life > 0 ? p.life : 0; 
+                ctx.globalAlpha = Math.max(0, p.life); 
                 ctx.fill(); 
                 ctx.globalAlpha = 1;
                 
