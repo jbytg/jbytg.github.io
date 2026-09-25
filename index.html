@@ -3135,7 +3135,7 @@
             let minX=SI_W,maxX=0;
             spaceInvadersGame.enemies.forEach(e=>{minX=Math.min(minX,e.x);maxX=Math.max(maxX,e.x+e.w);});
             if((minX<=8&&spaceInvadersGame.enemyDir<0)||(maxX>=SI_W-8&&spaceInvadersGame.enemyDir>0)){spaceInvadersGame.enemyDir*=-1;spaceInvadersGame.enemies.forEach(e=>e.y+=descent);}else spaceInvadersGame.enemies.forEach(e=>e.x+=enemySpeed*spaceInvadersGame.enemyDir*f);
-            for(let bi=spaceInvadersGame.bullets.length-1;bi>=0;bi--){let hit=-1;for(let ei=0;ei<spaceInvadersGame.enemies.length;ei++){const b=spaceInvadersGame.bullets[bi],e=spaceInvadersGame.enemies[ei];if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){hit=ei;break;}}if(hit>=0){spaceInvadersGame.enemies.splice(hit,1);spaceInvadersGame.bullets.splice(bi,1);spaceInvadersGame.score+=10*wave;document.getElementById('si-score').innerText=spaceInvadersGame.score;}}
+            for(let bi=spaceInvadersGame.bullets.length-1;bi>=0;bi--){let hit=-1;for(let ei=0;ei<spaceInvadersGame.enemies.length;ei++){const b=spaceInvadersGame.bullets[bi],e=spaceInvadersGame.enemies[ei];if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){hit=ei;break;}}if(hit>=0){spaceInvadersGame.enemies.splice(hit,1);spaceInvadersGame.bullets.splice(bi,1);spaceInvadersGame.score+=1;document.getElementById('si-score').innerText=spaceInvadersGame.score;}}
             if(spaceInvadersGame.enemies.length===0){spaceInvadersGame.wave++;spawnSpaceInvadersWave();}
             if(spaceInvadersGame.enemies.some(e=>e.y+e.h>=SI_H-55||(e.y+e.h>SI_H-40&&e.x<spaceInvadersGame.playerX+spaceInvadersGame.playerW&&e.x+e.w>spaceInvadersGame.playerX)))return endSpaceInvaders(false);
             drawSpaceInvaders();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);
