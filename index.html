@@ -683,6 +683,8 @@
         let memoryLeaderboardData = [];
         let flappyLeaderboardData = [];
         let glitchLeaderboardData = [];
+        let breakoutLeaderboardData = [];
+        let game2048LeaderboardData = [];
         let leaderboardGameMode = 'snake';
         let usersData = [];
         let globalSettings = { 
@@ -1341,7 +1343,25 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            });
+            }, err => { console.error('glitchLeaderboard read error:', err); showToast('Glitch leaderboard blocked: ' + err.message, 'error'); });
+
+            db.ref('breakoutLeaderboard').on('value', snap => {
+                breakoutLeaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { breakoutLeaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            }, err => { console.error('breakoutLeaderboard read error:', err); showToast('Breakout leaderboard blocked: ' + err.message, 'error'); });
+
+            db.ref('game2048Leaderboard').on('value', snap => {
+                game2048LeaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { game2048LeaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            }, err => { console.error('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked: ' + err.message, 'error'); });
 
             db.ref('notes').on('value', snap => {
                 notesData = [];
@@ -2145,9 +2165,10 @@
 
                 <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md p-3">
                     <div id="g2048-board" class="grid grid-cols-4 gap-2 w-[280px] sm:w-[320px] aspect-square select-none"></div>
-                    <div id="g2048-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center hidden">
-                        <h3 id="g2048-overlay-title" class="text-2xl font-black glowing-logo">NO MOVES LEFT</h3>
-                        <button onclick="startGame2048()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Try Again</button>
+                    <div id="g2048-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="g2048-overlay-title" class="text-2xl font-black glowing-logo">2048</h3>
+                        <p id="g2048-overlay-desc" class="text-xs text-gray-400 max-w-[220px]">Slide matching tiles together to merge them and reach the 2048 tile.</p>
+                        <button id="g2048-overlay-btn" onclick="startGame2048()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
                     </div>
                 </div>
 
@@ -2877,7 +2898,7 @@
             brCtx.restore();
         }
 
-        function endBreakoutGame(won) {
+        async function endBreakoutGame(won) {
             breakoutGame.running = false;
             breakoutGame.gameOver = true;
             cancelAnimationFrame(breakoutGame.rafId);
@@ -2887,6 +2908,19 @@
                 localStorage.setItem('breakout_best', breakoutGame.best);
                 const bestEl = document.getElementById('breakout-best');
                 if (bestEl) bestEl.innerText = breakoutGame.best;
+            }
+
+            if (breakoutGame.score > 0 && navigator.onLine && isFirebaseConnected) {
+                try {
+                    const userLbRef = db.ref('breakoutLeaderboard/' + currentUser.username.toLowerCase());
+                    const snap = await userLbRef.once('value');
+                    if (!snap.exists() || snap.val().score < breakoutGame.score) {
+                        await userLbRef.set({ username: currentUser.username, score: breakoutGame.score });
+                    }
+                } catch (err) {
+                    console.error('breakoutLeaderboard write error:', err);
+                    showToast('Could not save score: ' + err.message, 'error');
+                }
             }
 
             const overlayTitle = document.getElementById('breakout-overlay-title');
@@ -2927,7 +2961,23 @@
             const bestEl = document.getElementById('g2048-best');
             if (bestEl) bestEl.innerText = game2048.best;
 
-            startGame2048();
+            // Show empty board behind the start overlay instead of auto-starting
+            game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
+            game2048.score = 0;
+            game2048.running = false;
+            game2048.gameOver = false;
+            const scoreEl = document.getElementById('g2048-score');
+            if (scoreEl) scoreEl.innerText = '0';
+            render2048Board();
+
+            const overlayTitle = document.getElementById('g2048-overlay-title');
+            const overlayDesc = document.getElementById('g2048-overlay-desc');
+            const overlayBtn = document.getElementById('g2048-overlay-btn');
+            if (overlayTitle) overlayTitle.innerText = '2048';
+            if (overlayDesc) overlayDesc.classList.remove('hidden');
+            if (overlayBtn) overlayBtn.innerText = 'Start Game';
+            const overlay = document.getElementById('g2048-overlay');
+            if (overlay) overlay.classList.remove('hidden');
 
             const board = document.getElementById('g2048-board');
             if (board) {
@@ -2953,8 +3003,8 @@
             game2048.score = 0;
             game2048.running = true;
             game2048.gameOver = false;
-            spawn2048Tile();
-            spawn2048Tile();
+            spawn2048StartTile();
+            spawn2048StartTile();
 
             const scoreEl = document.getElementById('g2048-score');
             if (scoreEl) scoreEl.innerText = '0';
@@ -2962,6 +3012,14 @@
             if (overlay) overlay.classList.add('hidden');
 
             render2048Board();
+        }
+
+        function spawn2048StartTile() {
+            const empty = [];
+            for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (game2048.grid[r][c] === 0) empty.push([r, c]);
+            if (empty.length === 0) return;
+            const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+            game2048.grid[r][c] = 2;
         }
 
         function spawn2048Tile() {
@@ -3080,12 +3138,30 @@
             }
         }
 
-        function endGame2048() {
+        async function endGame2048() {
             game2048.running = false;
             game2048.gameOver = true;
+
+            if (game2048.score > 0 && navigator.onLine && isFirebaseConnected) {
+                try {
+                    const userLbRef = db.ref('game2048Leaderboard/' + currentUser.username.toLowerCase());
+                    const snap = await userLbRef.once('value');
+                    if (!snap.exists() || snap.val().score < game2048.score) {
+                        await userLbRef.set({ username: currentUser.username, score: game2048.score });
+                    }
+                } catch (err) {
+                    console.error('game2048Leaderboard write error:', err);
+                    showToast('Could not save score: ' + err.message, 'error');
+                }
+            }
+
             const overlay = document.getElementById('g2048-overlay');
             const overlayTitle = document.getElementById('g2048-overlay-title');
+            const overlayDesc = document.getElementById('g2048-overlay-desc');
+            const overlayBtn = document.getElementById('g2048-overlay-btn');
             if (overlayTitle) applyWaveEffect(overlayTitle, "NO MOVES LEFT");
+            if (overlayDesc) overlayDesc.classList.add('hidden');
+            if (overlayBtn) overlayBtn.innerText = 'Try Again';
             if (overlay) overlay.classList.remove('hidden');
         }
 
@@ -3201,10 +3277,15 @@
             }
 
             if (glitchGame.score > 0 && navigator.onLine && isFirebaseConnected) {
-                const userLbRef = db.ref('glitchLeaderboard/' + currentUser.username.toLowerCase());
-                const snap = await userLbRef.once('value');
-                if (!snap.exists() || snap.val().score < glitchGame.score) {
-                    await userLbRef.set({ username: currentUser.username, score: glitchGame.score });
+                try {
+                    const userLbRef = db.ref('glitchLeaderboard/' + currentUser.username.toLowerCase());
+                    const snap = await userLbRef.once('value');
+                    if (!snap.exists() || snap.val().score < glitchGame.score) {
+                        await userLbRef.set({ username: currentUser.username, score: glitchGame.score });
+                    }
+                } catch (err) {
+                    console.error('glitchLeaderboard write error:', err);
+                    showToast('Could not save score: ' + err.message, 'error');
                 }
             }
 
@@ -3419,6 +3500,8 @@
                         <button onclick="switchLeaderboardGame('memory')" id="lb-mode-memory-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'memory' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-brain mr-1"></i>Memory</button>
                         <button onclick="switchLeaderboardGame('flappy')" id="lb-mode-flappy-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'flappy' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-kiwi-bird mr-1"></i>Flappy Bird</button>
                         <button onclick="switchLeaderboardGame('glitch')" id="lb-mode-glitch-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'glitch' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-bolt mr-1"></i>Glitch Hunter</button>
+                        <button onclick="switchLeaderboardGame('breakout')" id="lb-mode-breakout-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'breakout' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-square mr-1"></i>Breakout</button>
+                        <button onclick="switchLeaderboardGame('2048')" id="lb-mode-2048-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === '2048' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-hashtag mr-1"></i>2048</button>
                     </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
@@ -3435,7 +3518,7 @@
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : leaderboardData));
+            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : (leaderboardGameMode === 'breakout' ? breakoutLeaderboardData : (leaderboardGameMode === '2048' ? game2048LeaderboardData : leaderboardData))));
             const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
@@ -3634,6 +3717,9 @@
                 await db.ref('leaderboard/' + usernameKey).remove();
                 await db.ref('memoryLeaderboard/' + usernameKey).remove();
                 await db.ref('flappyLeaderboard/' + usernameKey).remove();
+                await db.ref('glitchLeaderboard/' + usernameKey).remove();
+                await db.ref('breakoutLeaderboard/' + usernameKey).remove();
+                await db.ref('game2048Leaderboard/' + usernameKey).remove();
 
                 showToast("Account deleted successfully.");
                 logout();
@@ -3903,6 +3989,44 @@
                         </div>
                     </div>
 
+                    <!-- Leaderboard Management (Breakout) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-square mr-1"></i>Breakout Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${breakoutLeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : breakoutLeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditBreakoutLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteBreakoutLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Management (2048) -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa fa-hashtag mr-1"></i>2048 Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${game2048LeaderboardData.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : game2048LeaderboardData.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div>
+                                        <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                    </div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditGame2048LeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteGame2048Leaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
                     <!-- All Notes Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Global Notes Control</h2>
@@ -4135,6 +4259,8 @@
                 await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
                 await db.ref(`flappyLeaderboard/${usernameKey}`).remove();
                 await db.ref(`glitchLeaderboard/${usernameKey}`).remove();
+                await db.ref(`breakoutLeaderboard/${usernameKey}`).remove();
+                await db.ref(`game2048Leaderboard/${usernameKey}`).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -4390,6 +4516,88 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref('glitchLeaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditBreakoutLeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Display Username</label>
+                    <input type="text" id="admin-brlb-username" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input type="number" id="admin-brlb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+
+            openModal("Edit Breakout Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const newUsername = document.getElementById('admin-brlb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-brlb-score').value) || 0;
+
+                if (!newUsername) { showToast("Username required", "error"); return; }
+
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) {
+                    await db.ref('breakoutLeaderboard/' + userKey).remove();
+                }
+
+                await db.ref('breakoutLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteBreakoutLeaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove breakout leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('breakoutLeaderboard/' + userKey).remove();
+                showToast("Leaderboard entry removed");
+            });
+        }
+
+        window.adminEditGame2048LeaderboardPrompt = function(userKey, currentUsername, currentScore) {
+            const inputsHtml = `
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Display Username</label>
+                    <input type="text" id="admin-g2klb-username" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Score</label>
+                    <input type="number" id="admin-g2klb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+            `;
+
+            openModal("Edit 2048 Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                const newUsername = document.getElementById('admin-g2klb-username').value.trim();
+                const newScore = parseInt(document.getElementById('admin-g2klb-score').value) || 0;
+
+                if (!newUsername) { showToast("Username required", "error"); return; }
+
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) {
+                    await db.ref('game2048Leaderboard/' + userKey).remove();
+                }
+
+                await db.ref('game2048Leaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                showToast("Leaderboard updated!");
+            });
+        }
+
+        window.adminDeleteGame2048Leaderboard = function(userKey) {
+            openModal("Delete Score Entry", `Remove 2048 leaderboard entry for '${userKey}'?`, "", async () => {
+                if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                await db.ref('game2048Leaderboard/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
