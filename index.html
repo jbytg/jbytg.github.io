@@ -685,6 +685,8 @@
         let glitchLeaderboardData = [];
         let breakoutLeaderboardData = [];
         let game2048LeaderboardData = [];
+        let neonDodgerLeaderboardData = [];
+        let spaceInvadersLeaderboardData = [];
         let leaderboardGameMode = 'snake';
         let usersData = [];
         let globalSettings = { 
@@ -1363,6 +1365,20 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             }, err => { console.error('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked: ' + err.message, 'error'); });
 
+            db.ref('neonDodgerLeaderboard').on('value', snap => {
+                neonDodgerLeaderboardData = [];
+                if (snap.exists()) snap.forEach(child => { neonDodgerLeaderboardData.push(child.val()); });
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            }, err => { console.error('neonDodgerLeaderboard read error:', err); showToast('Neon Dodger leaderboard blocked: ' + err.message, 'error'); });
+
+            db.ref('spaceInvadersLeaderboard').on('value', snap => {
+                spaceInvadersLeaderboardData = [];
+                if (snap.exists()) snap.forEach(child => { spaceInvadersLeaderboardData.push(child.val()); });
+                if (currentTab === 'leaderboard') renderLeaderboard();
+                if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            }, err => { console.error('spaceInvadersLeaderboard read error:', err); showToast('Space Invaders leaderboard blocked: ' + err.message, 'error'); });
+
             db.ref('notes').on('value', snap => {
                 notesData = [];
                 if (snap.exists()) {
@@ -1900,6 +1916,12 @@
                         <button onclick="switchArcadeGame('glitch')" id="arcade-mode-glitch-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'glitch' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
                             <i class="fa fa-bolt mr-1"></i> Glitch Hunter
                         </button>
+                        <button onclick="switchArcadeGame('neonDodger')" id="arcade-mode-neonDodger-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'neonDodger' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-bolt mr-1"></i> Neon Dodger
+                        </button>
+                        <button onclick="switchArcadeGame('spaceInvaders')" id="arcade-mode-spaceInvaders-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'spaceInvaders' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa fa-rocket mr-1"></i> Space Invaders
+                        </button>
                     </div>
 
                     <div id="arcade-game-area" class="w-full flex flex-col items-center space-y-4"></div>
@@ -1930,6 +1952,12 @@
             } else if (arcadeGameMode === 'glitch') {
                 clearTimeout(glitchGame.spawnTimer);
                 glitchGame.running = false;
+            } else if (arcadeGameMode === 'neonDodger') {
+                cancelAnimationFrame(neonDodgerGame.rafId);
+                neonDodgerGame.running = false;
+            } else if (arcadeGameMode === 'spaceInvaders') {
+                cancelAnimationFrame(spaceInvadersGame.rafId);
+                spaceInvadersGame.running = false;
             }
 
             arcadeGameMode = mode;
@@ -1955,6 +1983,12 @@
             } else if (arcadeGameMode === 'glitch') {
                 area.innerHTML = glitchGameMarkup();
                 initGlitchGame();
+            } else if (arcadeGameMode === 'neonDodger') {
+                area.innerHTML = neonDodgerMarkup();
+                initNeonDodger();
+            } else if (arcadeGameMode === 'spaceInvaders') {
+                area.innerHTML = spaceInvadersMarkup();
+                initSpaceInvaders();
             } else {
                 area.innerHTML = snakeGameMarkup();
                 initCyberCanvas();
@@ -2954,6 +2988,163 @@
             if (isLeft || isRight) breakoutGame.moveDir = null;
         });
 
+        // ============== NEON DODGER (keyboard + touch, Firebase leaderboard) ==============
+        let neonDodgerCanvas = null, ndCtx = null;
+        const neonDodgerGame = { playerX: 150, playerY: 370, playerW: 34, playerH: 16, obstacles: [], score: 0, best: 0, speed: 2.8, running: false, gameOver: false, rafId: 0, moveDir: 0, lastTime: 0, spawnAcc: 0 };
+        const ND_W = 320, ND_H = 400;
+
+        function neonDodgerMarkup() {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="nd-score" class="text-pink-400">0</span></span>
+                    <span>Best: <span id="nd-best" class="text-emerald-400">0</span></span>
+                </div>
+                <div class="relative bg-black/60 border border-cyan-500/40 rounded-2xl overflow-hidden shadow-2xl">
+                    <canvas id="neon-dodger-canvas" width="${ND_W}" height="${ND_H}" class="block max-w-full h-auto touch-none"></canvas>
+                    <div id="nd-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="nd-overlay-title" class="text-2xl font-black glowing-logo">NEON DODGER</h3>
+                        <p id="nd-overlay-desc" class="text-xs text-gray-400 max-w-[240px]">Dodge the falling blocks and survive as long as possible.</p>
+                        <button id="nd-overlay-btn" onclick="startNeonDodger()" class="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-purple-600 rounded-xl text-sm font-bold shadow-lg transition">Start Game</button>
+                    </div>
+                </div>
+                <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 select-none">
+                    <div class="flex justify-center gap-3">
+                        <button ontouchstart="event.preventDefault(); neonDodgerSetDir(-1)" onmousedown="neonDodgerSetDir(-1)" onmouseup="neonDodgerSetDir(0)" onmouseleave="neonDodgerSetDir(0)" ontouchend="neonDodgerSetDir(0)" ontouchcancel="neonDodgerSetDir(0)" class="dpad-btn w-14 h-12 bg-cyan-600/30 border border-cyan-400/40 rounded-xl text-white"><i class="fa fa-chevron-left"></i></button>
+                        <button onclick="startNeonDodger()" class="w-20 h-12 bg-purple-600/40 border border-purple-400/40 rounded-xl text-xs font-bold text-white">START</button>
+                        <button ontouchstart="event.preventDefault(); neonDodgerSetDir(1)" onmousedown="neonDodgerSetDir(1)" onmouseup="neonDodgerSetDir(0)" onmouseleave="neonDodgerSetDir(0)" ontouchend="neonDodgerSetDir(0)" ontouchcancel="neonDodgerSetDir(0)" class="dpad-btn w-14 h-12 bg-cyan-600/30 border border-cyan-400/40 rounded-xl text-white"><i class="fa fa-chevron-right"></i></button>
+                    </div>
+                    <p class="text-[10px] text-gray-500 text-center mt-2">PC: Arrow Keys / A-D • Mobile: Touch buttons</p>
+                </div>
+            `;
+        }
+
+        function initNeonDodger() {
+            neonDodgerCanvas = document.getElementById('neon-dodger-canvas');
+            if (!neonDodgerCanvas) return;
+            ndCtx = neonDodgerCanvas.getContext('2d');
+            cancelAnimationFrame(neonDodgerGame.rafId);
+            neonDodgerGame.running = false; neonDodgerGame.gameOver = false; neonDodgerGame.moveDir = 0;
+            neonDodgerGame.best = parseInt(localStorage.getItem('neon_dodger_best') || '0', 10);
+            document.getElementById('nd-best').innerText = neonDodgerGame.best;
+            drawNeonDodger();
+        }
+        function neonDodgerSetDir(dir) { neonDodgerGame.moveDir = dir; if (!neonDodgerGame.running && dir !== 0) startNeonDodger(); }
+        function startNeonDodger() {
+            if (!neonDodgerCanvas) return;
+            cancelAnimationFrame(neonDodgerGame.rafId);
+            neonDodgerGame.playerX = (ND_W - neonDodgerGame.playerW) / 2;
+            neonDodgerGame.obstacles = []; neonDodgerGame.score = 0; neonDodgerGame.speed = 2.8; neonDodgerGame.spawnAcc = 0; neonDodgerGame.lastTime = performance.now();
+            neonDodgerGame.running = true; neonDodgerGame.gameOver = false;
+            document.getElementById('nd-score').innerText = '0';
+            document.getElementById('nd-overlay').classList.add('hidden');
+            neonDodgerGame.rafId = requestAnimationFrame(neonDodgerLoop);
+        }
+        function neonDodgerLoop(now) {
+            if (!neonDodgerGame.running) return;
+            const dt = Math.min(32, now - neonDodgerGame.lastTime || 16); neonDodgerGame.lastTime = now;
+            const factor = dt / 16.67;
+            // Difficulty scales continuously with score: faster blocks + more frequent spawns.
+            const difficulty = Math.min(4.5, neonDodgerGame.score * 0.045);
+            neonDodgerGame.speed = 2.8 + difficulty;
+            const spawnDelay = Math.max(150, 650 - neonDodgerGame.score * 6);
+            neonDodgerGame.playerX += neonDodgerGame.moveDir * (5.5 + Math.min(2.5, neonDodgerGame.score * 0.015)) * factor;
+            neonDodgerGame.playerX = Math.max(0, Math.min(ND_W - neonDodgerGame.playerW, neonDodgerGame.playerX));
+            neonDodgerGame.spawnAcc += dt;
+            if (neonDodgerGame.spawnAcc >= spawnDelay) {
+                neonDodgerGame.spawnAcc = 0;
+                const w = 18 + Math.random() * Math.max(18, 28 - difficulty * 1.2);
+                neonDodgerGame.obstacles.push({ x: Math.random() * (ND_W - w), y: -24, w, h: 14 + Math.random() * 20, speed: neonDodgerGame.speed + Math.random() * (1.5 + difficulty * 0.35) });
+                // Later in a run, occasionally create an extra block for an additional challenge.
+                if (neonDodgerGame.score >= 20 && Math.random() < Math.min(0.45, neonDodgerGame.score * 0.006)) {
+                    const w2 = 16 + Math.random() * 22;
+                    neonDodgerGame.obstacles.push({ x: Math.random() * (ND_W - w2), y: -45, w: w2, h: 12 + Math.random() * 18, speed: neonDodgerGame.speed + 0.8 + Math.random() * 1.8 });
+                }
+            }
+            neonDodgerGame.obstacles.forEach(o => o.y += o.speed * factor);
+            neonDodgerGame.obstacles = neonDodgerGame.obstacles.filter(o => {
+                if (o.y > ND_H) { neonDodgerGame.score++; document.getElementById('nd-score').innerText = neonDodgerGame.score; return false; }
+                return true;
+            });
+            const p = {x: neonDodgerGame.playerX, y: neonDodgerGame.playerY, w: neonDodgerGame.playerW, h: neonDodgerGame.playerH};
+            if (neonDodgerGame.obstacles.some(o => p.x < o.x + o.w && p.x + p.w > o.x && p.y < o.y + o.h && p.y + p.h > o.y)) return endNeonDodger();
+            drawNeonDodger(); neonDodgerGame.rafId = requestAnimationFrame(neonDodgerLoop);
+        }
+        function drawNeonDodger() {
+            if (!ndCtx) return;
+            ndCtx.clearRect(0,0,ND_W,ND_H);
+            ndCtx.fillStyle='#050511'; ndCtx.fillRect(0,0,ND_W,ND_H);
+            ndCtx.strokeStyle='rgba(34,211,238,.08)'; ndCtx.lineWidth=1;
+            for(let x=0;x<ND_W;x+=32){ndCtx.beginPath();ndCtx.moveTo(x,0);ndCtx.lineTo(x,ND_H);ndCtx.stroke();}
+            for(let y=0;y<ND_H;y+=32){ndCtx.beginPath();ndCtx.moveTo(0,y);ndCtx.lineTo(ND_W,y);ndCtx.stroke();}
+            ndCtx.shadowBlur=14; ndCtx.shadowColor='#22d3ee'; ndCtx.fillStyle='#22d3ee'; ndCtx.fillRect(neonDodgerGame.playerX,neonDodgerGame.playerY,neonDodgerGame.playerW,neonDodgerGame.playerH);
+            ndCtx.shadowBlur=10; ndCtx.shadowColor='#ec4899'; ndCtx.fillStyle='#ec4899'; neonDodgerGame.obstacles.forEach(o=>ndCtx.fillRect(o.x,o.y,o.w,o.h)); ndCtx.shadowBlur=0;
+        }
+        async function endNeonDodger() {
+            neonDodgerGame.running=false; neonDodgerGame.gameOver=true; cancelAnimationFrame(neonDodgerGame.rafId);
+            if (neonDodgerGame.score > neonDodgerGame.best) { neonDodgerGame.best=neonDodgerGame.score; localStorage.setItem('neon_dodger_best', neonDodgerGame.best); const el=document.getElementById('nd-best'); if(el) el.innerText=neonDodgerGame.best; }
+            if (neonDodgerGame.score > 0 && navigator.onLine && isFirebaseConnected) { try { const ref=db.ref('neonDodgerLeaderboard/'+currentUser.username.toLowerCase()); const snap=await ref.once('value'); if(!snap.exists() || snap.val().score < neonDodgerGame.score) await ref.set({username:currentUser.username,score:neonDodgerGame.score}); } catch(err){ console.error(err); } }
+            const title=document.getElementById('nd-overlay-title'), btn=document.getElementById('nd-overlay-btn'), ov=document.getElementById('nd-overlay'); if(title) applyWaveEffect(title,'GAME OVER'); if(btn) btn.innerText='Play Again'; if(ov) ov.classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || arcadeGameMode !== 'neonDodger') return;
+            if (e.key === 'Enter' && !neonDodgerGame.running) { e.preventDefault(); startNeonDodger(); return; }
+            if (['ArrowLeft','a','A'].includes(e.key) || e.code === 'ArrowLeft' || e.code === 'KeyA') { e.preventDefault(); neonDodgerGame.moveDir=-1; }
+            if (['ArrowRight','d','D'].includes(e.key) || e.code === 'ArrowRight' || e.code === 'KeyD') { e.preventDefault(); neonDodgerGame.moveDir=1; }
+        });
+        window.addEventListener('keyup', e => { if(currentTab!=='arcade'||arcadeGameMode!=='neonDodger') return; if(['ArrowLeft','a','A','ArrowRight','d','D'].includes(e.key)||['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code)) neonDodgerGame.moveDir=0; });
+
+        // ============== SPACE INVADERS LITE (keyboard + touch, Firebase leaderboard) ==============
+        let spaceInvadersCanvas=null, siCtx=null;
+        const spaceInvadersGame={playerX:150, playerW:34, bullets:[], enemies:[], score:0, best:0, running:false, gameOver:false, rafId:0, moveDir:0, lastTime:0, shotCooldown:0, enemyDir:1, enemyTimer:0, wave:1};
+        const SI_W=320, SI_H=400;
+        function spaceInvadersMarkup(){return `
+            <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300"><span>Score: <span id="si-score" class="text-pink-400">0</span></span><span>Best: <span id="si-best" class="text-emerald-400">0</span></span></div>
+            <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl"><canvas id="space-invaders-canvas" width="${SI_W}" height="${SI_H}" class="block max-w-full h-auto touch-none"></canvas><div id="si-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center"><h3 id="si-overlay-title" class="text-2xl font-black glowing-logo">SPACE INVADERS</h3><p id="si-overlay-desc" class="text-xs text-gray-400 max-w-[240px]">Clear endless alien waves. Each wave gets faster and rewards more points.</p><button id="si-overlay-btn" onclick="startSpaceInvaders()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-bold shadow-lg transition">Start Game</button></div></div>
+            <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 select-none"><div class="grid grid-cols-3 gap-2"><button ontouchstart="event.preventDefault(); spaceInvadersSetDir(-1)" onmousedown="spaceInvadersSetDir(-1)" onmouseup="spaceInvadersSetDir(0)" onmouseleave="spaceInvadersSetDir(0)" ontouchend="spaceInvadersSetDir(0)" ontouchcancel="spaceInvadersSetDir(0)" class="dpad-btn h-12 bg-purple-600/30 border border-purple-400/40 rounded-xl text-white"><i class="fa fa-chevron-left"></i></button><button ontouchstart="event.preventDefault(); spaceInvadersShoot()" onmousedown="spaceInvadersShoot()" class="h-12 bg-pink-600/40 border border-pink-400/40 rounded-xl text-white font-bold"><i class="fa fa-crosshairs mr-1"></i> FIRE</button><button ontouchstart="event.preventDefault(); spaceInvadersSetDir(1)" onmousedown="spaceInvadersSetDir(1)" onmouseup="spaceInvadersSetDir(0)" onmouseleave="spaceInvadersSetDir(0)" ontouchend="spaceInvadersSetDir(0)" ontouchcancel="spaceInvadersSetDir(0)" class="dpad-btn h-12 bg-purple-600/30 border border-purple-400/40 rounded-xl text-white"><i class="fa fa-chevron-right"></i></button></div><p class="text-[10px] text-gray-500 text-center mt-2">PC: A/D or Arrow Keys + Space • Mobile: Touch controls</p></div>
+        `;}
+        function initSpaceInvaders(){spaceInvadersCanvas=document.getElementById('space-invaders-canvas');if(!spaceInvadersCanvas)return;siCtx=spaceInvadersCanvas.getContext('2d');cancelAnimationFrame(spaceInvadersGame.rafId);spaceInvadersGame.running=false;spaceInvadersGame.gameOver=false;spaceInvadersGame.best=parseInt(localStorage.getItem('space_invaders_best')||'0',10);document.getElementById('si-best').innerText=spaceInvadersGame.best;drawSpaceInvaders();}
+        function spaceInvadersSetDir(d){spaceInvadersGame.moveDir=d;if(d!==0&&!spaceInvadersGame.running)startSpaceInvaders();}
+        function spaceInvadersShoot(){if(!spaceInvadersGame.running){startSpaceInvaders();return;}if(spaceInvadersGame.shotCooldown<=0){spaceInvadersGame.bullets.push({x:spaceInvadersGame.playerX+spaceInvadersGame.playerW/2,y:SI_H-30});spaceInvadersGame.shotCooldown=180;}}
+        function spawnSpaceInvadersWave(){
+            const wave=spaceInvadersGame.wave;
+            spaceInvadersGame.enemies=[];
+            const rows=Math.min(7,3+Math.floor((wave-1)/2));
+            const cols=7;
+            const gap=38;
+            const startX=(SI_W-(cols*gap-14))/2-12;
+            for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) spaceInvadersGame.enemies.push({x:startX+c*gap,y:42+r*27,w:24,h:16,row:r});
+            spaceInvadersGame.enemyDir=wave%2===0?-1:1;
+            spaceInvadersGame.enemyTimer=0;
+        }
+        function startSpaceInvaders(){cancelAnimationFrame(spaceInvadersGame.rafId);spaceInvadersGame.playerX=(SI_W-spaceInvadersGame.playerW)/2;spaceInvadersGame.bullets=[];spaceInvadersGame.score=0;spaceInvadersGame.wave=1;spaceInvadersGame.shotCooldown=0;spaceInvadersGame.enemyTimer=0;spaceInvadersGame.running=true;spaceInvadersGame.gameOver=false;spawnSpaceInvadersWave();document.getElementById('si-score').innerText='0';document.getElementById('si-overlay').classList.add('hidden');spaceInvadersGame.lastTime=performance.now();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);}
+        function spaceInvadersLoop(now){
+            if(!spaceInvadersGame.running)return;
+            const dt=Math.min(32,now-spaceInvadersGame.lastTime||16);spaceInvadersGame.lastTime=now;const f=dt/16.67;
+            const wave=spaceInvadersGame.wave;
+            // Every cleared wave increases speed, descent amount and firing cadence.
+            const enemySpeed=0.35+Math.min(1.8,(wave-1)*0.075);
+            const descent=12+Math.min(12,Math.floor((wave-1)/3));
+            const bulletSpeed=7+Math.min(3,(wave-1)*0.08);
+            const moveSpeed=4.8+Math.min(2.2,(wave-1)*0.06);
+            spaceInvadersGame.playerX+=spaceInvadersGame.moveDir*moveSpeed*f;
+            spaceInvadersGame.playerX=Math.max(0,Math.min(SI_W-spaceInvadersGame.playerW,spaceInvadersGame.playerX));
+            spaceInvadersGame.shotCooldown-=dt;
+            spaceInvadersGame.bullets.forEach(b=>b.y-=bulletSpeed*f);
+            spaceInvadersGame.bullets=spaceInvadersGame.bullets.filter(b=>b.y>-10);
+            let minX=SI_W,maxX=0;
+            spaceInvadersGame.enemies.forEach(e=>{minX=Math.min(minX,e.x);maxX=Math.max(maxX,e.x+e.w);});
+            if((minX<=8&&spaceInvadersGame.enemyDir<0)||(maxX>=SI_W-8&&spaceInvadersGame.enemyDir>0)){spaceInvadersGame.enemyDir*=-1;spaceInvadersGame.enemies.forEach(e=>e.y+=descent);}else spaceInvadersGame.enemies.forEach(e=>e.x+=enemySpeed*spaceInvadersGame.enemyDir*f);
+            for(let bi=spaceInvadersGame.bullets.length-1;bi>=0;bi--){let hit=-1;for(let ei=0;ei<spaceInvadersGame.enemies.length;ei++){const b=spaceInvadersGame.bullets[bi],e=spaceInvadersGame.enemies[ei];if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){hit=ei;break;}}if(hit>=0){spaceInvadersGame.enemies.splice(hit,1);spaceInvadersGame.bullets.splice(bi,1);spaceInvadersGame.score+=10*wave;document.getElementById('si-score').innerText=spaceInvadersGame.score;}}
+            if(spaceInvadersGame.enemies.length===0){spaceInvadersGame.wave++;spawnSpaceInvadersWave();}
+            if(spaceInvadersGame.enemies.some(e=>e.y+e.h>=SI_H-55||(e.y+e.h>SI_H-40&&e.x<spaceInvadersGame.playerX+spaceInvadersGame.playerW&&e.x+e.w>spaceInvadersGame.playerX)))return endSpaceInvaders(false);
+            drawSpaceInvaders();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);
+        }
+        function drawSpaceInvaders(){if(!siCtx)return;siCtx.clearRect(0,0,SI_W,SI_H);siCtx.fillStyle='#050511';siCtx.fillRect(0,0,SI_W,SI_H);siCtx.fillStyle='rgba(255,255,255,.45)';for(let i=0;i<45;i++){const x=(i*73)%SI_W,y=(i*97)%SI_H;siCtx.fillRect(x,y,1,1);}siCtx.shadowBlur=12;siCtx.shadowColor='#22d3ee';siCtx.fillStyle='#22d3ee';siCtx.fillRect(spaceInvadersGame.playerX,SI_H-24,spaceInvadersGame.playerW,12);siCtx.shadowColor='#f472b6';siCtx.fillStyle='#f472b6';spaceInvadersGame.enemies.forEach(e=>{siCtx.fillRect(e.x,e.y,e.w,e.h);siCtx.fillRect(e.x+4,e.y-4,e.w-8,4);});siCtx.shadowColor='#fff';siCtx.fillStyle='#fff';spaceInvadersGame.bullets.forEach(b=>siCtx.fillRect(b.x-1,b.y,2,9));siCtx.shadowBlur=0;}
+        async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('spaceInvadersLeaderboard/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){console.error(err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
+        window.addEventListener('keydown',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(e.key==='Enter'&&!spaceInvadersGame.running){e.preventDefault();startSpaceInvaders();return;}if(['ArrowLeft','a','A'].includes(e.key)||e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();spaceInvadersGame.moveDir=-1;}if(['ArrowRight','d','D'].includes(e.key)||e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();spaceInvadersGame.moveDir=1;}if(e.code==='Space'){e.preventDefault();spaceInvadersShoot();}});
+        window.addEventListener('keyup',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(['ArrowLeft','a','A','ArrowRight','d','D'].includes(e.key)||['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))spaceInvadersGame.moveDir=0;});
+
         // ============== 2048 (grid slide/merge, keyboard + swipe) ==============
 
         function initGame2048() {
@@ -3502,6 +3693,8 @@
                         <button onclick="switchLeaderboardGame('glitch')" id="lb-mode-glitch-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'glitch' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-bolt mr-1"></i>Glitch Hunter</button>
                         <button onclick="switchLeaderboardGame('breakout')" id="lb-mode-breakout-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'breakout' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-square mr-1"></i>Breakout</button>
                         <button onclick="switchLeaderboardGame('2048')" id="lb-mode-2048-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === '2048' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-hashtag mr-1"></i>2048</button>
+                        <button onclick="switchLeaderboardGame('neonDodger')" id="lb-mode-neonDodger-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'neonDodger' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-bolt mr-1"></i>Neon Dodger</button>
+                        <button onclick="switchLeaderboardGame('spaceInvaders')" id="lb-mode-spaceInvaders-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'spaceInvaders' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-rocket mr-1"></i>Space Invaders</button>
                     </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
@@ -3518,7 +3711,7 @@
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : (leaderboardGameMode === 'breakout' ? breakoutLeaderboardData : (leaderboardGameMode === '2048' ? game2048LeaderboardData : leaderboardData))));
+            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : (leaderboardGameMode === 'breakout' ? breakoutLeaderboardData : (leaderboardGameMode === '2048' ? game2048LeaderboardData : (leaderboardGameMode === 'neonDodger' ? neonDodgerLeaderboardData : (leaderboardGameMode === 'spaceInvaders' ? spaceInvadersLeaderboardData : leaderboardData))))));
             const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
@@ -3720,6 +3913,8 @@
                 await db.ref('glitchLeaderboard/' + usernameKey).remove();
                 await db.ref('breakoutLeaderboard/' + usernameKey).remove();
                 await db.ref('game2048Leaderboard/' + usernameKey).remove();
+                await db.ref('neonDodgerLeaderboard/' + usernameKey).remove();
+                await db.ref('spaceInvadersLeaderboard/' + usernameKey).remove();
 
                 showToast("Account deleted successfully.");
                 logout();
