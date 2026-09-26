@@ -443,6 +443,18 @@
         </div>
     </div>
 
+    <!-- Full Server Shutdown Lockdown Screen: admin-controlled, blocks all regular users, no dismiss/pause -->
+    <div id="shutdown-screen" class="fixed inset-0 z-[100] bg-black hidden flex flex-col items-center justify-center p-0 overflow-hidden select-none" oncontextmenu="return false;">
+        <div id="shutdown-media-container" class="absolute inset-0 flex items-center justify-center bg-black"></div>
+        <div id="shutdown-message-box" class="relative z-10 max-w-md w-full mx-auto p-6 text-center space-y-3 bg-black/40 backdrop-blur-sm rounded-2xl">
+            <div class="w-16 h-16 mx-auto rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/40">
+                <i class="fa fa-power-off text-red-400 text-2xl"></i>
+            </div>
+            <h2 class="text-2xl font-black text-red-400 glowing-logo">SERVER SHUTDOWN</h2>
+            <p id="shutdown-screen-message" class="text-sm text-gray-200 whitespace-pre-wrap"></p>
+        </div>
+    </div>
+
     <!-- Custom Modal Container -->
     <div id="custom-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="glass p-6 w-full max-w-sm space-y-4 border border-purple-500/30">
@@ -693,7 +705,8 @@
             aboutText: "Welcome to JB HUB cloud-powered secure platform.", 
             rulesText: "Welcome! Please follow the platform guidelines and keep your account secure.",
             specialThanks: "JB YT GAMER",
-            maintenance: {}
+            maintenance: {},
+            shutdown: { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: 'The server is currently shut down for maintenance. Please check back later.' }
         };
 
         // Sections that admins can lock behind a maintenance notice
@@ -911,6 +924,7 @@
             if (snap.exists()) {
                 globalSettings = snap.val();
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: '' };
                 const abt = document.getElementById('prelogin-about-text');
                 const thx = document.getElementById('prelogin-thanks-text');
                 if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
@@ -1181,7 +1195,7 @@
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
                 showToast("Account created successfully!");
-                triggerWinWelcome(currentUser.username, currentUser.dob);
+                proceedAfterLogin();
             } else {
                 const snapshot = await userRef.once('value');
                 if (!snapshot.exists() || snapshot.val().password !== password) {
@@ -1211,7 +1225,7 @@
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
                 showToast("Logged in successfully!");
-                triggerWinWelcome(currentUser.username, currentUser.dob);
+                proceedAfterLogin();
             }
         }
 
@@ -1273,6 +1287,108 @@
             }, 430);
         }
 
+        // Gate that runs right after a successful login/signup: if the admin has
+        // enabled a full server shutdown, regular users are sent straight to the
+        // lockdown screen instead of the normal welcome animation + dashboard.
+        // Admin accounts always bypass the lockdown so they can turn it back off.
+        function proceedAfterLogin() {
+            if (globalSettings.shutdown && globalSettings.shutdown.enabled && !currentUser.isAdmin) {
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('about-view').classList.add('hidden');
+                showShutdownScreen();
+                return;
+            }
+            triggerWinWelcome(currentUser.username, currentUser.dob);
+        }
+
+        // Renders the admin-configured media (image/audio/video/custom HTML/none)
+        // inside the shutdown lockdown screen. Image/audio/video autoplay + loop
+        // with no controls, pointer-events disabled, and a 'pause' listener that
+        // immediately resumes playback, so they can't be paused or right-clicked.
+        // Custom HTML runs sandboxed in an iframe so it can't touch the app.
+        function renderShutdownMedia() {
+            const container = document.getElementById('shutdown-media-container');
+            const msgBox = document.getElementById('shutdown-message-box');
+            if (!container) return;
+            const cfg = globalSettings.shutdown || {};
+            container.innerHTML = '';
+            if (msgBox) msgBox.classList.toggle('hidden', cfg.mediaType === 'html');
+
+            if (cfg.mediaType === 'image' && cfg.mediaUrl) {
+                container.innerHTML = `<img src="${escapeHtml(cfg.mediaUrl)}" alt="" draggable="false" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover">`;
+            } else if (cfg.mediaType === 'video' && cfg.mediaUrl) {
+                container.innerHTML = `<video id="shutdown-video" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop muted playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover"></video>`;
+                const vid = document.getElementById('shutdown-video');
+                if (vid) {
+                    vid.addEventListener('pause', () => { vid.play().catch(() => {}); });
+                    vid.play().catch(() => {});
+                }
+            } else if (cfg.mediaType === 'audio' && cfg.mediaUrl) {
+                container.innerHTML = `<audio id="shutdown-audio" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;"></audio>`;
+                const aud = document.getElementById('shutdown-audio');
+                if (aud) {
+                    aud.addEventListener('pause', () => { aud.play().catch(() => {}); });
+                    aud.play().catch(() => {});
+                }
+            } else if (cfg.mediaType === 'html' && cfg.customHtml) {
+                container.innerHTML = `<iframe id="shutdown-iframe" sandbox="allow-scripts allow-forms" class="absolute inset-0 w-full h-full border-0" title="Shutdown screen content"></iframe>`;
+                const frame = document.getElementById('shutdown-iframe');
+                if (frame) frame.srcdoc = cfg.customHtml;
+            }
+        }
+
+        window.showShutdownScreen = function() {
+            const cfg = globalSettings.shutdown || {};
+            const msgEl = document.getElementById('shutdown-screen-message');
+            if (msgEl) msgEl.innerText = cfg.message || 'The server is currently shut down for maintenance. Please check back later.';
+            renderShutdownMedia();
+            const screen = document.getElementById('shutdown-screen');
+            if (screen) screen.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideShutdownScreen() {
+            const screen = document.getElementById('shutdown-screen');
+            if (screen) screen.classList.add('hidden');
+            const vid = document.getElementById('shutdown-video');
+            if (vid) { vid.pause(); vid.removeAttribute('src'); vid.load(); }
+            const aud = document.getElementById('shutdown-audio');
+            if (aud) { aud.pause(); aud.removeAttribute('src'); aud.load(); }
+            document.body.style.overflow = '';
+        }
+
+        // Called on every live settings update while a user is already inside the
+        // dashboard, so an admin flipping shutdown ON/OFF takes effect instantly
+        // for everyone currently online, not just on their next login.
+        function syncShutdownLockdown() {
+            if (!currentUser) return;
+            const shutdownOn = !!(globalSettings.shutdown && globalSettings.shutdown.enabled);
+            const screen = document.getElementById('shutdown-screen');
+            const isLocked = screen && !screen.classList.contains('hidden');
+
+            if (shutdownOn && !currentUser.isAdmin && !isLocked) {
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.getElementById('auth-view').classList.add('hidden');
+                showShutdownScreen();
+            } else if ((!shutdownOn || currentUser.isAdmin) && isLocked) {
+                hideShutdownScreen();
+                document.getElementById('dashboard-view').classList.remove('hidden');
+            }
+        }
+
+        // Block media-pause and fullscreen-exit key shortcuts (Space, K, Escape)
+        // while the shutdown lockdown screen is visible, so the media can't be
+        // paused via keyboard either. Capture phase so it runs before any other
+        // keydown handler (including the arcade games' own listeners).
+        document.addEventListener('keydown', function(e) {
+            const screen = document.getElementById('shutdown-screen');
+            if (!screen || screen.classList.contains('hidden')) return;
+            if (e.code === 'Space' || e.key === 'k' || e.key === 'K' || e.key === 'Escape' || e.key === 'MediaPlayPause') {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
         function triggerWinWelcome(username, dob) {
             document.getElementById('auth-view').classList.add('hidden');
             document.getElementById('about-view').classList.add('hidden');
@@ -1305,6 +1421,8 @@
             db.ref('settings').on('value', snap => {
                 if (snap.exists()) globalSettings = snap.val();
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: '' };
+                syncShutdownLockdown();
                 if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
                 else if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
                 else if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
@@ -4020,6 +4138,50 @@
                         </div>
                     </div>
 
+                    <!-- Full Server Shutdown -->
+                    <div class="glass p-6 rounded-xl space-y-4 border border-red-500/40">
+                        <h2 class="text-lg font-bold text-red-300 border-b border-white/10 pb-2"><i class="fa fa-power-off mr-1"></i>Full Server Shutdown</h2>
+                        <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                            <div class="flex items-center space-x-2">
+                                <p class="font-bold text-sm text-red-200">Server Status</p>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${globalSettings.shutdown.enabled ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}">
+                                    ${globalSettings.shutdown.enabled ? 'SHUT DOWN' : 'ONLINE'}
+                                </span>
+                            </div>
+                            <div class="shrink-0">
+                                ${globalSettings.shutdown.enabled
+                                    ? `<button onclick="adminToggleShutdown(false)" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Bring Server Back Online</button>`
+                                    : `<button onclick="adminToggleShutdown(true)" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition font-medium">Shut Down Server</button>`
+                                }
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-400">When shut down, every regular user is instantly redirected to a fullscreen lockdown screen showing the media below on login (or immediately, if already online). It autoplays on loop with no controls and can't be paused, closed, or right-clicked. Admin accounts always bypass it.</p>
+
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Lockdown Media Type</label>
+                            <select id="admin-shutdown-mediatype" onchange="adminToggleShutdownMediaFields()" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                                <option value="none" ${globalSettings.shutdown.mediaType === 'none' ? 'selected' : ''}>None (message only)</option>
+                                <option value="image" ${globalSettings.shutdown.mediaType === 'image' ? 'selected' : ''}>Image</option>
+                                <option value="audio" ${globalSettings.shutdown.mediaType === 'audio' ? 'selected' : ''}>Audio</option>
+                                <option value="video" ${globalSettings.shutdown.mediaType === 'video' ? 'selected' : ''}>Video</option>
+                                <option value="html" ${globalSettings.shutdown.mediaType === 'html' ? 'selected' : ''}>Custom HTML Page</option>
+                            </select>
+                        </div>
+                        <div id="admin-shutdown-url-field" class="${globalSettings.shutdown.mediaType === 'html' ? 'hidden' : ''}">
+                            <label class="text-xs text-gray-400 mb-1 block">Media URL (direct link to the hosted image / audio / video file)</label>
+                            <input type="text" id="admin-shutdown-mediaurl" autocomplete="off" value="${escapeHtml(globalSettings.shutdown.mediaUrl || '')}" placeholder="https://..." class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                        </div>
+                        <div id="admin-shutdown-html-field" class="${globalSettings.shutdown.mediaType === 'html' ? '' : 'hidden'}">
+                            <label class="text-xs text-gray-400 mb-1 block">Custom HTML (runs sandboxed in its own frame; full control over the lockdown screen's look)</label>
+                            <textarea id="admin-shutdown-customhtml" autocomplete="off" spellcheck="false" placeholder="<h1>We'll be back soon</h1>" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-28 resize-none font-mono">${escapeHtml(globalSettings.shutdown.customHtml || '')}</textarea>
+                        </div>
+                        <div id="admin-shutdown-message-field" class="${globalSettings.shutdown.mediaType === 'html' ? 'hidden' : ''}">
+                            <label class="text-xs text-gray-400 mb-1 block">Lockdown Message</label>
+                            <textarea id="admin-shutdown-message" autocomplete="off" spellcheck="false" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none">${escapeHtml(globalSettings.shutdown.message || '')}</textarea>
+                        </div>
+                        <button onclick="adminSaveShutdownConfig()" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-sm transition">Save Shutdown Settings</button>
+                    </div>
+
                     <!-- Bug & Suggest Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Manage Bug & Suggest & Replies</h2>
@@ -4388,6 +4550,58 @@
                 await db.ref('settings/maintenance/' + section).update({ reason });
                 showToast("Maintenance reason updated");
             });
+        }
+
+        window.adminToggleShutdown = function(enable) {
+            if (enable) {
+                openModal("Shut Down The Entire Server?", "Every regular user will be instantly redirected to the fullscreen lockdown screen with the configured media/message and won't be able to close, pause, or bypass it. Admin accounts are unaffected and you can bring it back online anytime.", "", async () => {
+                    if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                    if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                    await db.ref('settings/shutdown').update({ enabled: true });
+                    showToast("Server is now shut down for all regular users");
+                });
+            } else {
+                openModal("Bring Server Back Online?", "Regular users will regain full access immediately.", "", async () => {
+                    if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+                    if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+                    await db.ref('settings/shutdown').update({ enabled: false });
+                    showToast("Server is back online");
+                });
+            }
+        }
+
+        window.adminToggleShutdownMediaFields = function() {
+            const type = document.getElementById('admin-shutdown-mediatype').value;
+            const urlField = document.getElementById('admin-shutdown-url-field');
+            const htmlField = document.getElementById('admin-shutdown-html-field');
+            const msgField = document.getElementById('admin-shutdown-message-field');
+            if (urlField) urlField.classList.toggle('hidden', type === 'html');
+            if (htmlField) htmlField.classList.toggle('hidden', type !== 'html');
+            if (msgField) msgField.classList.toggle('hidden', type === 'html');
+        }
+
+        window.adminSaveShutdownConfig = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+            const mediaType = document.getElementById('admin-shutdown-mediatype').value;
+            const mediaUrl = document.getElementById('admin-shutdown-mediaurl').value.trim();
+            const customHtml = document.getElementById('admin-shutdown-customhtml').value;
+            const message = document.getElementById('admin-shutdown-message').value.trim();
+
+            if ((mediaType === 'image' || mediaType === 'audio' || mediaType === 'video') && !mediaUrl) {
+                showToast("Please provide a media URL, or change the media type", "error");
+                return;
+            }
+            if (mediaType === 'html' && !customHtml.trim()) {
+                showToast("Please provide the custom HTML, or change the media type", "error");
+                return;
+            }
+
+            await db.ref('settings/shutdown').update({ mediaType, mediaUrl, customHtml, message });
+            showToast("Shutdown settings saved");
         }
 
         window.adminEditUserPrompt = function(usernameKey) {
