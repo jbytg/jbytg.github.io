@@ -1324,7 +1324,7 @@
             if (cfg.mediaType === 'image' && cfg.mediaUrl) {
                 container.innerHTML = `<img src="${escapeHtml(cfg.mediaUrl)}" alt="" draggable="false" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover">`;
             } else if (cfg.mediaType === 'video' && cfg.mediaUrl) {
-                container.innerHTML = `<video id="shutdown-video" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop muted playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover"></video>`;
+                container.innerHTML = `<video id="shutdown-video" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover"></video>`;
                 const vid = document.getElementById('shutdown-video');
                 if (vid) {
                     vid.addEventListener('pause', () => { vid.play().catch(() => {}); });
@@ -1365,7 +1365,13 @@
 
         document.addEventListener('click', function() {
             const screen = document.getElementById('shutdown-screen');
-            if (screen && !screen.classList.contains('hidden')) requestShutdownFullscreen();
+            if (screen && !screen.classList.contains('hidden')) {
+                requestShutdownFullscreen();
+                const vid = document.getElementById('shutdown-video');
+                if (vid) vid.play().catch(() => {});
+                const aud = document.getElementById('shutdown-audio');
+                if (aud) aud.play().catch(() => {});
+            }
         }, true);
 
         document.addEventListener('fullscreenchange', function() {
