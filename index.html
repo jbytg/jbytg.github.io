@@ -706,7 +706,7 @@
             rulesText: "Welcome! Please follow the platform guidelines and keep your account secure.",
             specialThanks: "JB YT GAMER",
             maintenance: {},
-            shutdown: { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: 'The server is currently shut down for maintenance. Please check back later.' }
+            shutdown: { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: 'The server is currently shut down for maintenance. Please check back later.' }
         };
 
         // Sections that admins can lock behind a maintenance notice
@@ -924,7 +924,7 @@
             if (snap.exists()) {
                 globalSettings = snap.val();
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
-                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: '' };
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: '' };
                 const abt = document.getElementById('prelogin-about-text');
                 const thx = document.getElementById('prelogin-thanks-text');
                 if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
@@ -1296,23 +1296,25 @@
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('about-view').classList.add('hidden');
                 showShutdownScreen();
+                lastAppliedShutdownConfigStr = JSON.stringify(globalSettings.shutdown || {});
                 return;
             }
             triggerWinWelcome(currentUser.username, currentUser.dob);
         }
 
-        // Renders the admin-configured media (image/audio/video/custom HTML/none)
-        // inside the shutdown lockdown screen. Image/audio/video autoplay + loop
-        // with no controls, pointer-events disabled, and a 'pause' listener that
-        // immediately resumes playback, so they can't be paused or right-clicked.
-        // Custom HTML runs sandboxed in an iframe so it can't touch the app.
+        // Renders the admin-configured media (image/audio/video/custom HTML/
+        // external website/none) inside the shutdown lockdown screen.
+        // Image/audio/video autoplay + loop with no controls, pointer-events
+        // disabled, and a 'pause' listener that immediately resumes playback,
+        // so they can't be paused or right-clicked. Custom HTML and external
+        // websites run sandboxed in an iframe so they can't touch the app.
         function renderShutdownMedia() {
             const container = document.getElementById('shutdown-media-container');
             const msgBox = document.getElementById('shutdown-message-box');
             if (!container) return;
             const cfg = globalSettings.shutdown || {};
             container.innerHTML = '';
-            if (msgBox) msgBox.classList.toggle('hidden', cfg.mediaType === 'html');
+            if (msgBox) msgBox.classList.toggle('hidden', cfg.mediaType === 'html' || cfg.mediaType === 'website');
 
             if (cfg.mediaType === 'image' && cfg.mediaUrl) {
                 container.innerHTML = `<img src="${escapeHtml(cfg.mediaUrl)}" alt="" draggable="false" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover">`;
@@ -1334,8 +1336,37 @@
                 container.innerHTML = `<iframe id="shutdown-iframe" sandbox="allow-scripts allow-forms" class="absolute inset-0 w-full h-full border-0" title="Shutdown screen content"></iframe>`;
                 const frame = document.getElementById('shutdown-iframe');
                 if (frame) frame.srcdoc = cfg.customHtml;
+            } else if (cfg.mediaType === 'website' && cfg.websiteUrl) {
+                container.innerHTML = `<iframe id="shutdown-website-iframe" src="${escapeHtml(cfg.websiteUrl)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full border-0" title="Shutdown screen external site"></iframe>`;
             }
         }
+
+        // Best-effort Fullscreen API request. Browsers only grant this from a
+        // direct user gesture (a click/keypress), so it reliably succeeds when
+        // called from the login click, but a live push to already-open tabs
+        // (via syncShutdownLockdown) may be silently rejected — the click and
+        // fullscreenchange listeners below retry it the moment the user next
+        // interacts with the page.
+        function requestShutdownFullscreen() {
+            const el = document.documentElement;
+            const reqFS = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+            if (reqFS && !document.fullscreenElement && !document.webkitFullscreenElement) {
+                try {
+                    const p = reqFS.call(el);
+                    if (p && p.catch) p.catch(() => {});
+                } catch (e) {}
+            }
+        }
+
+        document.addEventListener('click', function() {
+            const screen = document.getElementById('shutdown-screen');
+            if (screen && !screen.classList.contains('hidden')) requestShutdownFullscreen();
+        }, true);
+
+        document.addEventListener('fullscreenchange', function() {
+            const screen = document.getElementById('shutdown-screen');
+            if (screen && !screen.classList.contains('hidden') && !document.fullscreenElement) requestShutdownFullscreen();
+        });
 
         window.showShutdownScreen = function() {
             const cfg = globalSettings.shutdown || {};
@@ -1345,6 +1376,7 @@
             const screen = document.getElementById('shutdown-screen');
             if (screen) screen.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
+            requestShutdownFullscreen();
         }
 
         function hideShutdownScreen() {
@@ -1355,24 +1387,34 @@
             const aud = document.getElementById('shutdown-audio');
             if (aud) { aud.pause(); aud.removeAttribute('src'); aud.load(); }
             document.body.style.overflow = '';
+            if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); }
         }
 
         // Called on every live settings update while a user is already inside the
-        // dashboard, so an admin flipping shutdown ON/OFF takes effect instantly
-        // for everyone currently online, not just on their next login.
+        // dashboard, so an admin flipping shutdown ON/OFF -- or editing the
+        // media/message while it's already active -- takes effect instantly for
+        // everyone currently online, not just on their next login. Only
+        // re-renders the media when the shutdown config actually changed, so an
+        // unrelated settings edit (e.g. the About text) doesn't restart it.
+        let lastAppliedShutdownConfigStr = null;
         function syncShutdownLockdown() {
             if (!currentUser) return;
             const shutdownOn = !!(globalSettings.shutdown && globalSettings.shutdown.enabled);
             const screen = document.getElementById('shutdown-screen');
             const isLocked = screen && !screen.classList.contains('hidden');
+            const currentConfigStr = JSON.stringify(globalSettings.shutdown || {});
 
-            if (shutdownOn && !currentUser.isAdmin && !isLocked) {
+            if (shutdownOn && !currentUser.isAdmin) {
                 document.getElementById('dashboard-view').classList.add('hidden');
                 document.getElementById('auth-view').classList.add('hidden');
-                showShutdownScreen();
-            } else if ((!shutdownOn || currentUser.isAdmin) && isLocked) {
+                if (!isLocked || currentConfigStr !== lastAppliedShutdownConfigStr) {
+                    showShutdownScreen();
+                    lastAppliedShutdownConfigStr = currentConfigStr;
+                }
+            } else if (isLocked) {
                 hideShutdownScreen();
                 document.getElementById('dashboard-view').classList.remove('hidden');
+                lastAppliedShutdownConfigStr = null;
             }
         }
 
@@ -1421,7 +1463,7 @@
             db.ref('settings').on('value', snap => {
                 if (snap.exists()) globalSettings = snap.val();
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
-                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', message: '' };
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: '' };
                 syncShutdownLockdown();
                 if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
                 else if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
@@ -4165,9 +4207,10 @@
                                 <option value="audio" ${globalSettings.shutdown.mediaType === 'audio' ? 'selected' : ''}>Audio</option>
                                 <option value="video" ${globalSettings.shutdown.mediaType === 'video' ? 'selected' : ''}>Video</option>
                                 <option value="html" ${globalSettings.shutdown.mediaType === 'html' ? 'selected' : ''}>Custom HTML Page</option>
+                                <option value="website" ${globalSettings.shutdown.mediaType === 'website' ? 'selected' : ''}>Another Website (Embed Link)</option>
                             </select>
                         </div>
-                        <div id="admin-shutdown-url-field" class="${globalSettings.shutdown.mediaType === 'html' ? 'hidden' : ''}">
+                        <div id="admin-shutdown-url-field" class="${globalSettings.shutdown.mediaType === 'image' || globalSettings.shutdown.mediaType === 'audio' || globalSettings.shutdown.mediaType === 'video' ? '' : 'hidden'}">
                             <label class="text-xs text-gray-400 mb-1 block">Media URL (direct link to the hosted image / audio / video file)</label>
                             <input type="text" id="admin-shutdown-mediaurl" autocomplete="off" value="${escapeHtml(globalSettings.shutdown.mediaUrl || '')}" placeholder="https://..." class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                         </div>
@@ -4175,7 +4218,11 @@
                             <label class="text-xs text-gray-400 mb-1 block">Custom HTML (runs sandboxed in its own frame; full control over the lockdown screen's look)</label>
                             <textarea id="admin-shutdown-customhtml" autocomplete="off" spellcheck="false" placeholder="<h1>We'll be back soon</h1>" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-28 resize-none font-mono">${escapeHtml(globalSettings.shutdown.customHtml || '')}</textarea>
                         </div>
-                        <div id="admin-shutdown-message-field" class="${globalSettings.shutdown.mediaType === 'html' ? 'hidden' : ''}">
+                        <div id="admin-shutdown-website-field" class="${globalSettings.shutdown.mediaType === 'website' ? '' : 'hidden'}">
+                            <label class="text-xs text-gray-400 mb-1 block">Website URL to embed (must allow being embedded — sites with X-Frame-Options/CSP frame-ancestors set will show blank)</label>
+                            <input type="text" id="admin-shutdown-websiteurl" autocomplete="off" value="${escapeHtml(globalSettings.shutdown.websiteUrl || '')}" placeholder="https://example.com" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                        </div>
+                        <div id="admin-shutdown-message-field" class="${globalSettings.shutdown.mediaType === 'html' || globalSettings.shutdown.mediaType === 'website' ? 'hidden' : ''}">
                             <label class="text-xs text-gray-400 mb-1 block">Lockdown Message</label>
                             <textarea id="admin-shutdown-message" autocomplete="off" spellcheck="false" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm h-20 resize-none">${escapeHtml(globalSettings.shutdown.message || '')}</textarea>
                         </div>
@@ -4576,10 +4623,12 @@
             const type = document.getElementById('admin-shutdown-mediatype').value;
             const urlField = document.getElementById('admin-shutdown-url-field');
             const htmlField = document.getElementById('admin-shutdown-html-field');
+            const websiteField = document.getElementById('admin-shutdown-website-field');
             const msgField = document.getElementById('admin-shutdown-message-field');
-            if (urlField) urlField.classList.toggle('hidden', type === 'html');
+            if (urlField) urlField.classList.toggle('hidden', !(type === 'image' || type === 'audio' || type === 'video'));
             if (htmlField) htmlField.classList.toggle('hidden', type !== 'html');
-            if (msgField) msgField.classList.toggle('hidden', type === 'html');
+            if (websiteField) websiteField.classList.toggle('hidden', type !== 'website');
+            if (msgField) msgField.classList.toggle('hidden', type === 'html' || type === 'website');
         }
 
         window.adminSaveShutdownConfig = async function() {
@@ -4589,6 +4638,7 @@
             const mediaType = document.getElementById('admin-shutdown-mediatype').value;
             const mediaUrl = document.getElementById('admin-shutdown-mediaurl').value.trim();
             const customHtml = document.getElementById('admin-shutdown-customhtml').value;
+            const websiteUrl = document.getElementById('admin-shutdown-websiteurl').value.trim();
             const message = document.getElementById('admin-shutdown-message').value.trim();
 
             if ((mediaType === 'image' || mediaType === 'audio' || mediaType === 'video') && !mediaUrl) {
@@ -4599,9 +4649,13 @@
                 showToast("Please provide the custom HTML, or change the media type", "error");
                 return;
             }
+            if (mediaType === 'website' && !websiteUrl) {
+                showToast("Please provide a website URL, or change the media type", "error");
+                return;
+            }
 
-            await db.ref('settings/shutdown').update({ mediaType, mediaUrl, customHtml, message });
-            showToast("Shutdown settings saved");
+            await db.ref('settings/shutdown').update({ mediaType, mediaUrl, customHtml, websiteUrl, message });
+            showToast("Shutdown settings saved — changes apply instantly to anyone already locked out");
         }
 
         window.adminEditUserPrompt = function(usernameKey) {
