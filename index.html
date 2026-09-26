@@ -1412,11 +1412,30 @@
             if (shutdownOn && !currentUser.isAdmin) {
                 document.getElementById('dashboard-view').classList.add('hidden');
                 document.getElementById('auth-view').classList.add('hidden');
-                if (!isLocked || currentConfigStr !== lastAppliedShutdownConfigStr) {
+
+                // Keep the user locked while shutdown is enabled. If the admin
+                // changes the message/media/HTML/website, immediately re-render
+                // the lock screen so the newest saved configuration appears
+                // without requiring the user to refresh the page.
+                if (!isLocked || lastAppliedShutdownConfigStr !== currentConfigStr) {
                     showShutdownScreen();
                     lastAppliedShutdownConfigStr = currentConfigStr;
                 }
-            } else if (isLocked) {
+            } else if (!currentUser.isAdmin && isLocked) {
+                // Do not silently unlock users when the admin turns shutdown OFF.
+                // Keep the lock screen visible and tell them to refresh and log in
+                // again so the normal authentication flow can restart cleanly.
+                const msgEl = document.getElementById('shutdown-screen-message');
+                if (msgEl) {
+                    msgEl.innerText = 'The server is back online. Please refresh the page and log in again to continue.';
+                }
+                renderShutdownMedia();
+                document.getElementById('dashboard-view').classList.add('hidden');
+                document.getElementById('auth-view').classList.add('hidden');
+                lastAppliedShutdownConfigStr = null;
+            } else if (isLocked && currentUser.isAdmin) {
+                // Administrators must still be able to return to the Admin Panel
+                // after disabling shutdown.
                 hideShutdownScreen();
                 document.getElementById('dashboard-view').classList.remove('hidden');
                 lastAppliedShutdownConfigStr = null;
@@ -4660,7 +4679,7 @@
             }
 
             await db.ref('settings/shutdown').update({ mediaType, mediaUrl, customHtml, websiteUrl, message });
-            showToast("Shutdown settings saved — changes apply instantly to anyone already locked out");
+            showToast("Shutdown settings saved — locked users will see the update automatically");
         }
 
         window.adminEditUserPrompt = function(usernameKey) {
