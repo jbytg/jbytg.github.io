@@ -930,25 +930,10 @@
                 if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
                 if (thx && globalSettings.specialThanks) thx.innerHTML = renderSpecialThanksHtml(globalSettings.specialThanks);
 
-                // Keep the pre-login shutdown screen live too. This listener runs
-                // even before a user logs in, so admin changes to the shutdown
-                // message, media, or ONLINE/SHUT DOWN state are applied instantly
-                // without requiring the locked-out user to refresh the page.
-                const shutdownScreen = document.getElementById('shutdown-screen');
-                if (shutdownScreen) {
-                    const shutdownEnabled = !!(globalSettings.shutdown && globalSettings.shutdown.enabled);
-                    const shutdownVisible = !shutdownScreen.classList.contains('hidden');
-                    if (shutdownEnabled && !currentUser) {
-                        const newConfigStr = JSON.stringify(globalSettings.shutdown || {});
-                        if (!shutdownVisible || newConfigStr !== lastAppliedShutdownConfigStr) {
-                            if (typeof showShutdownScreen === 'function') showShutdownScreen();
-                            lastAppliedShutdownConfigStr = newConfigStr;
-                        }
-                    } else if (!shutdownEnabled && shutdownVisible && !currentUser) {
-                        if (typeof hideShutdownScreen === 'function') hideShutdownScreen();
-                        lastAppliedShutdownConfigStr = null;
-                    }
-                }
+                // Shutdown/lock-screen state is intentionally NOT applied here.
+                // Before login, users must not be able to control or clear the
+                // shutdown state. The Admin Panel handles shutdown changes after
+                // an administrator logs in.
             }
         });
 
