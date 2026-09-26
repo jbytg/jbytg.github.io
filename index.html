@@ -59,6 +59,13 @@
         .glass { background: rgba(15, 15, 25, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .active-tab { border-bottom: 3px solid #a855f7; color: #a855f7; font-weight: bold; }
         .hidden { display: none !important; }
+        /* Keep native dropdown options readable on dark/glass UI. Some browsers
+           inherit a white option background with white text, making the labels
+           appear only after hovering. */
+        select { color: #f3f4f6 !important; background-color: rgba(15, 15, 25, 0.92) !important; }
+        select option { color: #f3f4f6 !important; background-color: #11111b !important; }
+        select option:checked, select option:hover { color: #ffffff !important; background-color: #6d28d9 !important; }
+        select:focus { color: #ffffff !important; }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
         ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 3px; }
@@ -930,10 +937,14 @@
                 if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
                 if (thx && globalSettings.specialThanks) thx.innerHTML = renderSpecialThanksHtml(globalSettings.specialThanks);
 
-                // Shutdown/lock-screen state is intentionally NOT applied here.
-                // Before login, users must not be able to control or clear the
-                // shutdown state. The Admin Panel handles shutdown changes after
-                // an administrator logs in.
+                // Keep already-authenticated users on the shutdown lock screen
+                // synchronized even though they never enter the dashboard.
+                // Firebase pushes every saved shutdown change here, so message,
+                // image, audio, video, Custom HTML, and website content can be
+                // re-rendered immediately without a manual page refresh.
+                if (currentUser && !currentUser.isAdmin) {
+                    syncShutdownLockdown();
+                }
             }
         });
 
@@ -1429,13 +1440,16 @@
                 }
             } else if (!currentUser.isAdmin && isLocked) {
                 // Do not silently unlock users when the admin turns shutdown OFF.
-                // Keep the lock screen visible and tell them to refresh and log in
-                // again so the normal authentication flow can restart cleanly.
+                // Replace the old shutdown content with a clear online message.
+                // The user must manually refresh and log in again.
                 const msgEl = document.getElementById('shutdown-screen-message');
+                const msgBox = document.getElementById('shutdown-message-box');
+                const mediaContainer = document.getElementById('shutdown-media-container');
                 if (msgEl) {
                     msgEl.innerText = 'The server is back online. Please refresh the page and log in again to continue.';
                 }
-                renderShutdownMedia();
+                if (msgBox) msgBox.classList.remove('hidden');
+                if (mediaContainer) mediaContainer.innerHTML = '';
                 document.getElementById('dashboard-view').classList.add('hidden');
                 document.getElementById('auth-view').classList.add('hidden');
                 lastAppliedShutdownConfigStr = null;
@@ -4568,9 +4582,17 @@
             const rulesText = document.getElementById('admin-rules-input').value.trim();
             const specialThanks = document.getElementById('admin-thanks-input').value.trim();
 
+            // Update the local UI immediately, then persist only the fields changed
+            // by this form. This avoids overwriting newer Firebase settings and lets
+            // the realtime settings listener propagate the same change to all users.
             globalSettings = { ...globalSettings, aboutText, rulesText, specialThanks };
-            await db.ref('settings').set(globalSettings);
-            showToast("Global settings updated!");
+            await db.ref('settings').update({ aboutText, rulesText, specialThanks });
+
+            // Refresh visible content immediately on the admin's own screen as well.
+            if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
+            if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
+            if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+            showToast("Global settings updated immediately!");
         }
 
         window.adminToggleMaintenance = function(section, enable) {
@@ -4684,8 +4706,11 @@
                 return;
             }
 
-            await db.ref('settings/shutdown').update({ mediaType, mediaUrl, customHtml, websiteUrl, message });
-            showToast("Shutdown settings saved — locked users will see the update automatically");
+            const shutdownUpdate = { mediaType, mediaUrl, customHtml, websiteUrl, message };
+            globalSettings.shutdown = { ...(globalSettings.shutdown || {}), ...shutdownUpdate };
+            syncShutdownLockdown();
+            await db.ref('settings/shutdown').update(shutdownUpdate);
+            showToast("Shutdown settings saved — changes are applied immediately");
         }
 
         window.adminEditUserPrompt = function(usernameKey) {
