@@ -151,7 +151,7 @@ ChromeOS, and other modern browser platforms.
 ## 🌐 Links
 
 -   **Website:** https://jbhub.ryzn.pro/
--   **GitHub:** Add your repository URL here
+-   **GitHub:** https://jbytg.github.io/
 -   **Brand:** JB YT GAMER
 
 ## 📜 License
