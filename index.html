@@ -389,6 +389,56 @@
             #settings-gear-icon.spin-on-close { animation: none !important; }
             .glitch-active { animation: none !important; transform: none !important; }
         }
+
+        /* Admin Panel - per-section collapse controls */
+        .admin-section-collapse-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-shrink: 0;
+            padding: 0.3rem 0.55rem;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 0.55rem;
+            background: rgba(255,255,255,0.05);
+            color: #9ca3af;
+            font-size: 0.68rem;
+            line-height: 1;
+            transition: all 0.18s ease;
+            cursor: pointer;
+        }
+        .admin-section-collapse-btn:hover {
+            background: rgba(168,85,247,0.18);
+            color: #d8b4fe;
+            border-color: rgba(168,85,247,0.35);
+        }
+        .admin-section-collapse-btn i {
+            transition: transform 0.18s ease;
+        }
+        .admin-section-collapse-btn.is-collapsed i {
+            transform: rotate(-90deg);
+        }
+        .admin-section-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            width: 100%;
+        }
+        .admin-section-title-row > h2 {
+            min-width: 0;
+            flex: 1 1 auto;
+        }
+        .admin-section-body {
+            overflow: hidden;
+            transition: max-height 0.22s ease, opacity 0.18s ease, margin-top 0.22s ease;
+        }
+        .admin-section-body.admin-section-collapsed {
+            max-height: 0 !important;
+            opacity: 0;
+            margin-top: 0 !important;
+            pointer-events: none;
+        }
+
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
@@ -515,6 +565,14 @@
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
                         <input type="date" id="dob" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                        <select id="gender" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
                     </div>
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">Confirm Password</label>
@@ -1184,8 +1242,10 @@
 
             if (isSignupMode) {
                 const dob = document.getElementById('dob').value;
+                const gender = document.getElementById('gender').value;
                 const confPass = document.getElementById('conf-password').value;
                 if (!dob) { showToast("Please enter your Date of Birth", "error"); return; }
+                if (!gender) { showToast("Please select Male or Female", "error"); return; }
                 
                 // Protection Feature: Age must be strictly greater than 1 year
                 const userAge = getAgeInYears(dob);
@@ -1205,7 +1265,7 @@
                 const allUsersSnap = await db.ref('users').once('value');
                 const isFirstUser = !allUsersSnap.exists();
 
-                const newUser = { username, password, dob, isAdmin: isFirstUser, id: 'u_' + Date.now() };
+                const newUser = { username, password, dob, gender, isAdmin: isFirstUser, id: 'u_' + Date.now() };
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
@@ -4020,6 +4080,15 @@
                             <input type="date" id="account-dob-input" value="${currentUser.dob || ''}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
                         </div>
 
+                        <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                            <select id="account-gender-input" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
+                                <option value="" ${!currentUser.gender ? 'selected' : ''}>Select gender</option>
+                                <option value="Male" ${currentUser.gender === 'Male' ? 'selected' : ''}>Male</option>
+                                <option value="Female" ${currentUser.gender === 'Female' ? 'selected' : ''}>Female</option>
+                            </select>
+                        </div>
+
                         <!-- Editing Account Section Password Indicator -->
                         <div class="pt-2 border-t border-white/10 space-y-2">
                             <label class="text-xs text-purple-300 mb-1 block font-semibold">Change Password (Optional)</label>
@@ -4069,12 +4138,14 @@
 
             const newUsername = document.getElementById('acc-username-input').value.trim();
             const newDob = document.getElementById('account-dob-input').value;
+            const newGender = document.getElementById('account-gender-input').value;
             const newPassword = document.getElementById('acc-new-pass').value;
             const oldPassword = document.getElementById('acc-old-pass').value;
 
             if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
             if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
+            if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
             // Protection Feature: Age must be strictly greater than 1 year when editing profile
             if (newDob) {
@@ -4124,6 +4195,7 @@
 
             if (newPassword) currentUser.password = newPassword;
             if (newDob) currentUser.dob = newDob;
+            currentUser.gender = newGender;
 
             await db.ref('users/' + newKey).set(currentUser);
             showToast("Profile updated successfully!");
@@ -4198,12 +4270,284 @@
             `;
         }
 
+
+        // Admin Panel: independently collapse/reduce each section.
+        // The collapsed state is saved locally so Firebase re-renders do not reopen
+        // sections the admin intentionally reduced.
+        function initAdminSectionCollapse(container) {
+            if (!container) return;
+
+            const panel = container.querySelector('.max-w-2xl');
+            if (!panel) return;
+
+            const sections = Array.from(panel.children).filter(el => el.tagName === 'DIV');
+            sections.forEach((section, index) => {
+                if (section.dataset.adminCollapseReady === 'true') return;
+
+                const heading = section.querySelector(':scope > h2');
+                if (!heading) return;
+
+                section.dataset.adminCollapseReady = 'true';
+                const sectionKey = 'jbHubAdminSectionCollapsed_' + index;
+                const savedCollapsed = localStorage.getItem(sectionKey) === '1';
+
+                const titleRow = document.createElement('div');
+                titleRow.className = 'admin-section-title-row';
+                heading.parentNode.insertBefore(titleRow, heading);
+                titleRow.appendChild(heading);
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'admin-section-collapse-btn';
+                button.setAttribute('aria-expanded', savedCollapsed ? 'false' : 'true');
+                button.title = savedCollapsed ? 'Expand section' : 'Reduce section';
+                button.innerHTML = '<i class="fa fa-chevron-down"></i><span>' + (savedCollapsed ? 'Expand' : 'Reduce') + '</span>';
+                titleRow.appendChild(button);
+
+                const bodyNodes = Array.from(section.children).filter(el => el !== titleRow);
+                const body = document.createElement('div');
+                body.className = 'admin-section-body';
+                bodyNodes.forEach(node => body.appendChild(node));
+                section.appendChild(body);
+
+                const applyState = collapsed => {
+                    if (collapsed) {
+                        body.classList.add('admin-section-collapsed');
+                        body.style.maxHeight = '0px';
+                        button.classList.add('is-collapsed');
+                        button.setAttribute('aria-expanded', 'false');
+                        button.title = 'Expand section';
+                        button.querySelector('span').textContent = 'Expand';
+                    } else {
+                        body.classList.remove('admin-section-collapsed');
+                        body.style.maxHeight = body.scrollHeight + 'px';
+                        button.classList.remove('is-collapsed');
+                        button.setAttribute('aria-expanded', 'true');
+                        button.title = 'Reduce section';
+                        button.querySelector('span').textContent = 'Reduce';
+                    }
+                };
+
+                button.addEventListener('click', () => {
+                    const collapsed = !body.classList.contains('admin-section-collapsed');
+                    localStorage.setItem(sectionKey, collapsed ? '1' : '0');
+                    applyState(collapsed);
+                });
+
+                applyState(savedCollapsed);
+
+                // Keep expanded content sized correctly after the window changes.
+                if (!savedCollapsed) {
+                    const resizeObserver = new ResizeObserver(() => {
+                        if (!body.classList.contains('admin-section-collapsed')) {
+                            body.style.maxHeight = body.scrollHeight + 'px';
+                        }
+                    });
+                    resizeObserver.observe(body);
+                }
+            });
+        }
+
         // --- FULL ADMIN PANEL ---
+        // ---- User Accounts Management: search, filter & sort ----
+        // State is global so Firebase-driven re-renders don't reset the admin's choices.
+        const ADMIN_USER_FILTER_DEFAULTS = { search: '', gender: 'all', status: 'all', ban: 'all', role: 'all', login: 'all', age: 'all', sort: 'name-asc' };
+        let adminUserFilters = Object.assign({}, ADMIN_USER_FILTER_DEFAULTS);
+
+        function adminUserBanState(u) {
+            const ban = u.ban && u.ban.isBanned ? u.ban : null;
+            if (!ban) return 'none';
+            const expired = ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
+            if (expired) return 'expired';
+            return ban.type === 'permanent' ? 'permanent' : 'temporary';
+        }
+
+        function getFilteredAdminUsers() {
+            const f = adminUserFilters;
+            const q = f.search.trim().toLowerCase();
+            const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+            const DAY = 86400000;
+            const now = Date.now();
+
+            const list = usersData.filter(u => {
+                if (q && !((u.username || '').toLowerCase().includes(q) || (u.dob || '').includes(q))) return false;
+
+                if (f.gender !== 'all') {
+                    if (f.gender === 'unset' ? !!u.gender : u.gender !== f.gender) return false;
+                }
+                if (f.status !== 'all' && (f.status === 'online') !== (u.isOnline === true)) return false;
+
+                if (f.ban !== 'all') {
+                    const bs = adminUserBanState(u);
+                    if (f.ban === 'not-banned' && bs !== 'none') return false;
+                    if (f.ban === 'banned' && (bs === 'none' || bs === 'expired')) return false;
+                    if (['permanent', 'temporary', 'expired'].includes(f.ban) && bs !== f.ban) return false;
+                }
+
+                if (f.role !== 'all' && (f.role === 'admin') !== !!u.isAdmin) return false;
+
+                if (f.login !== 'all') {
+                    const ll = u.lastLogin || 0;
+                    if (f.login === 'never' && ll) return false;
+                    if (f.login === 'today' && ll < startOfToday.getTime()) return false;
+                    if (f.login === '7d' && ll < now - 7 * DAY) return false;
+                    if (f.login === '30d' && ll < now - 30 * DAY) return false;
+                    if (f.login === 'inactive30' && (!ll || ll >= now - 30 * DAY)) return false;
+                }
+
+                if (f.age !== 'all') {
+                    const age = getAgeInYears(u.dob);
+                    if (f.age === 'nodob') { if (age >= 0) return false; }
+                    else {
+                        if (age < 0) return false;
+                        if (f.age === 'minor' && age >= 18) return false;
+                        if (f.age === '18-25' && (age < 18 || age > 25)) return false;
+                        if (f.age === '26-39' && (age < 26 || age > 39)) return false;
+                        if (f.age === '40-59' && (age < 40 || age > 59)) return false;
+                        if (f.age === '60+' && age < 60) return false;
+                    }
+                }
+                return true;
+            });
+
+            const byName = (a, b) => (a.username || '').toLowerCase().localeCompare((b.username || '').toLowerCase());
+            // DOB strings are YYYY-MM-DD so they sort lexically; users without DOB always go last.
+            const dobCmp = dir => (a, b) => {
+                if (!a.dob && !b.dob) return byName(a, b);
+                if (!a.dob) return 1;
+                if (!b.dob) return -1;
+                return dir * a.dob.localeCompare(b.dob) || byName(a, b);
+            };
+            const sorters = {
+                'name-asc': byName,
+                'name-desc': (a, b) => byName(b, a),
+                'login-new': (a, b) => (b.lastLogin || 0) - (a.lastLogin || 0) || byName(a, b),
+                'login-old': (a, b) => (a.lastLogin || 0) - (b.lastLogin || 0) || byName(a, b),
+                'dob-oldest': dobCmp(1),
+                'dob-youngest': dobCmp(-1)
+            };
+            return list.sort(sorters[f.sort] || byName);
+        }
+
+        function adminUserFilterBarHtml() {
+            const f = adminUserFilters;
+            const sel = (id, key, label, options) => `
+                <div class="flex flex-col gap-1">
+                    <label for="${id}" class="text-[10px] uppercase tracking-wide text-gray-400">${label}</label>
+                    <select id="${id}" onchange="setAdminUserFilter('${key}', this.value)" class="p-2 bg-white/5 border border-white/10 rounded-lg outline-none focus:border-purple-500 text-xs text-gray-200">
+                        ${options.map(([v, t]) => `<option value="${v}" ${f[key] === v ? 'selected' : ''}>${t}</option>`).join('')}
+                    </select>
+                </div>`;
+            return `
+                <div class="space-y-3 text-xs">
+                    <div class="relative">
+                        <i class="fa fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="admin-user-search" value="${escapeHtml(f.search)}" oninput="setAdminUserFilter('search', this.value)" placeholder="Search by name or DOB (e.g. 2005-04)..." autocomplete="off" class="w-full p-2.5 pl-9 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        ${sel('admin-filter-gender', 'gender', 'Gender', [['all', 'All'], ['Male', 'Male'], ['Female', 'Female'], ['unset', 'Not set']])}
+                        ${sel('admin-filter-status', 'status', 'Status', [['all', 'All'], ['online', 'Online'], ['offline', 'Offline']])}
+                        ${sel('admin-filter-ban', 'ban', 'Ban', [['all', 'All'], ['not-banned', 'Not banned'], ['banned', 'Banned (active)'], ['permanent', 'Permanent ban'], ['temporary', 'Temporary ban'], ['expired', 'Ban expired']])}
+                        ${sel('admin-filter-role', 'role', 'Role', [['all', 'All'], ['admin', 'Admins'], ['user', 'Regular users']])}
+                        ${sel('admin-filter-login', 'login', 'Last login', [['all', 'Any time'], ['today', 'Today'], ['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['inactive30', 'Inactive 30+ days'], ['never', 'Never logged in']])}
+                        ${sel('admin-filter-age', 'age', 'Age group', [['all', 'All ages'], ['minor', 'Under 18'], ['18-25', '18–25'], ['26-39', '26–39'], ['40-59', '40–59'], ['60+', '60+'], ['nodob', 'No DOB']])}
+                    </div>
+                    <div class="flex flex-wrap items-end justify-between gap-2">
+                        ${sel('admin-filter-sort', 'sort', 'Sort by', [['name-asc', 'Name A–Z'], ['name-desc', 'Name Z–A'], ['login-new', 'Last login (newest)'], ['login-old', 'Last login (oldest)'], ['dob-oldest', 'DOB (oldest first)'], ['dob-youngest', 'DOB (youngest first)']])}
+                        <div class="flex items-center gap-3">
+                            <span class="text-gray-400">Showing <span id="admin-user-count" class="text-purple-300 font-semibold">${getFilteredAdminUsers().length}</span> of ${usersData.length}</span>
+                            <button type="button" onclick="clearAdminUserFilters()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition"><i class="fa fa-rotate-left mr-1"></i>Clear</button>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        function adminUserListHtml() {
+            const users = getFilteredAdminUsers();
+            if (!users.length) return '<p class="text-xs text-gray-400 italic">No users match these filters.</p>';
+            return users.map(adminUserCardHtml).join('');
+        }
+
+        function adminUserCardHtml(u) {
+                                const isOnline = u.isOnline === true;
+                                const lastLoginFormatted = u.lastLogin 
+                                    ? `${new Date(u.lastLogin).toLocaleDateString()} ${new Date(u.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
+                                    : 'Never';
+
+                                const ban = u.ban && u.ban.isBanned ? u.ban : null;
+                                const banExpired = ban && ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
+                                const usernameKeyLower = u.username.toLowerCase();
+
+                                return `
+                                    <div class="p-4 bg-white/5 rounded-xl border ${ban && !banExpired ? 'border-red-500/40' : 'border-white/10'} space-y-2">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
+                                                    <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}" title="${isOnline ? 'Online' : 'Offline'}"></span>
+                                                    <p class="font-bold text-sm text-purple-200">${escapeHtml(u.username)} ${u.isAdmin ? '<span class="text-xs text-emerald-400">(Admin)</span>' : ''}</p>
+                                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}">
+                                                        ${isOnline ? 'ONLINE' : 'OFFLINE'}
+                                                    </span>
+                                                    ${ban ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold ${banExpired ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
+                                                        ${banExpired ? 'BAN EXPIRED (PENDING AUTO-UNBAN)' : (ban.type === 'permanent' ? 'BANNED (PERMANENT)' : 'BANNED (TEMPORARY)')}
+                                                    </span>` : ''}
+                                                </div>
+                                                <p class="text-xs text-gray-300 mt-1">Password: <span class="font-mono text-pink-300 font-semibold">${escapeHtml(u.password)}</span></p>
+                                                <p class="text-xs text-gray-400">DOB: ${u.dob || 'N/A'} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
+                                                <p class="text-xs text-gray-400">Gender: <span class="text-purple-300 font-medium">${escapeHtml(u.gender || 'N/A')}</span></p>
+                                                <p class="text-xs text-purple-300/80 mt-1"><i class="fa fa-clock text-pink-400 mr-1"></i>Last Login: <span class="font-medium text-gray-200">${lastLoginFormatted}</span></p>
+                                                ${ban && !banExpired ? `<p class="text-xs text-red-300 mt-1"><i class="fa fa-ban mr-1"></i>Reason: ${escapeHtml(ban.reason || 'No reason provided')}${ban.type === 'temporary' && ban.unbanAt ? ` &middot; Unban Date: ${new Date(ban.unbanAt).toLocaleDateString()}` : ''}</p>` : ''}
+                                            </div>
+                                            <div class="flex flex-wrap gap-2 justify-end">
+                                                <button onclick="adminEditUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
+                                                    Edit Credentials
+                                                </button>
+                                                <button onclick="adminToggleRole('${usernameKeyLower}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
+                                                    ${u.isAdmin ? 'Demote' : 'Promote Admin'}
+                                                </button>
+                                                ${ban
+                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>
+                                                       <button onclick="adminEditBanReasonPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
+                                                    : `<button onclick="adminBanUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
+                                                }
+                                                <button onclick="adminDeleteUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
+                                                    Delete User
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                                    }
+
+        // Updates only the user list + count so typing in the search box keeps focus.
+        function refreshAdminUserList() {
+            const list = document.getElementById('admin-user-list');
+            if (!list) return;
+            list.innerHTML = adminUserListHtml();
+            const count = document.getElementById('admin-user-count');
+            if (count) count.textContent = getFilteredAdminUsers().length;
+        }
+
+        window.setAdminUserFilter = function(key, value) {
+            adminUserFilters[key] = value;
+            refreshAdminUserList();
+        };
+
+        window.clearAdminUserFilters = function() {
+            adminUserFilters = Object.assign({}, ADMIN_USER_FILTER_DEFAULTS);
+            renderAdminTab(document.getElementById('tab-content'));
+        };
+
         function renderAdminTab(container) {
             if (!currentUser || !currentUser.isAdmin) {
                 container.innerHTML = `<p class="text-red-400 text-center font-bold">Access Denied: Admin Privileges Required</p>`;
                 return;
             }
+
+            // Remember search focus/caret so live Firebase re-renders don't interrupt typing.
+            const prevActive = document.activeElement;
+            const searchFocus = prevActive && prevActive.id === 'admin-user-search'
+                ? { start: prevActive.selectionStart, end: prevActive.selectionEnd } : null;
 
             container.innerHTML = `
                 <div class="space-y-6 max-w-2xl mx-auto">
@@ -4368,56 +4712,9 @@
                     <!-- User Accounts Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">User Accounts Management</h2>
-                        <div class="space-y-3">
-                            ${usersData.map(u => {
-                                const isOnline = u.isOnline === true;
-                                const lastLoginFormatted = u.lastLogin 
-                                    ? `${new Date(u.lastLogin).toLocaleDateString()} ${new Date(u.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
-                                    : 'Never';
-
-                                const ban = u.ban && u.ban.isBanned ? u.ban : null;
-                                const banExpired = ban && ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
-                                const usernameKeyLower = u.username.toLowerCase();
-
-                                return `
-                                    <div class="p-4 bg-white/5 rounded-xl border ${ban && !banExpired ? 'border-red-500/40' : 'border-white/10'} space-y-2">
-                                        <div class="flex justify-between items-start">
-                                            <div>
-                                                <div class="flex items-center space-x-2 flex-wrap gap-y-1">
-                                                    <span class="w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}" title="${isOnline ? 'Online' : 'Offline'}"></span>
-                                                    <p class="font-bold text-sm text-purple-200">${escapeHtml(u.username)} ${u.isAdmin ? '<span class="text-xs text-emerald-400">(Admin)</span>' : ''}</p>
-                                                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'}">
-                                                        ${isOnline ? 'ONLINE' : 'OFFLINE'}
-                                                    </span>
-                                                    ${ban ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold ${banExpired ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'}">
-                                                        ${banExpired ? 'BAN EXPIRED (PENDING AUTO-UNBAN)' : (ban.type === 'permanent' ? 'BANNED (PERMANENT)' : 'BANNED (TEMPORARY)')}
-                                                    </span>` : ''}
-                                                </div>
-                                                <p class="text-xs text-gray-300 mt-1">Password: <span class="font-mono text-pink-300 font-semibold">${escapeHtml(u.password)}</span></p>
-                                                <p class="text-xs text-gray-400">DOB: ${u.dob || 'N/A'} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
-                                                <p class="text-xs text-purple-300/80 mt-1"><i class="fa fa-clock text-pink-400 mr-1"></i>Last Login: <span class="font-medium text-gray-200">${lastLoginFormatted}</span></p>
-                                                ${ban && !banExpired ? `<p class="text-xs text-red-300 mt-1"><i class="fa fa-ban mr-1"></i>Reason: ${escapeHtml(ban.reason || 'No reason provided')}${ban.type === 'temporary' && ban.unbanAt ? ` &middot; Unban Date: ${new Date(ban.unbanAt).toLocaleDateString()}` : ''}</p>` : ''}
-                                            </div>
-                                            <div class="flex flex-wrap gap-2 justify-end">
-                                                <button onclick="adminEditUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
-                                                    Edit Credentials
-                                                </button>
-                                                <button onclick="adminToggleRole('${usernameKeyLower}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
-                                                    ${u.isAdmin ? 'Demote' : 'Promote Admin'}
-                                                </button>
-                                                ${ban
-                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>
-                                                       <button onclick="adminEditBanReasonPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
-                                                    : `<button onclick="adminBanUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
-                                                }
-                                                <button onclick="adminDeleteUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
-                                                    Delete User
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('')}
+                        ${adminUserFilterBarHtml()}
+                        <div id="admin-user-list" class="space-y-3">
+                            ${adminUserListHtml()}
                         </div>
                     </div>
 
@@ -4601,6 +4898,16 @@
                     </div>
                 </div>
             `;
+
+            // Add an independent collapse/reduce control to every Admin Panel card.
+            // This runs after the HTML is rendered so it also covers dynamically
+            // generated leaderboard/user/bug sections without changing their content.
+            initAdminSectionCollapse(container);
+
+            if (searchFocus) {
+                const el = document.getElementById('admin-user-search');
+                if (el) { el.focus(); try { el.setSelectionRange(searchFocus.start, searchFocus.end); } catch (e) {} }
+            }
         }
 
         window.adminReplyBugPrompt = function(bugId, currentReply, currentStatus) {
@@ -4790,18 +5097,27 @@
                     <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
                     <input type="date" id="admin-edit-dob" value="${user.dob || ''}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
                 </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                    <select id="admin-edit-gender" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
+                        <option value="Male" ${user.gender === 'Male' ? 'selected' : ''}>Male</option>
+                        <option value="Female" ${user.gender === 'Female' ? 'selected' : ''}>Female</option>
+                    </select>
+                </div>
             `;
 
-            openModal("Edit User Account", `Update credentials and DOB for user '${user.username}'`, inputsHtml, async () => {
+            openModal("Edit User Account", `Update credentials, DOB and gender for user '${user.username}'`, inputsHtml, async () => {
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const newUsername = document.getElementById('admin-edit-username').value.trim();
                 const newPassword = document.getElementById('admin-edit-password').value.trim();
                 const newDob = document.getElementById('admin-edit-dob').value;
+                const newGender = document.getElementById('admin-edit-gender').value;
 
                 if (!newUsername || !newPassword) { showToast("Username and password required", "error"); return; }
                 if (!newDob) { showToast("Date of Birth is required", "error"); return; }
+                if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
                 // Protection Feature: Validate age > 1 year for Admin updates
                 const userAge = getAgeInYears(newDob);
@@ -4845,12 +5161,14 @@
                 user.username = newUsername;
                 user.password = newPassword;
                 user.dob = newDob;
+                user.gender = newGender;
                 await db.ref('users/' + newKey).set(user);
 
                 if (currentUser.username.toLowerCase() === usernameKey) {
                     currentUser.username = newUsername;
                     currentUser.password = newPassword;
                     currentUser.dob = newDob;
+                    currentUser.gender = newGender;
                 }
 
                 showToast("User updated successfully!");
