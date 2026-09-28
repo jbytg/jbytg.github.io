@@ -163,18 +163,9 @@ open-source license.
 ## 💜 Credits
 
 **JB HUB**\
-Created and maintained by **JB YT GAMER**.
+Created and maintained by **Johan Biju**.
 
 Special thanks to everyone who helps test, improve, and use the
 platform.
 
 ------------------------------------------------------------------------
-
-```{=html}
-<p align="center">
-```
-`<strong>`{=html}JB HUB`</strong>`{=html}`<br>`{=html} Cloud Workspace •
-Cyber Arcade • Digital Platform
-```{=html}
-</p>
-```
