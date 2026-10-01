@@ -4460,8 +4460,14 @@
                 bodyNodes.forEach(node => body.appendChild(node));
                 section.appendChild(body);
 
-                const applyState = collapsed => {
+                const applyState = (collapsed, animate) => {
                     if (collapsed) {
+                        // If the body is unclamped ('none'), pin it to its real height first
+                        // so the collapse animates smoothly from the current size.
+                        if (body.style.maxHeight === 'none' || body.style.maxHeight === '') {
+                            body.style.maxHeight = body.scrollHeight + 'px';
+                            void body.offsetHeight; // force reflow
+                        }
                         body.classList.add('admin-section-collapsed');
                         body.style.maxHeight = '0px';
                         button.classList.add('is-collapsed');
@@ -4470,7 +4476,23 @@
                         button.querySelector('span').textContent = 'Expand';
                     } else {
                         body.classList.remove('admin-section-collapsed');
-                        body.style.maxHeight = body.scrollHeight + 'px';
+                        if (animate) {
+                            // Animate open to the current height, then RELEASE the limit so the
+                            // section can grow/shrink freely when its content changes
+                            // (e.g. user filters showing more users).
+                            body.style.maxHeight = body.scrollHeight + 'px';
+                            const release = () => {
+                                if (!body.classList.contains('admin-section-collapsed')) body.style.maxHeight = 'none';
+                            };
+                            body.addEventListener('transitionend', function onEnd(e) {
+                                if (e.propertyName !== 'max-height') return;
+                                body.removeEventListener('transitionend', onEnd);
+                                release();
+                            });
+                            setTimeout(release, 400); // fallback if transitionend never fires
+                        } else {
+                            body.style.maxHeight = 'none';
+                        }
                         button.classList.remove('is-collapsed');
                         button.setAttribute('aria-expanded', 'true');
                         button.title = 'Reduce section';
@@ -4481,20 +4503,12 @@
                 button.addEventListener('click', () => {
                     const collapsed = !body.classList.contains('admin-section-collapsed');
                     localStorage.setItem(sectionKey, collapsed ? '1' : '0');
-                    applyState(collapsed);
+                    applyState(collapsed, true);
                 });
 
-                applyState(savedCollapsed);
-
-                // Keep expanded content sized correctly after the window changes.
-                if (!savedCollapsed) {
-                    const resizeObserver = new ResizeObserver(() => {
-                        if (!body.classList.contains('admin-section-collapsed')) {
-                            body.style.maxHeight = body.scrollHeight + 'px';
-                        }
-                    });
-                    resizeObserver.observe(body);
-                }
+                applyState(savedCollapsed, false);
+                // No ResizeObserver needed: an expanded section has max-height:none,
+                // so it always follows its content (grows AND shrinks).
             });
         }
 
