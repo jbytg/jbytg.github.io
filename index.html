@@ -4174,6 +4174,7 @@
                             </div>
                         </div>
 
+                        <p class="text-xs text-gray-400 text-center">Account updates left today: <span class="font-bold text-purple-300">${Math.max(0, MAX_ACCOUNT_UPDATES_PER_DAY - getAccountEditsUsedToday(currentUser))}</span> of ${MAX_ACCOUNT_UPDATES_PER_DAY}</p>
                         <button onclick="updateAccountProfile()" class="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">
                             Save Account Updates
                         </button>
@@ -4190,6 +4191,17 @@
             `;
         }
 
+        // ---- Account update limit (per calendar day, local time) ----
+        const MAX_ACCOUNT_UPDATES_PER_DAY = 2;
+        function getLocalDayKey() {
+            const d = new Date();
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        function getAccountEditsUsedToday(rec) {
+            const log = rec && rec.accountEdits;
+            return (log && log.day === getLocalDayKey()) ? (log.count || 0) : 0;
+        }
+
         window.updateAccountProfile = async function() {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
@@ -4199,6 +4211,17 @@
             const newGender = document.getElementById('account-gender-input').value;
             const newPassword = document.getElementById('acc-new-pass').value;
             const oldPassword = document.getElementById('acc-old-pass').value;
+
+            // Nothing changed? Then the update is unsuccessful and does NOT use up a daily update.
+            const nothingChanged =
+                newUsername === currentUser.username &&
+                (!newDob || newDob === currentUser.dob) &&
+                newGender === currentUser.gender &&
+                (!newPassword || newPassword === currentUser.password);
+            if (nothingChanged) {
+                showToast("Update unsuccessful: no changes detected", "error");
+                return;
+            }
 
             if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
             if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
@@ -4225,7 +4248,16 @@
             const oldSnap = await oldRef.once('value');
             const fullRecord = oldSnap.val() || {};
 
+            // Daily limit (read from the saved record so it can't be dodged by refreshing)
+            const usedToday = getAccountEditsUsedToday(fullRecord);
+            if (usedToday >= MAX_ACCOUNT_UPDATES_PER_DAY) {
+                showToast("Daily limit reached: you can update your account only " + MAX_ACCOUNT_UPDATES_PER_DAY + " times per day. Try again tomorrow.", "error");
+                return;
+            }
+            const newEditLog = { day: getLocalDayKey(), count: usedToday + 1 };
+
             const mergedRecord = Object.assign({}, fullRecord, {
+                accountEdits: newEditLog,
                 username: newUsername,
                 password: newPassword || currentUser.password,
                 dob: newDob || currentUser.dob || fullRecord.dob || '',
@@ -4276,6 +4308,12 @@
                 notesData.forEach(n => {
                     if (n.userId === mergedRecord.id) updates['notes/' + n.id + '/username'] = newUsername;
                 });
+                chatData.forEach(m => {
+                    if (m.userId === mergedRecord.id) updates['globalChat/' + m.id + '/username'] = newUsername;
+                });
+                bugReportsData.forEach(r => {
+                    if (r.userId === mergedRecord.id) updates['bugReports/' + r.id + '/username'] = newUsername;
+                });
 
                 try {
                     await db.ref().update(updates);   // all-or-nothing
@@ -4299,7 +4337,8 @@
                     password: mergedRecord.password,
                     dob: mergedRecord.dob,
                     gender: mergedRecord.gender,
-                    id: mergedRecord.id
+                    id: mergedRecord.id,
+                    accountEdits: newEditLog
                 };
                 await oldRef.update(profileUpdates);
                 Object.assign(currentUser, profileUpdates);
