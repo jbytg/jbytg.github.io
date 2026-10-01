@@ -808,6 +808,46 @@
             }).join('');
         }
 
+        // ---- Ghost-user protection helpers ----
+        // Marks a user offline ONLY if the account still exists, and first cancels
+        // the server-side onDisconnect so it can never re-create a deleted/renamed node.
+        async function safeSetOffline(usernameKey) {
+            if (!usernameKey) return;
+            try {
+                const ref = db.ref('users/' + usernameKey);
+                await ref.child('isOnline').onDisconnect().cancel();
+                const s = await ref.child('username').once('value');
+                if (s.exists()) await ref.update({ isOnline: false });
+            } catch (e) {}
+        }
+
+        // Runs when the logged-in account's record disappears (deleted by admin,
+        // renamed by admin, etc.): log out WITHOUT writing anything back to Firebase.
+        async function forceLogoutAccountRemoved() {
+            const usernameKey = sessionListenerUsernameKey;
+            detachSessionListener();
+            detachMyBanListener();
+            mySessionId = null;
+            if (usernameKey) {
+                try { await db.ref('users/' + usernameKey + '/isOnline').onDisconnect().cancel(); } catch (e) {}
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            showToast("This account was removed or renamed. Please log in again.", "error");
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+            });
+        }
+
         // Detaches the realtime listener that watches the logged-in user's
         // own ban status (see setupBanWatcher / forceLogoutBanned below).
         function detachMyBanListener() {
@@ -847,7 +887,7 @@
             mySessionId = null;
 
             if (usernameKey) {
-                try { await db.ref('users/' + usernameKey).update({ isOnline: false }); } catch (e) {}
+                await safeSetOffline(usernameKey);
             }
             if (presenceRef) {
                 db.ref('.info/connected').off('value', presenceRef);
@@ -895,6 +935,7 @@
             sessionListenerHandler = db.ref('users/' + usernameKey + '/activeSession').on('value', snap => {
                 if (!currentUser || !mySessionId) return;
                 const sessionVal = snap.val();
+                if (sessionVal === null) { forceLogoutAccountRemoved(); return; }
                 if (sessionVal && sessionVal !== mySessionId) {
                     forceLogoutOtherDevice();
                 }
@@ -908,7 +949,7 @@
             mySessionId = null;
 
             if (usernameKey) {
-                try { await db.ref('users/' + usernameKey).update({ isOnline: false }); } catch (e) {}
+                await safeSetOffline(usernameKey);
             }
             if (presenceRef) {
                 db.ref('.info/connected').off('value', presenceRef);
@@ -973,16 +1014,20 @@
 
             presenceRef = connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
-                    userRef.child('isOnline').onDisconnect().set(false);
-                    const now = Date.now();
-                    userRef.update({
-                        isOnline: true,
-                        lastLogin: now
-                    });
-                    if (currentUser) {
-                        currentUser.isOnline = true;
-                        currentUser.lastLogin = now;
-                    }
+                    // Never write presence for an account that doesn't exist (prevents ghost nodes)
+                    userRef.child('username').once('value').then(us => {
+                        if (!us.exists()) return;
+                        userRef.child('isOnline').onDisconnect().set(false);
+                        const now = Date.now();
+                        userRef.update({
+                            isOnline: true,
+                            lastLogin: now
+                        });
+                        if (currentUser) {
+                            currentUser.isOnline = true;
+                            currentUser.lastLogin = now;
+                        }
+                    }).catch(() => {});
                 }
             });
         }
@@ -1772,7 +1817,14 @@
                 db.ref('users').on('value', snap => {
                     usersData = [];
                     if (snap.exists()) {
-                        snap.forEach(child => { const v = child.val(); if (v && v.username) usersData.push(v); });
+                        snap.forEach(child => {
+                            const v = child.val();
+                            if (v && v.username) { usersData.push(v); }
+                            else if (!v || typeof v !== 'object' || (!v.username && !v.password)) {
+                                // Ghost record (e.g. only {isOnline:false}) - safe to purge automatically
+                                db.ref('users/' + child.key).remove().catch(() => {});
+                            }
+                        });
                     }
                     if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
                 });
@@ -1782,7 +1834,7 @@
         window.logout = async function() {
             if (currentUser) {
                 const usernameKey = currentUser.username.toLowerCase();
-                await db.ref('users/' + usernameKey).update({ isOnline: false });
+                await safeSetOffline(usernameKey);
             }
             if (presenceRef) {
                 db.ref('.info/connected').off('value', presenceRef);
@@ -4297,6 +4349,10 @@
                     }
                 });
 
+                try { await db.ref('users/' + usernameKey + '/isOnline').onDisconnect().cancel(); } catch (e) {}
+                if (presenceRef) { db.ref('.info/connected').off('value', presenceRef); presenceRef = null; }
+                detachSessionListener();
+                detachMyBanListener();
                 await db.ref('users/' + usernameKey).remove();
                 await db.ref('leaderboard/' + usernameKey).remove();
                 await db.ref('memoryLeaderboard/' + usernameKey).remove();
