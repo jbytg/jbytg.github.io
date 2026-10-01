@@ -969,7 +969,7 @@
             const userRef = db.ref('users/' + usernameKey);
             const connectedRef = db.ref('.info/connected');
 
-            if (presenceRef) presenceRef.off();
+            if (presenceRef) { connectedRef.off('value', presenceRef); presenceRef = null; }
 
             presenceRef = connectedRef.on('value', (snap) => {
                 if (snap.val() === true) {
@@ -1283,6 +1283,12 @@
                 }
 
                 let userVal = snapshot.val();
+
+                // Repair accounts damaged by the old rename bug (record saved without an id)
+                if (!userVal.id) {
+                    userVal.id = 'u_' + Date.now();
+                    await userRef.update({ id: userVal.id });
+                }
 
                 // Ban Enforcement: check for an active ban before granting access
                 if (userVal.ban && userVal.ban.isBanned) {
@@ -1766,7 +1772,7 @@
                 db.ref('users').on('value', snap => {
                     usersData = [];
                     if (snap.exists()) {
-                        snap.forEach(child => { usersData.push(child.val()); });
+                        snap.forEach(child => { const v = child.val(); if (v && v.username) usersData.push(v); });
                     }
                     if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
                 });
@@ -4161,10 +4167,23 @@
             const sessionId = mySessionId;
             const usernameChanged = oldKey !== newKey;
 
-            // Keep the active session alive while the account record is moved.
-            // If the username changes, the old session/ban listeners must be
-            // detached before deleting the old Firebase user node and then
-            // attached to the new node after it has been written.
+            // Always start from the FULL record stored in Firebase so no field
+            // (id, isAdmin, ban, createdAt, ...) is lost when the account is saved.
+            const oldRef = db.ref('users/' + oldKey);
+            const oldSnap = await oldRef.once('value');
+            const fullRecord = oldSnap.val() || {};
+
+            const mergedRecord = Object.assign({}, fullRecord, {
+                username: newUsername,
+                password: newPassword || currentUser.password,
+                dob: newDob || currentUser.dob || fullRecord.dob || '',
+                gender: newGender,
+                // Notes / chat / bug reports are linked by this id, so it MUST survive a rename.
+                id: fullRecord.id || currentUser.id || ('u_' + Date.now()),
+                isAdmin: (fullRecord.isAdmin !== undefined) ? fullRecord.isAdmin : !!currentUser.isAdmin
+            });
+            if (sessionId) mergedRecord.activeSession = sessionId;
+
             if (usernameChanged) {
                 const targetSnap = await db.ref('users/' + newKey).once('value');
                 if (targetSnap.exists()) {
@@ -4172,74 +4191,66 @@
                     return;
                 }
 
+                // Stop everything that could write to the OLD path.
                 detachSessionListener();
                 detachMyBanListener();
                 if (presenceRef) {
                     db.ref('.info/connected').off('value', presenceRef);
                     presenceRef = null;
                 }
+                // Cancel the server-side onDisconnect so it can't re-create a
+                // ghost "users/<oldKey>" node when the tab closes later.
+                try { await oldRef.child('isOnline').onDisconnect().cancel(); } catch (e) {}
 
-                await db.ref('users/' + oldKey).remove();
+                // Build ONE atomic multi-path update: create new record, delete old
+                // record, move leaderboard entries, refresh the username on notes.
+                const updates = {};
+                updates['users/' + newKey] = mergedRecord;
+                updates['users/' + oldKey] = null;
 
                 const leaderboardPaths = [
-                    'leaderboard',
-                    'memoryLeaderboard',
-                    'flappyLeaderboard',
-                    'glitchLeaderboard',
-                    'breakoutLeaderboard',
-                    'game2048Leaderboard',
-                    'neonDodgerLeaderboard',
-                    'spaceInvadersLeaderboard'
+                    'leaderboard', 'memoryLeaderboard', 'flappyLeaderboard', 'glitchLeaderboard',
+                    'breakoutLeaderboard', 'game2048Leaderboard', 'neonDodgerLeaderboard', 'spaceInvadersLeaderboard'
                 ];
-
                 for (const path of leaderboardPaths) {
                     const scoreSnap = await db.ref(path + '/' + oldKey).once('value');
                     if (scoreSnap.exists()) {
                         const scoreData = scoreSnap.val();
-                        await db.ref(path + '/' + oldKey).remove();
-                        if (path === 'leaderboard' || path === 'memoryLeaderboard' || path === 'flappyLeaderboard') {
-                            await db.ref(path + '/' + newKey).set({
-                                username: newUsername,
-                                score: scoreData.score
-                            });
-                        } else {
-                            scoreData.username = newUsername;
-                            await db.ref(path + '/' + newKey).set(scoreData);
-                        }
+                        scoreData.username = newUsername;
+                        updates[path + '/' + oldKey] = null;
+                        updates[path + '/' + newKey] = scoreData;
                     }
                 }
+                notesData.forEach(n => {
+                    if (n.userId === mergedRecord.id) updates['notes/' + n.id + '/username'] = newUsername;
+                });
 
-                currentUser.username = newUsername;
+                try {
+                    await db.ref().update(updates);   // all-or-nothing
+                } catch (err) {
+                    showToast("Could not rename account: " + err.message, "error");
+                    // Put listeners back on the unchanged old account
+                    setupPresence(oldKey);
+                    setupBanWatcher(oldKey);
+                    setupSessionWatcher(oldKey);
+                    return;
+                }
+
+                Object.assign(currentUser, mergedRecord);
                 setupPresence(newKey);
-            } else {
-                // For normal profile edits, use update() instead of set().
-                // This prevents unrelated realtime fields such as activeSession,
-                // isOnline, ban, etc. from being accidentally replaced.
-                currentUser.username = newUsername;
-            }
-
-            if (newPassword) currentUser.password = newPassword;
-            if (newDob) currentUser.dob = newDob;
-            currentUser.gender = newGender;
-
-            // Always preserve the session ID that belongs to this browser/tab.
-            if (sessionId) currentUser.activeSession = sessionId;
-
-            const profileUpdates = {
-                username: currentUser.username,
-                password: currentUser.password,
-                dob: currentUser.dob,
-                gender: currentUser.gender
-            };
-            if (sessionId) profileUpdates.activeSession = sessionId;
-
-            await db.ref('users/' + newKey).update(profileUpdates);
-
-            // Reattach account listeners to the correct Firebase path after a
-            // username change. This keeps the current session authenticated.
-            if (usernameChanged) {
                 setupBanWatcher(newKey);
                 setupSessionWatcher(newKey);
+            } else {
+                // Same username: update only the editable fields (never replace the node).
+                const profileUpdates = {
+                    username: mergedRecord.username,
+                    password: mergedRecord.password,
+                    dob: mergedRecord.dob,
+                    gender: mergedRecord.gender,
+                    id: mergedRecord.id
+                };
+                await oldRef.update(profileUpdates);
+                Object.assign(currentUser, profileUpdates);
             }
 
             showToast("Profile updated successfully!");
