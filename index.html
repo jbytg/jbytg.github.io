@@ -4158,46 +4158,90 @@
 
             const oldKey = currentUser.username.toLowerCase();
             const newKey = newUsername.toLowerCase();
+            const sessionId = mySessionId;
+            const usernameChanged = oldKey !== newKey;
 
-            if (oldKey !== newKey) {
+            // Keep the active session alive while the account record is moved.
+            // If the username changes, the old session/ban listeners must be
+            // detached before deleting the old Firebase user node and then
+            // attached to the new node after it has been written.
+            if (usernameChanged) {
                 const targetSnap = await db.ref('users/' + newKey).once('value');
                 if (targetSnap.exists()) {
                     showToast("Username already taken", "error");
                     return;
                 }
 
+                detachSessionListener();
+                detachMyBanListener();
+                if (presenceRef) {
+                    db.ref('.info/connected').off('value', presenceRef);
+                    presenceRef = null;
+                }
+
                 await db.ref('users/' + oldKey).remove();
-                
-                const lbSnap = await db.ref('leaderboard/' + oldKey).once('value');
-                if (lbSnap.exists()) {
-                    const oldScore = lbSnap.val().score;
-                    await db.ref('leaderboard/' + oldKey).remove();
-                    await db.ref('leaderboard/' + newKey).set({ username: newUsername, score: oldScore });
-                }
 
-                const mlbSnap = await db.ref('memoryLeaderboard/' + oldKey).once('value');
-                if (mlbSnap.exists()) {
-                    const oldMemoryScore = mlbSnap.val().score;
-                    await db.ref('memoryLeaderboard/' + oldKey).remove();
-                    await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
-                }
+                const leaderboardPaths = [
+                    'leaderboard',
+                    'memoryLeaderboard',
+                    'flappyLeaderboard',
+                    'glitchLeaderboard',
+                    'breakoutLeaderboard',
+                    'game2048Leaderboard',
+                    'neonDodgerLeaderboard',
+                    'spaceInvadersLeaderboard'
+                ];
 
-                const flbSnap = await db.ref('flappyLeaderboard/' + oldKey).once('value');
-                if (flbSnap.exists()) {
-                    const oldFlappyScore = flbSnap.val().score;
-                    await db.ref('flappyLeaderboard/' + oldKey).remove();
-                    await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: oldFlappyScore });
+                for (const path of leaderboardPaths) {
+                    const scoreSnap = await db.ref(path + '/' + oldKey).once('value');
+                    if (scoreSnap.exists()) {
+                        const scoreData = scoreSnap.val();
+                        await db.ref(path + '/' + oldKey).remove();
+                        if (path === 'leaderboard' || path === 'memoryLeaderboard' || path === 'flappyLeaderboard') {
+                            await db.ref(path + '/' + newKey).set({
+                                username: newUsername,
+                                score: scoreData.score
+                            });
+                        } else {
+                            scoreData.username = newUsername;
+                            await db.ref(path + '/' + newKey).set(scoreData);
+                        }
+                    }
                 }
 
                 currentUser.username = newUsername;
                 setupPresence(newKey);
+            } else {
+                // For normal profile edits, use update() instead of set().
+                // This prevents unrelated realtime fields such as activeSession,
+                // isOnline, ban, etc. from being accidentally replaced.
+                currentUser.username = newUsername;
             }
 
             if (newPassword) currentUser.password = newPassword;
             if (newDob) currentUser.dob = newDob;
             currentUser.gender = newGender;
 
-            await db.ref('users/' + newKey).set(currentUser);
+            // Always preserve the session ID that belongs to this browser/tab.
+            if (sessionId) currentUser.activeSession = sessionId;
+
+            const profileUpdates = {
+                username: currentUser.username,
+                password: currentUser.password,
+                dob: currentUser.dob,
+                gender: currentUser.gender
+            };
+            if (sessionId) profileUpdates.activeSession = sessionId;
+
+            await db.ref('users/' + newKey).update(profileUpdates);
+
+            // Reattach account listeners to the correct Firebase path after a
+            // username change. This keeps the current session authenticated.
+            if (usernameChanged) {
+                setupBanWatcher(newKey);
+                setupSessionWatcher(newKey);
+            }
+
             showToast("Profile updated successfully!");
             renderAccountTab(document.getElementById('tab-content'));
         }
