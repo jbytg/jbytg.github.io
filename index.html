@@ -439,15 +439,107 @@
             pointer-events: none;
         }
 
+        /* ===== Three-dots side menu ===== */
+        #side-menu-overlay { position: fixed; inset: 0; z-index: 45; background: rgba(0,0,0,0.55); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px); opacity: 0; pointer-events: none; transition: opacity 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease; }
+        #side-menu-overlay.open { opacity: 1; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); pointer-events: auto; }
+
+        #side-menu { position: fixed; top: 0; left: 0; bottom: 0; width: 17rem; max-width: 82vw; z-index: 46; background: rgba(15,15,25,0.94); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-right: 1px solid rgba(168,85,247,0.35); box-shadow: 0 0 0 rgba(168,85,247,0); transform: translateX(-108%) skewX(-3deg); opacity: 0.4; display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; pointer-events: none;
+            /* closing: quick, slightly accelerating slide-out */
+            transition: transform 0.38s cubic-bezier(0.55, 0, 0.8, 0.3), opacity 0.38s ease, box-shadow 0.38s ease; }
+        #side-menu.open { transform: translateX(0) skewX(0deg); opacity: 1; pointer-events: auto; box-shadow: 10px 0 40px rgba(168,85,247,0.28);
+            /* opening: springy overshoot */
+            transition: transform 0.5s cubic-bezier(0.22, 1.25, 0.36, 1), opacity 0.25s ease, box-shadow 0.5s ease; }
+
+        /* header + items stagger in on open, and stagger back out on close */
+        #side-menu .menu-head { opacity: 0; translate: -18px 0; transition: opacity 0.2s ease, translate 0.2s ease; }
+        #side-menu.open .menu-head { opacity: 1; translate: 0 0; transition: opacity 0.35s ease 0.12s, translate 0.45s cubic-bezier(0.22,1.25,0.36,1) 0.12s; }
+
+        .menu-item { position: relative; display: flex; align-items: center; gap: 0.75rem; width: 100%; padding: 0.75rem 2rem 0.75rem 1rem; border-radius: 0.75rem; font-size: 0.875rem; color: #d1d5db; text-align: left; overflow: hidden; cursor: pointer;
+            opacity: 0; translate: -26px 0;
+            transition: opacity 0.22s ease calc((var(--n, 10) - var(--i, 0)) * 18ms),
+                        translate 0.22s ease calc((var(--n, 10) - var(--i, 0)) * 18ms),
+                        transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.18s ease, color 0.18s ease, box-shadow 0.2s ease; }
+        #side-menu.open .menu-item { opacity: 1; translate: 0 0;
+            transition: opacity 0.35s ease calc(120ms + var(--i, 0) * 45ms),
+                        translate 0.5s cubic-bezier(0.22,1.25,0.36,1) calc(120ms + var(--i, 0) * 45ms),
+                        transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.18s ease, color 0.18s ease, box-shadow 0.2s ease; }
+        .menu-item.hidden { display: none; }
+
+        /* pointing: accent bar grows, item nudges right, arrow slides in, icon pops */
+        .menu-item::before { content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 3px; border-radius: 3px; background: linear-gradient(#a855f7, #6366f1); transform: scaleY(0); transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1); }
+        .menu-item::after { content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900; font-size: 0.65rem; position: absolute; right: 0.9rem; top: 50%; color: #c4b5fd; opacity: 0; transform: translate(-10px, -50%); transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+        .menu-item:hover, .menu-item:focus-visible { background: linear-gradient(90deg, rgba(168,85,247,0.22), rgba(255,255,255,0.04)); color: #fff; transform: translateX(6px); box-shadow: 0 4px 14px rgba(168,85,247,0.2); outline: none; }
+        .menu-item:hover::before, .menu-item:focus-visible::before { transform: scaleY(1); }
+        .menu-item:hover::after, .menu-item:focus-visible::after { opacity: 1; transform: translate(0, -50%); animation: menuArrowNudge 0.9s ease-in-out 0.25s infinite; }
+        .menu-item:active { transform: translateX(10px) scale(0.97); }
+        .menu-item i { width: 1.1rem; text-align: center; color: #a78bfa; transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1), color 0.2s ease; }
+        .menu-item:hover i { transform: scale(1.3) rotate(-8deg); color: #e9d5ff; }
+        .menu-item-active { background: rgba(168,85,247,0.22); color: #c4b5fd; font-weight: 700; }
+        .menu-item-active::before { transform: scaleY(1); }
+        .menu-item-danger { color: #f87171; }
+        .menu-item-danger i { color: #f87171; }
+        .menu-item-danger::before { background: #ef4444; }
+        .menu-item-danger::after { color: #fca5a5; }
+        .menu-item-danger:hover, .menu-item-danger:focus-visible { background: linear-gradient(90deg, rgba(239,68,68,0.25), rgba(255,255,255,0.03)); color: #fca5a5; box-shadow: 0 4px 14px rgba(239,68,68,0.2); }
+        .menu-item-danger:hover i { color: #fecaca; transform: translateX(4px) scale(1.15); }
+        @keyframes menuArrowNudge { 0%,100% { transform: translate(0,-50%); } 50% { transform: translate(4px,-50%); } }
+
+        /* three-dots button: rotates when open, bounces + spins when it closes */
+        #side-menu-toggle i { transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+        #side-menu-toggle:hover i { transform: scale(1.15); }
+        #side-menu-toggle.menu-open { background: rgba(147,51,234,0.85); box-shadow: 0 0 18px rgba(168,85,247,0.7); }
+        #side-menu-toggle.menu-open i { transform: rotate(90deg) scale(1.1); }
+        #side-menu-toggle.menu-closing { animation: dotsCloseBounce 0.55s cubic-bezier(0.34,1.56,0.64,1); }
+        #side-menu-toggle.menu-closing i { animation: dotsCloseSpin 0.55s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes dotsCloseBounce { 0% { transform: scale(1); } 35% { transform: scale(0.82); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+        @keyframes dotsCloseSpin { 0% { transform: rotate(90deg); } 100% { transform: rotate(360deg); } }
+
+        /* section content swaps in with a soft slide/fade; title pops */
+        #tab-content.tab-enter { animation: tabContentIn 0.4s cubic-bezier(0.22,1,0.36,1); }
+        @keyframes tabContentIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        #current-section-title.title-pop { animation: titlePop 0.45s cubic-bezier(0.34,1.56,0.64,1); }
+        @keyframes titlePop { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            #side-menu, #side-menu-overlay, #side-menu .menu-head, .menu-item, .menu-item::before, .menu-item::after, .menu-item i, #side-menu-toggle i, #tab-content.tab-enter, #current-section-title.title-pop, #side-menu-toggle.menu-closing, #side-menu-toggle.menu-closing i { transition: none !important; animation: none !important; }
+            .menu-item:hover, .menu-item:active { transform: none !important; }
+        }
+
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
     <canvas id="canvas-bg"></canvas>
 
-    <!-- Global Top-Left Settings Button -->
-    <button onclick="openPerformanceSettingsModal()" class="fixed top-4 left-4 z-40 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md" title="Performance Settings">
-        <i id="settings-gear-icon" class="fa fa-cog text-lg"></i>
+    <!-- Global Top-Left Three-Dots Menu Button -->
+    <button id="side-menu-toggle" type="button" onclick="toggleSideMenu()" aria-label="Open menu" aria-haspopup="true" aria-expanded="false" class="fixed top-4 left-4 z-40 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md" title="Menu">
+        <i class="fa fa-ellipsis-vertical text-lg"></i>
     </button>
+
+    <!-- Side Menu (slides in from the left) -->
+    <div id="side-menu-overlay" onclick="closeSideMenu()"></div>
+    <nav id="side-menu" aria-hidden="true">
+        <div class="menu-head flex items-center justify-between px-4 py-4 border-b border-white/10">
+            <span class="font-extrabold tracking-tight text-purple-300">JB HUB</span>
+            <button type="button" onclick="closeSideMenu()" aria-label="Close menu" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-300 transition"><i class="fa fa-xmark"></i></button>
+        </div>
+        <div class="p-3 space-y-1">
+            <button type="button" onclick="menuOpenSettings()" class="menu-item"><i class="fa fa-cog"></i><span>Settings</span></button>
+            <div id="menu-app-items" class="hidden space-y-1 pt-1 mt-1 border-t border-white/10">
+            <button type="button" data-tab="notes" onclick="menuGoTo('notes')" class="menu-item"><i class="fa fa-note-sticky"></i><span>Notes</span></button>
+            <button type="button" data-tab="chat" onclick="menuGoTo('chat')" class="menu-item"><i class="fa fa-comments"></i><span>Global Chat</span></button>
+            <button type="button" data-tab="arcade" onclick="menuGoTo('arcade')" class="menu-item"><i class="fa fa-gamepad"></i><span>Cyber Arcade</span></button>
+            <button type="button" data-tab="bugs" onclick="menuGoTo('bugs')" class="menu-item"><i class="fa fa-bug"></i><span>Bug & Suggest</span></button>
+            <button type="button" data-tab="leaderboard" onclick="menuGoTo('leaderboard')" class="menu-item"><i class="fa fa-trophy"></i><span>Leaderboard</span></button>
+            <button type="button" data-tab="rules" onclick="menuGoTo('rules')" class="menu-item"><i class="fa fa-bullhorn"></i><span>Admin Message</span></button>
+            <button type="button" data-tab="account" onclick="menuGoTo('account')" class="menu-item"><i class="fa fa-user"></i><span>Account</span></button>
+            <button type="button" data-tab="about" onclick="menuGoTo('about')" class="menu-item"><i class="fa fa-circle-info"></i><span>About Us</span></button>
+                <button type="button" id="admin-nav-btn" data-tab="admin" onclick="menuGoTo('admin')" class="menu-item hidden"><i class="fa fa-shield-halved"></i><span>Admin Panel</span></button>
+                <div class="pt-1 mt-1 border-t border-white/10">
+                    <button type="button" onclick="menuLogout()" class="menu-item menu-item-danger"><i class="fa fa-sign-out-alt"></i><span>Logout</span></button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
     <!-- Notification Toast -->
     <div id="toast" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
@@ -626,21 +718,8 @@
 
         <!-- Dashboard View -->
         <div id="dashboard-view" class="glass p-4 sm:p-6 w-full hidden flex flex-col">
-            <div class="flex flex-col sm:flex-row justify-between items-center border-b border-white/10 pb-4 mb-6 gap-3">
-                <div class="flex space-x-4 sm:space-x-6 overflow-x-auto w-full sm:w-auto pb-2 sm:pb-0 pl-12 sm:pl-0">
-                    <button onclick="switchTab('notes')" class="tab-btn active-tab pb-2 px-2 text-xs sm:text-sm whitespace-nowrap transition hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)]">Notes</button>
-                    <button onclick="switchTab('chat')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Global Chat</button>
-                    <button onclick="switchTab('arcade')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Cyber Arcade</button>
-                    <button onclick="switchTab('bugs')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Bug & Suggest</button>
-                    <button onclick="switchTab('leaderboard')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Leaderboard</button>
-                    <button onclick="switchTab('rules')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Admin Message</button>
-                    <button onclick="switchTab('account')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">Account</button>
-                    <button onclick="switchTab('about')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-gray-400 hover:text-white hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition">About Us</button>
-                    <button id="admin-nav-btn" onclick="switchTab('admin')" class="tab-btn pb-2 px-2 text-xs sm:text-sm text-purple-400 hover:text-purple-300 hover:[text-shadow:0_0_10px_rgba(255,255,255,0.8)] whitespace-nowrap transition hidden">Admin Panel</button>
-                </div>
-                <button onclick="logout()" class="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl text-xs sm:text-sm font-medium transition flex items-center space-x-2 w-full sm:w-auto justify-center">
-                    <i class="fa fa-sign-out-alt"></i><span>Logout</span>
-                </button>
+            <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6 pl-12 min-h-[2.5rem]">
+                <h2 id="current-section-title" class="text-base sm:text-lg font-bold text-purple-300 truncate">Notes</h2>
             </div>
 
             <div id="tab-content" class="min-h-[400px]"></div>
@@ -1857,21 +1936,78 @@
             });
         }
 
+        const TAB_TITLES = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', rules: 'Admin Message', account: 'Account', about: 'About Us', admin: 'Admin Panel' };
+
         window.switchTab = function(tab) {
             currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(b => {
-                b.classList.remove('active-tab');
-                if(!b.id || b.id !== 'admin-nav-btn') {
-                    b.classList.add('text-gray-400');
-                }
+            document.querySelectorAll('#side-menu .menu-item[data-tab]').forEach(b => {
+                b.classList.toggle('menu-item-active', b.dataset.tab === tab);
             });
-            if (event && event.target) {
-                event.target.classList.add('active-tab');
-                event.target.classList.remove('text-gray-400');
+            const titleEl = document.getElementById('current-section-title');
+            if (titleEl) {
+                titleEl.textContent = TAB_TITLES[tab] || tab;
+                titleEl.classList.remove('title-pop'); void titleEl.offsetWidth; titleEl.classList.add('title-pop');
             }
-
+            const tc = document.getElementById('tab-content');
+            if (tc) { tc.classList.remove('tab-enter'); void tc.offsetWidth; tc.classList.add('tab-enter'); }
             renderCurrentTabContent();
         }
+
+        // ===== Three-dots side menu =====
+        function indexMenuItems() {
+            // Number the visible items so they can animate in/out one after another.
+            const items = Array.from(document.querySelectorAll('#side-menu .menu-item')).filter(el => el.offsetParent !== null);
+            items.forEach((el, i) => { el.style.setProperty('--i', i); el.style.setProperty('--n', items.length); });
+        }
+        window.openSideMenu = function() {
+            const loggedIn = !!currentUser && !document.getElementById('dashboard-view').classList.contains('hidden');
+            // Before login only "Settings" is shown; everything else appears once signed in.
+            document.getElementById('menu-app-items').classList.toggle('hidden', !loggedIn);
+            indexMenuItems();
+            const btn = document.getElementById('side-menu-toggle');
+            btn.classList.remove('menu-closing');
+            btn.classList.add('menu-open');
+            btn.setAttribute('aria-expanded', 'true');
+            document.getElementById('side-menu').classList.add('open');
+            document.getElementById('side-menu').setAttribute('aria-hidden', 'false');
+            document.getElementById('side-menu-overlay').classList.add('open');
+        };
+        let _menuClosingTimer = null;
+        window.closeSideMenu = function() {
+            const menu = document.getElementById('side-menu');
+            if (!menu.classList.contains('open')) return;
+            menu.classList.remove('open');
+            menu.setAttribute('aria-hidden', 'true');
+            document.getElementById('side-menu-overlay').classList.remove('open');
+            const btn = document.getElementById('side-menu-toggle');
+            btn.classList.remove('menu-open');
+            btn.setAttribute('aria-expanded', 'false');
+            // replay the bounce/spin on the dots button as the menu closes
+            btn.classList.remove('menu-closing');
+            void btn.offsetWidth;
+            btn.classList.add('menu-closing');
+            clearTimeout(_menuClosingTimer);
+            _menuClosingTimer = setTimeout(() => btn.classList.remove('menu-closing'), 600);
+        };
+        window.toggleSideMenu = function() {
+            document.getElementById('side-menu').classList.contains('open') ? closeSideMenu() : openSideMenu();
+        };
+        window.menuGoTo = function(tab) {
+            closeSideMenu();
+            if (!currentUser) return;
+            switchTab(tab);
+        };
+        window.menuOpenSettings = function() {
+            closeSideMenu();
+            openPerformanceSettingsModal();
+        };
+        window.menuLogout = function() {
+            closeSideMenu();
+            logout();
+        };
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSideMenu();
+        });
 
         // Renders whatever `currentTab` currently is into #tab-content.
         // Split out from switchTab so realtime settings updates (e.g. a
