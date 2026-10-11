@@ -655,6 +655,10 @@
                         </div>
                     </div>
                     <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Email Address</label>
+                        <input type="email" id="signup-email" autocomplete="email" required placeholder="you@example.com" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    </div>
+                    <div>
                         <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
                         <input type="date" id="dob" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
                     </div>
@@ -1365,8 +1369,13 @@
             const userRef = db.ref('users/' + usernameKey);
 
             if (isSignupMode) {
+                const email = document.getElementById('signup-email').value.trim().toLowerCase();
                 const dob = document.getElementById('dob').value;
                 const gender = document.getElementById('gender').value;
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                    showToast("Please enter a valid email address", "error");
+                    return;
+                }
                 const confPass = document.getElementById('conf-password').value;
                 if (!dob) { showToast("Please enter your Date of Birth", "error"); return; }
                 if (!gender) { showToast("Please select Male or Female", "error"); return; }
@@ -1389,7 +1398,7 @@
                 const allUsersSnap = await db.ref('users').once('value');
                 const isFirstUser = !allUsersSnap.exists();
 
-                const newUser = { username, password, dob, gender, isAdmin: isFirstUser, id: 'u_' + Date.now() };
+                const newUser = { username, password, email, dob, gender, isAdmin: isFirstUser, id: 'u_' + Date.now() };
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
@@ -4270,6 +4279,12 @@
                         </div>
 
                         <div>
+                            <label class="text-xs text-gray-400 mb-1 block">Email Address</label>
+                            <p class="text-xs text-gray-400 mb-2">Currently saved: <span class="text-purple-300 font-semibold">${currentUser.email ? escapeHtml(currentUser.email) : 'No email saved for this account yet'}</span></p>
+                            <input type="email" id="account-email-input" autocomplete="email" value="${escapeHtml(currentUser.email || '')}" placeholder="you@example.com" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm outline-none focus:border-purple-500">
+                        </div>
+
+                        <div>
                             <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
                             <input type="date" id="account-dob-input" value="${currentUser.dob || ''}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
                         </div>
@@ -4343,6 +4358,7 @@
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
             const newUsername = document.getElementById('acc-username-input').value.trim();
+            const newEmail = document.getElementById('account-email-input').value.trim().toLowerCase();
             const newDob = document.getElementById('account-dob-input').value;
             const newGender = document.getElementById('account-gender-input').value;
             const newPassword = document.getElementById('acc-new-pass').value;
@@ -4351,6 +4367,7 @@
             // Nothing changed? Then the update is unsuccessful and does NOT use up a daily update.
             const nothingChanged =
                 newUsername === currentUser.username &&
+                newEmail === (currentUser.email || '').toLowerCase() &&
                 (!newDob || newDob === currentUser.dob) &&
                 newGender === currentUser.gender &&
                 (!newPassword || newPassword === currentUser.password);
@@ -4362,6 +4379,7 @@
             if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
             if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
+            if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
             if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
             // Protection Feature: Age must be strictly greater than 1 year when editing profile
@@ -4395,6 +4413,7 @@
             const mergedRecord = Object.assign({}, fullRecord, {
                 accountEdits: newEditLog,
                 username: newUsername,
+                email: newEmail,
                 password: newPassword || currentUser.password,
                 dob: newDob || currentUser.dob || fullRecord.dob || '',
                 gender: newGender,
@@ -4470,6 +4489,7 @@
                 // Same username: update only the editable fields (never replace the node).
                 const profileUpdates = {
                     username: mergedRecord.username,
+                    email: mergedRecord.email, // Save the edited email for accounts that keep the same username.
                     password: mergedRecord.password,
                     dob: mergedRecord.dob,
                     gender: mergedRecord.gender,
@@ -5390,6 +5410,10 @@
                     <input type="text" id="admin-edit-username" value="${escapeHtml(user.username)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
                 <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Email Address</label>
+                    <input type="email" id="admin-edit-email" autocomplete="email" value="${escapeHtml(user.email || '')}" placeholder="you@example.com" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                </div>
+                <div>
                     <label class="text-xs text-gray-400 mb-1 block">Password</label>
                     <input type="text" id="admin-edit-password" value="${escapeHtml(user.password)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
@@ -5411,11 +5435,13 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const newUsername = document.getElementById('admin-edit-username').value.trim();
+                const newEmail = document.getElementById('admin-edit-email').value.trim().toLowerCase();
                 const newPassword = document.getElementById('admin-edit-password').value.trim();
                 const newDob = document.getElementById('admin-edit-dob').value;
                 const newGender = document.getElementById('admin-edit-gender').value;
 
                 if (!newUsername || !newPassword) { showToast("Username and password required", "error"); return; }
+                if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
                 if (!newDob) { showToast("Date of Birth is required", "error"); return; }
                 if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
@@ -5459,6 +5485,7 @@
                 }
 
                 user.username = newUsername;
+                user.email = newEmail;
                 user.password = newPassword;
                 user.dob = newDob;
                 user.gender = newGender;
@@ -5466,6 +5493,7 @@
 
                 if (currentUser.username.toLowerCase() === usernameKey) {
                     currentUser.username = newUsername;
+                    currentUser.email = newEmail;
                     currentUser.password = newPassword;
                     currentUser.dob = newDob;
                     currentUser.gender = newGender;
