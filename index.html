@@ -2106,7 +2106,7 @@
                 else if (MAINTAINABLE_SECTIONS.includes(currentTab)) renderCurrentTabContent();
             });
 
-            db.ref('leaderboard').on('value', snap => {
+            db.ref('leaderboards/snake').on('value', snap => {
                 leaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { leaderboardData.push(child.val()); });
@@ -2115,7 +2115,7 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
-            db.ref('memoryLeaderboard').on('value', snap => {
+            db.ref('leaderboards/memory').on('value', snap => {
                 memoryLeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { memoryLeaderboardData.push(child.val()); });
@@ -2124,7 +2124,7 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
-            db.ref('flappyLeaderboard').on('value', snap => {
+            db.ref('leaderboards/flappy').on('value', snap => {
                 flappyLeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { flappyLeaderboardData.push(child.val()); });
@@ -2133,7 +2133,7 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
-            db.ref('glitchLeaderboard').on('value', snap => {
+            db.ref('leaderboards/glitch').on('value', snap => {
                 glitchLeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { glitchLeaderboardData.push(child.val()); });
@@ -2142,7 +2142,7 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             }, err => { console.error('glitchLeaderboard read error:', err); showToast('Glitch leaderboard blocked: ' + err.message, 'error'); });
 
-            db.ref('breakoutLeaderboard').on('value', snap => {
+            db.ref('leaderboards/breakout').on('value', snap => {
                 breakoutLeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { breakoutLeaderboardData.push(child.val()); });
@@ -2151,7 +2151,7 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             }, err => { console.error('breakoutLeaderboard read error:', err); showToast('Breakout leaderboard blocked: ' + err.message, 'error'); });
 
-            db.ref('game2048Leaderboard').on('value', snap => {
+            db.ref('leaderboards/2048').on('value', snap => {
                 game2048LeaderboardData = [];
                 if (snap.exists()) {
                     snap.forEach(child => { game2048LeaderboardData.push(child.val()); });
@@ -2160,14 +2160,14 @@
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             }, err => { console.error('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked: ' + err.message, 'error'); });
 
-            db.ref('neonDodgerLeaderboard').on('value', snap => {
+            db.ref('leaderboards/neonDodger').on('value', snap => {
                 neonDodgerLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { neonDodgerLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             }, err => { console.error('neonDodgerLeaderboard read error:', err); showToast('Neon Dodger leaderboard blocked: ' + err.message, 'error'); });
 
-            db.ref('spaceInvadersLeaderboard').on('value', snap => {
+            db.ref('leaderboards/spaceInvaders').on('value', snap => {
                 spaceInvadersLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { spaceInvadersLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
@@ -3360,7 +3360,7 @@
             const score = Math.max(50, 1000 - (memoryGame.moves * 15) - (memoryGame.timerSeconds * 5));
 
             if (navigator.onLine && isFirebaseConnected) {
-                const userLbRef = db.ref('memoryLeaderboard/' + currentUser.username.toLowerCase());
+                const userLbRef = db.ref('leaderboards/memory/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < score) {
                     await userLbRef.set({ username: currentUser.username, score });
@@ -3593,7 +3593,7 @@
             cancelAnimationFrame(flappyBird.rafId);
 
             if (flappyBird.score > 0 && navigator.onLine && isFirebaseConnected) {
-                const userLbRef = db.ref('flappyLeaderboard/' + currentUser.username.toLowerCase());
+                const userLbRef = db.ref('leaderboards/flappy/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < flappyBird.score) {
                     await userLbRef.set({ username: currentUser.username, score: flappyBird.score });
@@ -3806,7 +3806,7 @@
 
             if (breakoutGame.score > 0 && navigator.onLine && isFirebaseConnected) {
                 try {
-                    const userLbRef = db.ref('breakoutLeaderboard/' + currentUser.username.toLowerCase());
+                    const userLbRef = db.ref('leaderboards/breakout/' + currentUser.username.toLowerCase());
                     const snap = await userLbRef.once('value');
                     if (!snap.exists() || snap.val().score < breakoutGame.score) {
                         await userLbRef.set({ username: currentUser.username, score: breakoutGame.score });
@@ -3942,7 +3942,7 @@
         async function endNeonDodger() {
             neonDodgerGame.running=false; neonDodgerGame.gameOver=true; cancelAnimationFrame(neonDodgerGame.rafId);
             if (neonDodgerGame.score > neonDodgerGame.best) { neonDodgerGame.best=neonDodgerGame.score; localStorage.setItem('neon_dodger_best', neonDodgerGame.best); const el=document.getElementById('nd-best'); if(el) el.innerText=neonDodgerGame.best; }
-            if (neonDodgerGame.score > 0 && navigator.onLine && isFirebaseConnected) { try { const ref=db.ref('neonDodgerLeaderboard/'+currentUser.username.toLowerCase()); const snap=await ref.once('value'); if(!snap.exists() || snap.val().score < neonDodgerGame.score) await ref.set({username:currentUser.username,score:neonDodgerGame.score}); } catch(err){ console.error(err); } }
+            if (neonDodgerGame.score > 0 && navigator.onLine && isFirebaseConnected) { try { const ref=db.ref('leaderboards/neonDodger/'+currentUser.username.toLowerCase()); const snap=await ref.once('value'); if(!snap.exists() || snap.val().score < neonDodgerGame.score) await ref.set({username:currentUser.username,score:neonDodgerGame.score}); } catch(err){ console.error(err); } }
             const title=document.getElementById('nd-overlay-title'), btn=document.getElementById('nd-overlay-btn'), ov=document.getElementById('nd-overlay'); if(title) applyWaveEffect(title,'GAME OVER'); if(btn) btn.innerText='Play Again'; if(ov) ov.classList.remove('hidden');
         }
 
@@ -4001,7 +4001,7 @@
             drawSpaceInvaders();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);
         }
         function drawSpaceInvaders(){if(!siCtx)return;siCtx.clearRect(0,0,SI_W,SI_H);siCtx.fillStyle='#050511';siCtx.fillRect(0,0,SI_W,SI_H);siCtx.fillStyle='rgba(255,255,255,.45)';for(let i=0;i<45;i++){const x=(i*73)%SI_W,y=(i*97)%SI_H;siCtx.fillRect(x,y,1,1);}siCtx.shadowBlur=12;siCtx.shadowColor='#22d3ee';siCtx.fillStyle='#22d3ee';siCtx.fillRect(spaceInvadersGame.playerX,SI_H-24,spaceInvadersGame.playerW,12);siCtx.shadowColor='#f472b6';siCtx.fillStyle='#f472b6';spaceInvadersGame.enemies.forEach(e=>{siCtx.fillRect(e.x,e.y,e.w,e.h);siCtx.fillRect(e.x+4,e.y-4,e.w-8,4);});siCtx.shadowColor='#fff';siCtx.fillStyle='#fff';spaceInvadersGame.bullets.forEach(b=>siCtx.fillRect(b.x-1,b.y,2,9));siCtx.shadowBlur=0;}
-        async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('spaceInvadersLeaderboard/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){console.error(err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
+        async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('leaderboards/spaceInvaders/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){console.error(err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
         window.addEventListener('keydown',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(e.key==='Enter'&&!spaceInvadersGame.running){e.preventDefault();startSpaceInvaders();return;}if(['ArrowLeft','a','A'].includes(e.key)||e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();spaceInvadersGame.moveDir=-1;}if(['ArrowRight','d','D'].includes(e.key)||e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();spaceInvadersGame.moveDir=1;}if(e.code==='Space'){e.preventDefault();spaceInvadersShoot();}});
         window.addEventListener('keyup',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(['ArrowLeft','a','A','ArrowRight','d','D'].includes(e.key)||['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))spaceInvadersGame.moveDir=0;});
 
@@ -4195,7 +4195,7 @@
 
             if (game2048.score > 0 && navigator.onLine && isFirebaseConnected) {
                 try {
-                    const userLbRef = db.ref('game2048Leaderboard/' + currentUser.username.toLowerCase());
+                    const userLbRef = db.ref('leaderboards/2048/' + currentUser.username.toLowerCase());
                     const snap = await userLbRef.once('value');
                     if (!snap.exists() || snap.val().score < game2048.score) {
                         await userLbRef.set({ username: currentUser.username, score: game2048.score });
@@ -4329,7 +4329,7 @@
 
             if (glitchGame.score > 0 && navigator.onLine && isFirebaseConnected) {
                 try {
-                    const userLbRef = db.ref('glitchLeaderboard/' + currentUser.username.toLowerCase());
+                    const userLbRef = db.ref('leaderboards/glitch/' + currentUser.username.toLowerCase());
                     const snap = await userLbRef.once('value');
                     if (!snap.exists() || snap.val().score < glitchGame.score) {
                         await userLbRef.set({ username: currentUser.username, score: glitchGame.score });
@@ -4531,7 +4531,7 @@
             if (pauseBtn) pauseBtn.classList.add('hidden');
 
             if (cyberSnake.score > 0 && navigator.onLine && isFirebaseConnected) {
-                const userLbRef = db.ref('leaderboard/' + currentUser.username.toLowerCase());
+                const userLbRef = db.ref('leaderboards/snake/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < cyberSnake.score) {
                     await userLbRef.set({ username: currentUser.username, score: cyberSnake.score });
@@ -5091,14 +5091,14 @@
                 detachSessionListener();
                 detachMyBanListener();
                 await db.ref('users/' + usernameKey).remove();
-                await db.ref('leaderboard/' + usernameKey).remove();
-                await db.ref('memoryLeaderboard/' + usernameKey).remove();
-                await db.ref('flappyLeaderboard/' + usernameKey).remove();
-                await db.ref('glitchLeaderboard/' + usernameKey).remove();
-                await db.ref('breakoutLeaderboard/' + usernameKey).remove();
-                await db.ref('game2048Leaderboard/' + usernameKey).remove();
-                await db.ref('neonDodgerLeaderboard/' + usernameKey).remove();
-                await db.ref('spaceInvadersLeaderboard/' + usernameKey).remove();
+                await db.ref('leaderboards/snake/' + usernameKey).remove();
+                await db.ref('leaderboards/memory/' + usernameKey).remove();
+                await db.ref('leaderboards/flappy/' + usernameKey).remove();
+                await db.ref('leaderboards/glitch/' + usernameKey).remove();
+                await db.ref('leaderboards/breakout/' + usernameKey).remove();
+                await db.ref('leaderboards/2048/' + usernameKey).remove();
+                await db.ref('leaderboards/neonDodger/' + usernameKey).remove();
+                await db.ref('leaderboards/spaceInvaders/' + usernameKey).remove();
 
                 showToast("Account deleted successfully.");
                 logout();
@@ -6009,25 +6009,25 @@
                     }
                     await db.ref('users/' + usernameKey).remove();
 
-                    const lbSnap = await db.ref('leaderboard/' + usernameKey).once('value');
+                    const lbSnap = await db.ref('leaderboards/snake/' + usernameKey).once('value');
                     if (lbSnap.exists()) {
                         const oldScore = lbSnap.val().score;
-                        await db.ref('leaderboard/' + usernameKey).remove();
-                        await db.ref('leaderboard/' + newKey).set({ username: newUsername, score: oldScore });
+                        await db.ref('leaderboards/snake/' + usernameKey).remove();
+                        await db.ref('leaderboards/snake/' + newKey).set({ username: newUsername, score: oldScore });
                     }
 
-                    const mlbSnap = await db.ref('memoryLeaderboard/' + usernameKey).once('value');
+                    const mlbSnap = await db.ref('leaderboards/memory/' + usernameKey).once('value');
                     if (mlbSnap.exists()) {
                         const oldMemoryScore = mlbSnap.val().score;
-                        await db.ref('memoryLeaderboard/' + usernameKey).remove();
-                        await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: oldMemoryScore });
+                        await db.ref('leaderboards/memory/' + usernameKey).remove();
+                        await db.ref('leaderboards/memory/' + newKey).set({ username: newUsername, score: oldMemoryScore });
                     }
 
-                    const flbSnap = await db.ref('flappyLeaderboard/' + usernameKey).once('value');
+                    const flbSnap = await db.ref('leaderboards/flappy/' + usernameKey).once('value');
                     if (flbSnap.exists()) {
                         const oldFlappyScore = flbSnap.val().score;
-                        await db.ref('flappyLeaderboard/' + usernameKey).remove();
-                        await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: oldFlappyScore });
+                        await db.ref('leaderboards/flappy/' + usernameKey).remove();
+                        await db.ref('leaderboards/flappy/' + newKey).set({ username: newUsername, score: oldFlappyScore });
                     }
                 }
 
@@ -6064,12 +6064,12 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref(`users/${usernameKey}`).remove();
-                await db.ref(`leaderboard/${usernameKey}`).remove();
-                await db.ref(`memoryLeaderboard/${usernameKey}`).remove();
-                await db.ref(`flappyLeaderboard/${usernameKey}`).remove();
-                await db.ref(`glitchLeaderboard/${usernameKey}`).remove();
-                await db.ref(`breakoutLeaderboard/${usernameKey}`).remove();
-                await db.ref(`game2048Leaderboard/${usernameKey}`).remove();
+                await db.ref(`leaderboards/snake/${usernameKey}`).remove();
+                await db.ref(`leaderboards/memory/${usernameKey}`).remove();
+                await db.ref(`leaderboards/flappy/${usernameKey}`).remove();
+                await db.ref(`leaderboards/glitch/${usernameKey}`).remove();
+                await db.ref(`leaderboards/breakout/${usernameKey}`).remove();
+                await db.ref(`leaderboards/2048/${usernameKey}`).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -6188,10 +6188,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('leaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/snake/' + userKey).remove();
                 }
 
-                await db.ref('leaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/snake/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6201,7 +6201,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('leaderboard/' + userKey).remove();
+                await db.ref('leaderboards/snake/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6229,10 +6229,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('memoryLeaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/memory/' + userKey).remove();
                 }
 
-                await db.ref('memoryLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/memory/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6242,7 +6242,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('memoryLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/memory/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6270,10 +6270,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('flappyLeaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/flappy/' + userKey).remove();
                 }
 
-                await db.ref('flappyLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/flappy/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6283,7 +6283,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('flappyLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/flappy/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6311,10 +6311,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('glitchLeaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/glitch/' + userKey).remove();
                 }
 
-                await db.ref('glitchLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/glitch/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6324,7 +6324,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('glitchLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/glitch/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6352,10 +6352,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('breakoutLeaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/breakout/' + userKey).remove();
                 }
 
-                await db.ref('breakoutLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/breakout/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6365,7 +6365,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('breakoutLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/breakout/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6393,10 +6393,10 @@
 
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) {
-                    await db.ref('game2048Leaderboard/' + userKey).remove();
+                    await db.ref('leaderboards/2048/' + userKey).remove();
                 }
 
-                await db.ref('game2048Leaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/2048/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6406,7 +6406,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('game2048Leaderboard/' + userKey).remove();
+                await db.ref('leaderboards/2048/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6429,8 +6429,8 @@
                 const newScore = parseInt(document.getElementById('admin-ndlb-score').value) || 0;
                 if (!newUsername) { showToast("Username required", "error"); return; }
                 const newKey = newUsername.toLowerCase();
-                if (userKey !== newKey) await db.ref('neonDodgerLeaderboard/' + userKey).remove();
-                await db.ref('neonDodgerLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                if (userKey !== newKey) await db.ref('leaderboards/neonDodger/' + userKey).remove();
+                await db.ref('leaderboards/neonDodger/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6439,7 +6439,7 @@
             openModal("Delete Score Entry", `Remove Neon Dodger leaderboard entry for '${userKey}'?`, "", async () => {
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
-                await db.ref('neonDodgerLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/neonDodger/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
@@ -6462,8 +6462,8 @@
                 const newScore = parseInt(document.getElementById('admin-silb-score').value) || 0;
                 if (!newUsername) { showToast("Username required", "error"); return; }
                 const newKey = newUsername.toLowerCase();
-                if (userKey !== newKey) await db.ref('spaceInvadersLeaderboard/' + userKey).remove();
-                await db.ref('spaceInvadersLeaderboard/' + newKey).set({ username: newUsername, score: newScore });
+                if (userKey !== newKey) await db.ref('leaderboards/spaceInvaders/' + userKey).remove();
+                await db.ref('leaderboards/spaceInvaders/' + newKey).set({ username: newUsername, score: newScore });
                 showToast("Leaderboard updated!");
             });
         }
@@ -6472,7 +6472,7 @@
             openModal("Delete Score Entry", `Remove Space Invaders leaderboard entry for '${userKey}'?`, "", async () => {
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
-                await db.ref('spaceInvadersLeaderboard/' + userKey).remove();
+                await db.ref('leaderboards/spaceInvaders/' + userKey).remove();
                 showToast("Leaderboard entry removed");
             });
         }
