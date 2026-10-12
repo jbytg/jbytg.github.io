@@ -632,8 +632,8 @@
 
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
                 <div>
-                    <label class="text-xs text-gray-400 mb-1 block">Username</label>
-                    <input type="text" id="username" placeholder="Enter username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <label class="text-xs text-gray-400 mb-1 block">Email</label>
+                    <input type="text" id="username" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="Enter your email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 
                 <div>
@@ -656,8 +656,8 @@
                         </div>
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400 mb-1 block">Email Address</label>
-                        <input type="email" id="signup-email" autocomplete="email" required placeholder="you@example.com" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                        <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
+                        <input type="text" id="signup-username" autocomplete="nickname" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                     </div>
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
@@ -700,12 +700,45 @@
                 </div>
 
                 <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
+                <p id="forgot-link" class="text-center text-xs text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showForgotPassword()">Forgot password?</p>
                 
                 <div class="flex justify-between items-center text-xs sm:text-sm pt-2">
                     <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="toggleMode()"><span id="toggle-text">Create Account</span></p>
                     <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showAbout()">About Us</p>
                 </div>
             </form>
+
+            <!-- Forgot password panel -->
+            <div id="forgot-panel" class="hidden space-y-4">
+                <p class="text-xs text-gray-400 text-center">Enter your username and the email address on your account. We'll email you a link to set a new password.</p>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Username</label>
+                    <input type="text" id="forgot-username" autocapitalize="none" spellcheck="false" placeholder="Your username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Email</label>
+                    <input type="text" id="forgot-email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email on your account" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                <button type="button" id="forgot-send-btn" onclick="sendPasswordResetLink()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Send Reset Link</button>
+                <p id="forgot-status" class="text-xs text-center text-sky-300 hidden"></p>
+                <button type="button" onclick="hideForgotPassword()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Back to Login</button>
+            </div>
+
+            <!-- Sign-up email verification panel -->
+            <div id="signup-verify-panel" class="hidden space-y-4 text-center">
+                <div class="w-14 h-14 mx-auto rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center">
+                    <i class="fa-solid fa-envelope-circle-check text-purple-300 text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-300">We sent a verification link to</p>
+                <p id="signup-verify-email-text" class="text-sm font-bold text-purple-200 break-all"></p>
+                <p class="text-xs text-gray-400">Open the link in your inbox (check spam too). Your account is created as soon as the email is verified.</p>
+                <p id="signup-verify-status" class="text-xs font-semibold text-sky-300">Waiting for verification…</p>
+                <button type="button" onclick="checkSignupVerification()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">I've verified my email</button>
+                <div class="flex gap-2">
+                    <button type="button" onclick="resendSignupVerification()" class="flex-1 p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Resend link</button>
+                    <button type="button" onclick="cancelSignupVerification()" class="flex-1 p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
+                </div>
+            </div>
         </div>
 
         <!-- About View (Pre-login) -->
@@ -922,7 +955,7 @@
             }
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('username').value = '';
+            document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
@@ -981,7 +1014,7 @@
 
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('username').value = '';
+            document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
@@ -1043,7 +1076,7 @@
 
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('username').value = '';
+            document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
@@ -1268,9 +1301,10 @@
             
             applyWaveEffect(document.getElementById('auth-title'), 'JB HUB');
             
-            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register a secure cloud profile' : 'Sign in to your secure server account';
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
             document.getElementById('auth-btn').innerText = isSignupMode ? 'Sign Up' : 'Login';
             document.getElementById('toggle-text').innerText = isSignupMode ? 'Already have an account? Login' : 'Create Account';
+            document.getElementById('forgot-link').classList.toggle('hidden', isSignupMode);
             
             humanTestPassed = false;
             document.getElementById('human-verify').checked = false;
@@ -1344,6 +1378,301 @@
             });
         }
 
+        // ================= EMAIL-VERIFIED SIGN UP + EMAIL LOGIN =================
+        let pendingSignup = null;
+        let signupVerifyTimer = null;
+        let signupFinishing = false;
+        let signupResendAt = 0;
+
+        // Look up a JB HUB account by its email (works for accounts that saved
+        // either "email" or "authEmail"). Add ".indexOn": ["email","authEmail"]
+        // under "users" in your Realtime Database rules to make this efficient.
+        async function findUserRecordsByEmail(email) {
+            const out = [];
+            const seen = {};
+            for (const field of ['email', 'authEmail']) {
+                const snap = await db.ref('users').orderByChild(field).equalTo(email).once('value');
+                snap.forEach(child => {
+                    if (!seen[child.key]) { seen[child.key] = true; out.push({ key: child.key, val: child.val() }); }
+                });
+            }
+            return out;
+        }
+
+        async function findUserRecordByEmail(email) {
+            const all = await findUserRecordsByEmail(email);
+            return all.length ? all[0] : null;
+        }
+
+        // True when ANOTHER account (not ownKey) already uses this email.
+        async function emailTakenByOther(email, ownKey) {
+            const all = await findUserRecordsByEmail(email);
+            return all.some(m => m.key !== ownKey);
+        }
+
+        // Username rules: at least 3 characters, and none of the characters Firebase keys
+        // cannot hold (@ is also blocked because login treats "@" as an email).
+        function usernameRuleError(username) {
+            const u = String(username || '').trim();
+            if (u.length < 3) return 'Username must be at least 3 characters';
+            if (/[@.#$\[\]\/]/.test(u)) return 'Username cannot contain @ . # $ [ ] or /';
+            return '';
+        }
+
+        function setSignupVerifyStatus(text, cls) {
+            const el = document.getElementById('signup-verify-status');
+            if (el) { el.textContent = text; el.className = cls; }
+        }
+
+        function stopSignupVerifyPolling() {
+            if (signupVerifyTimer) { clearInterval(signupVerifyTimer); signupVerifyTimer = null; }
+        }
+
+        function showSignupVerifyPanel(email) {
+            document.getElementById('auth-form').classList.add('hidden');
+            document.getElementById('signup-verify-email-text').textContent = email;
+            document.getElementById('auth-subtitle').innerText = 'Verify your email to finish creating your account';
+            document.getElementById('signup-verify-panel').classList.remove('hidden');
+            setSignupVerifyStatus('Waiting for verification…', 'text-xs font-semibold text-sky-300');
+            stopSignupVerifyPolling();
+            signupVerifyTimer = setInterval(() => checkSignupVerification(true), 4000);
+        }
+
+        function hideSignupVerifyPanel() {
+            stopSignupVerifyPolling();
+            document.getElementById('signup-verify-panel').classList.add('hidden');
+            document.getElementById('auth-form').classList.remove('hidden');
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
+        }
+
+        async function sendSignupVerificationEmail(user) {
+            const url = window.location.origin + window.location.pathname;
+            try {
+                await user.sendEmailVerification({ url, handleCodeInApp: false });
+            } catch (e) {
+                // e.g. page opened from file:// or domain not authorised for continue links
+                if (e.code === 'auth/unauthorized-continue-uri' || e.code === 'auth/invalid-continue-uri' || e.code === 'auth/missing-continue-uri') {
+                    await user.sendEmailVerification();
+                } else {
+                    throw e;
+                }
+            }
+            signupResendAt = Date.now() + 30000;
+        }
+
+        async function startSignupWithEmailVerification(email, password) {
+            const username = document.getElementById('signup-username').value.trim();
+            const dob = document.getElementById('dob').value;
+            const gender = document.getElementById('gender').value;
+            const confPass = document.getElementById('conf-password').value;
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Please enter a valid email address", "error"); return; }
+            const usernameErr = usernameRuleError(username);
+            if (usernameErr) { showToast(usernameErr, "error"); return; }
+            if (!dob) { showToast("Please enter your Date of Birth", "error"); return; }
+            if (!gender) { showToast("Please select Male or Female", "error"); return; }
+
+            // Protection Feature: Age must be strictly greater than 1 year
+            if (getAgeInYears(dob) <= 1) {
+                showToast("Account Protection: Age must be greater than 1 year to create an account", "error");
+                return;
+            }
+            if (password.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+            if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
+
+            const usernameKey = username.toLowerCase();
+            if ((await db.ref('users/' + usernameKey).once('value')).exists()) {
+                showToast("Username already exists", "error");
+                return;
+            }
+            if (await findUserRecordByEmail(email)) {
+                showToast("An account with this email already exists. Please log in.", "error");
+                return;
+            }
+
+            // Create (or reuse an earlier unfinished) Firebase Authentication user for this email
+            let authUser;
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, password);
+                authUser = cred.user;
+            } catch (e) {
+                if (e.code === 'auth/email-already-in-use') {
+                    try {
+                        const cred = await auth.signInWithEmailAndPassword(email, password);
+                        authUser = cred.user;
+                    } catch (e2) {
+                        throw new Error('This email was already used to start sign-up with a different password. Use that password, or use another email.');
+                    }
+                } else {
+                    throw e;
+                }
+            }
+
+            pendingSignup = { username, email, password, dob, gender };
+
+            if (authUser.emailVerified) {
+                await finishSignupAfterVerification(authUser);
+                return;
+            }
+            await sendSignupVerificationEmail(authUser);
+            showSignupVerifyPanel(email);
+            showToast('Verification link sent to ' + email + '. Check your inbox and spam folder.', 'success');
+        }
+
+        async function finishSignupAfterVerification(authUser) {
+            if (!pendingSignup || signupFinishing) return;
+            signupFinishing = true;
+            try {
+                const p = pendingSignup;
+                const usernameKey = p.username.toLowerCase();
+                const userRef = db.ref('users/' + usernameKey);
+
+                if ((await userRef.once('value')).exists()) {
+                    showToast("That username was just taken. Please choose another.", "error");
+                    hideSignupVerifyPanel();
+                    return;
+                }
+
+                const allUsersSnap = await db.ref('users').once('value');
+                const isFirstUser = !allUsersSnap.exists();
+
+                const newUser = {
+                    username: p.username, password: p.password, email: p.email,
+                    authEmail: p.email, authUid: authUser.uid, emailVerified: true,
+                    dob: p.dob, gender: p.gender, isAdmin: isFirstUser, id: 'u_' + Date.now()
+                };
+                await userRef.set(newUser);
+                currentUser = newUser;
+                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                await userRef.update({ activeSession: mySessionId });
+                setupPresence(usernameKey);
+                setupBanWatcher(usernameKey);
+                setupSessionWatcher(usernameKey);
+                pendingSignup = null;
+                hideSignupVerifyPanel();
+                showToast("Email verified. Account created successfully!");
+                proceedAfterLogin();
+            } finally {
+                signupFinishing = false;
+            }
+        }
+
+        window.checkSignupVerification = async function(auto) {
+            if (!pendingSignup || signupFinishing) return;
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    stopSignupVerifyPolling();
+                    showToast('Session expired. Please sign up again.', 'error');
+                    pendingSignup = null;
+                    hideSignupVerifyPanel();
+                    return;
+                }
+                await user.reload();
+                const fresh = auth.currentUser;
+                if (!fresh || !fresh.emailVerified) {
+                    setSignupVerifyStatus('Not verified yet — open the link in your email', 'text-xs font-semibold text-amber-300');
+                    if (auto !== true) showToast('Firebase has not confirmed verification yet. Open the link in your email, then try again.', 'error');
+                    return;
+                }
+                stopSignupVerifyPolling();
+                setSignupVerifyStatus('Verified ✓', 'text-xs font-semibold text-green-400');
+                await finishSignupAfterVerification(fresh);
+            } catch (err) {
+                if (auto !== true) showToast(authErrorMessage(err), 'error');
+            }
+        };
+
+        window.resendSignupVerification = async function() {
+            if (!pendingSignup || !auth.currentUser) { showToast('Please sign up again.', 'error'); return; }
+            const wait = Math.ceil((signupResendAt - Date.now()) / 1000);
+            if (wait > 0) { showToast('Please wait ' + wait + 's before resending.', 'error'); return; }
+            try {
+                await sendSignupVerificationEmail(auth.currentUser);
+                showToast('Verification link sent again to ' + pendingSignup.email + '.', 'success');
+            } catch (err) {
+                showToast(authErrorMessage(err), 'error');
+            }
+        };
+
+        window.cancelSignupVerification = async function() {
+            pendingSignup = null;
+            hideSignupVerifyPanel();
+            try { await auth.signOut(); } catch (e) {}
+        };
+
+        // ================= FORGOT PASSWORD (username + email) =================
+        window.showForgotPassword = function() {
+            document.getElementById('auth-form').classList.add('hidden');
+            document.getElementById('forgot-panel').classList.remove('hidden');
+            document.getElementById('auth-subtitle').innerText = 'Reset your password';
+            document.getElementById('forgot-status').classList.add('hidden');
+            const typed = document.getElementById('username').value.trim();
+            if (typed.includes('@')) document.getElementById('forgot-email').value = typed;
+        };
+
+        window.hideForgotPassword = function() {
+            document.getElementById('forgot-panel').classList.add('hidden');
+            document.getElementById('auth-form').classList.remove('hidden');
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
+        };
+
+        window.sendPasswordResetLink = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+            const uname = document.getElementById('forgot-username').value.trim();
+            const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+            if (!uname || !email) { showToast("Enter your username and email", "error"); return; }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Please enter a valid email address", "error"); return; }
+
+            const btn = document.getElementById('forgot-send-btn');
+            if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+            try {
+                const snap = await db.ref('users/' + uname.toLowerCase()).once('value');
+                const rec = snap.val();
+                const accountEmails = rec ? [rec.email, rec.authEmail].map(x => String(x || '').trim().toLowerCase()) : [];
+                if (!rec || !accountEmails.includes(email)) {
+                    showToast("Username and email do not match an account", "error");
+                    return;
+                }
+
+                // Make sure a Firebase Authentication user exists for this email (older accounts may
+                // not have one yet). It gets a random password nobody knows; the emailed link is
+                // what sets the real one, so only the mailbox owner can finish the reset.
+                try {
+                    const bytes = new Uint8Array(18);
+                    crypto.getRandomValues(bytes);
+                    const tmpPass = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('') + 'Aa1!';
+                    await auth.createUserWithEmailAndPassword(email, tmpPass);
+                    await auth.signOut();
+                } catch (e) {
+                    if (e.code !== 'auth/email-already-in-use') throw e;
+                }
+
+                const url = window.location.origin + window.location.pathname;
+                try {
+                    await auth.sendPasswordResetEmail(email, { url, handleCodeInApp: false });
+                } catch (e) {
+                    if (e.code === 'auth/unauthorized-continue-uri' || e.code === 'auth/invalid-continue-uri' || e.code === 'auth/missing-continue-uri') {
+                        await auth.sendPasswordResetEmail(email);
+                    } else {
+                        throw e;
+                    }
+                }
+
+                const st = document.getElementById('forgot-status');
+                st.textContent = 'Reset link sent to ' + email + '. Open it, set a new password, then log in here with your email and the new password.';
+                st.classList.remove('hidden');
+                showToast('Password reset link sent. Check your inbox and spam folder.', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast(authErrorMessage(err), 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
+            }
+        };
+
         window.handleAuth = async function() {
             if (!navigator.onLine) {
                 showToast("No Internet", "error");
@@ -1354,70 +1683,66 @@
                 return;
             }
 
-            const username = document.getElementById('username').value.trim();
+            const identifier = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
             if (isSignupMode) {
                 const isHumanChecked = document.getElementById('human-verify').checked;
-                if (!isHumanChecked || !humanTestPassed) { 
-                    showToast("Please complete the human verification test", "error"); 
-                    return; 
+                if (!isHumanChecked || !humanTestPassed) {
+                    showToast("Please complete the human verification test", "error");
+                    return;
                 }
             }
 
-            if (!username || !password) { showToast("Please fill in all fields", "error"); return; }
+            if (!identifier || !password) { showToast("Please fill in all fields", "error"); return; }
 
-            const usernameKey = username.toLowerCase();
-            const userRef = db.ref('users/' + usernameKey);
-
-            if (isSignupMode) {
-                const email = document.getElementById('signup-email').value.trim().toLowerCase();
-                const dob = document.getElementById('dob').value;
-                const gender = document.getElementById('gender').value;
-                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    showToast("Please enter a valid email address", "error");
-                    return;
-                }
-                const confPass = document.getElementById('conf-password').value;
-                if (!dob) { showToast("Please enter your Date of Birth", "error"); return; }
-                if (!gender) { showToast("Please select Male or Female", "error"); return; }
-                
-                // Protection Feature: Age must be strictly greater than 1 year
-                const userAge = getAgeInYears(dob);
-                if (userAge <= 1) { 
-                    showToast("Account Protection: Age must be greater than 1 year to create an account", "error"); 
-                    return; 
-                }
-
-                if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
-
-                const snapshot = await userRef.once('value');
-                if (snapshot.exists()) {
-                    showToast("Username already exists", "error");
+            const btn = document.getElementById('auth-btn');
+            if (btn) btn.disabled = true;
+            try {
+                if (isSignupMode) {
+                    await startSignupWithEmailVerification(identifier.toLowerCase(), password);
                     return;
                 }
 
-                const allUsersSnap = await db.ref('users').once('value');
-                const isFirstUser = !allUsersSnap.exists();
-
-                const newUser = { username, password, email, dob, gender, isAdmin: isFirstUser, id: 'u_' + Date.now() };
-                await userRef.set(newUser);
-                currentUser = newUser;
-                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                await userRef.update({ activeSession: mySessionId });
-                setupPresence(usernameKey);
-                setupBanWatcher(usernameKey);
-                setupSessionWatcher(usernameKey);
-                showToast("Account created successfully!");
-                proceedAfterLogin();
-            } else {
-                const snapshot = await userRef.once('value');
-                if (!snapshot.exists() || snapshot.val().password !== password) {
-                    showToast("Invalid credentials", "error");
-                    return;
+                // ---- Login with email (older accounts without an email can still use their username) ----
+                let usernameKey = null;
+                let userVal = null;
+                if (identifier.includes('@')) {
+                    const matches = await findUserRecordsByEmail(identifier.toLowerCase());
+                    const pick = matches.find(m => m.val && m.val.password === password) || matches[0];
+                    if (pick) { usernameKey = pick.key; userVal = pick.val; }
+                } else {
+                    const snap = await db.ref('users/' + identifier.toLowerCase()).once('value');
+                    if (snap.exists()) { usernameKey = snap.key; userVal = snap.val(); }
                 }
 
-                let userVal = snapshot.val();
+                let passwordOk = !!userVal && userVal.password === password;
+
+                // Password may have been reset through the emailed Firebase link. Firebase Auth
+                // verifies the new password, then we sync it into the JB HUB account.
+                if (userVal && !passwordOk && password.length >= 6) {
+                    const acctEmail = String(userVal.authEmail || userVal.email || '').trim().toLowerCase();
+                    if (acctEmail) {
+                        try {
+                            const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
+                            const au = cred.user;
+                            if (au.emailVerified && (!userVal.authUid || userVal.authUid === au.uid)) {
+                                const upd = { password: password, authUid: au.uid, authEmail: acctEmail, emailVerified: true };
+                                await db.ref('users/' + usernameKey).update(upd);
+                                Object.assign(userVal, upd);
+                                passwordOk = true;
+                            } else {
+                                await auth.signOut();
+                            }
+                        } catch (e) { /* wrong password */ }
+                    }
+                }
+
+                if (!userVal || !passwordOk) {
+                    showToast("Invalid email or password", "error");
+                    return;
+                }
+                const userRef = db.ref('users/' + usernameKey);
 
                 // Repair accounts damaged by the old rename bug (record saved without an id)
                 if (!userVal.id) {
@@ -1446,6 +1771,11 @@
                 setupSessionWatcher(usernameKey);
                 showToast("Logged in successfully!");
                 proceedAfterLogin();
+            } catch (err) {
+                console.error(err);
+                showToast(authErrorMessage(err), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
             }
         }
 
@@ -1936,7 +2266,7 @@
             try { await auth.signOut(); } catch (e) { console.warn('Firebase Auth sign-out issue:', e); }
             currentUser = null;
             humanTestPassed = false;
-            document.getElementById('username').value = '';
+            document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
@@ -4366,6 +4696,8 @@
             if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/invalid-login-credential' || code === 'auth/user-not-found') return 'Could not connect this JB HUB account to Firebase Authentication. Check the email and current password.';
             if (code === 'auth/operation-not-allowed') return 'Enable Email/Password in Firebase Console → Authentication → Sign-in method.';
             if (code === 'auth/unauthorized-continue-uri' || code === 'auth/unauthorized-domain') return 'Add your website domain to Firebase Console → Authentication → Settings → Authorized domains.';
+            if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait a few minutes and try again.';
+            if (code === 'auth/invalid-email') return 'That email address is not valid.';
             if (code === 'auth/requires-recent-login') return 'Please sign in again, then retry this action.';
             return (err && err.message) || 'Firebase email verification failed. Please try again.';
         }
@@ -4540,6 +4872,14 @@
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
             if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
             if (!newGender) { showToast("Please select Male or Female", "error"); return; }
+            if (newUsername.toLowerCase() !== currentUser.username.toLowerCase()) {
+                const unameErr = usernameRuleError(newUsername);
+                if (unameErr) { showToast(unameErr, "error"); return; }
+            }
+            if (await emailTakenByOther(newEmail, currentUser.username.toLowerCase())) {
+                showToast("This email is already used by another account", "error");
+                return;
+            }
 
             // Keep Firebase Auth's password in sync for accounts already linked to Auth.
             // Reauthenticate before any database write so a wrong password cannot partially update the profile.
@@ -5644,6 +5984,11 @@
 
                 if (!newUsername || !newPassword) { showToast("Username and password required", "error"); return; }
                 if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
+                if (usernameKey !== newUsername.toLowerCase()) {
+                    const unameErr = usernameRuleError(newUsername);
+                    if (unameErr) { showToast(unameErr, "error"); return; }
+                }
+                if (await emailTakenByOther(newEmail, usernameKey)) { showToast("This email is already used by another account", "error"); return; }
                 if (!newDob) { showToast("Date of Birth is required", "error"); return; }
                 if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
