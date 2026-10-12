@@ -53,6 +53,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
     <style>
         body { margin: 0; overflow-x: hidden; background: #050505; color: white; font-family: sans-serif; min-height: 100vh; }
         #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
@@ -823,7 +824,7 @@
         });
 
         const firebaseConfig = {
-            apiKey: "AIzaSyDz9tvaSzzsp0mMUY0-oIaBR0hSP0bPDdQ",
+            apiKey: "AIzaSyDz9tvaSzzsp0mMUY0-oIaBR0hSPObPDdQ",
             authDomain: "jb-hub-93d7a.firebaseapp.com",
             databaseURL: "https://jb-hub-93d7a-default-rtdb.firebaseio.com",
             projectId: "jb-hub-93d7a",
@@ -835,6 +836,7 @@
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const auth = firebase.auth();
 
         let currentUser = null;
         let notesData = [];
@@ -1931,6 +1933,7 @@
             detachMyBanListener();
             detachSessionListener();
             mySessionId = null;
+            try { await auth.signOut(); } catch (e) { console.warn('Firebase Auth sign-out issue:', e); }
             currentUser = null;
             humanTestPassed = false;
             document.getElementById('username').value = '';
@@ -4284,6 +4287,18 @@
                             <input type="email" id="account-email-input" autocomplete="email" value="${escapeHtml(currentUser.email || '')}" placeholder="you@example.com" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm outline-none focus:border-purple-500">
                         </div>
 
+                        <div class="mt-2 p-3 rounded-xl bg-white/5 border border-white/10 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs text-gray-300">Email verification</span>
+                                <span id="email-verification-status" class="text-xs font-semibold ${currentUser.emailVerified ? 'text-green-400' : 'text-amber-300'}">${currentUser.emailVerified ? 'Verified' : 'Not verified'}</span>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button type="button" onclick="sendAccountEmailVerificationLink()" class="w-full p-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">Send Verification Link</button>
+                                <button type="button" onclick="checkAccountEmailVerification()" class="w-full p-2.5 rounded-lg bg-emerald-700/80 hover:bg-emerald-700 text-white text-sm font-semibold transition">I've clicked the link — Check Status</button>
+                            </div>
+                            <p class="text-xs text-gray-500">Firebase sends a verification link to your email. Open it, return to this browser, and check status before saving.</p>
+                        </div>
+
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
                             <input type="date" id="account-dob-input" value="${currentUser.dob || ''}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
@@ -4342,6 +4357,148 @@
             `;
         }
 
+        let accountEmailVerifiedFor = '';
+
+        function authErrorMessage(err) {
+            const code = err && err.code ? err.code : '';
+            if (code === 'auth/weak-password') return 'Firebase Authentication requires a password of at least 6 characters. Change your JB HUB password to 6+ characters, then try again.';
+            if (code === 'auth/email-already-in-use') return 'This email is already attached to another Firebase Authentication account. Ask an administrator to resolve the account link.';
+            if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/invalid-login-credential' || code === 'auth/user-not-found') return 'Could not connect this JB HUB account to Firebase Authentication. Check the email and current password.';
+            if (code === 'auth/operation-not-allowed') return 'Enable Email/Password in Firebase Console → Authentication → Sign-in method.';
+            if (code === 'auth/unauthorized-continue-uri' || code === 'auth/unauthorized-domain') return 'Add your website domain to Firebase Console → Authentication → Settings → Authorized domains.';
+            if (code === 'auth/requires-recent-login') return 'Please sign in again, then retry this action.';
+            return (err && err.message) || 'Firebase email verification failed. Please try again.';
+        }
+
+        async function ensureFirebaseAuthForCurrentAccount(password) {
+            if (!currentUser) throw new Error('Please log in to JB HUB first.');
+            const usernameKey = currentUser.username.toLowerCase();
+            let authUser = auth.currentUser;
+            if (authUser && currentUser.authUid && authUser.uid === currentUser.authUid) {
+                return authUser;
+            }
+
+            // This app historically used its own username/password database. Link that
+            // legacy account to Firebase Auth the first time email verification is used.
+            const emailForAuth = String(currentUser.authEmail || currentUser.email || '').trim().toLowerCase();
+            if (!emailForAuth) throw new Error('This account has no saved email address. Enter an email first.');
+            if (password.length < 6) throw new Error('Firebase Authentication requires at least 6 characters for the password. Change your JB HUB password first, then retry.');
+
+            if (authUser) await auth.signOut();
+            try {
+                const credential = await auth.signInWithEmailAndPassword(emailForAuth, password);
+                authUser = credential.user;
+            } catch (signInError) {
+                const notFoundCodes = ['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/invalid-login-credential', 'auth/wrong-password'];
+                if (!notFoundCodes.includes(signInError.code) && !/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND/i.test(signInError.message || '')) throw signInError;
+                try {
+                    const credential = await auth.createUserWithEmailAndPassword(emailForAuth, password);
+                    authUser = credential.user;
+                } catch (createError) {
+                    if (createError.code === 'auth/email-already-in-use') {
+                        const credential = await auth.signInWithEmailAndPassword(emailForAuth, password);
+                        authUser = credential.user;
+                    } else {
+                        throw createError;
+                    }
+                }
+            }
+
+            // Never silently attach one Firebase identity to two JB HUB usernames.
+            const usersSnap = await db.ref('users').once('value');
+            let linkedToAnotherUsername = false;
+            usersSnap.forEach(child => {
+                if (child.key !== usernameKey && child.val() && child.val().authUid === authUser.uid) linkedToAnotherUsername = true;
+            });
+            if (linkedToAnotherUsername) {
+                await auth.signOut();
+                throw new Error('This Firebase Authentication account is already linked to another JB HUB username. Contact the site administrator.');
+            }
+            await db.ref('users/' + usernameKey).update({ authUid: authUser.uid, authEmail: authUser.email || emailForAuth });
+            currentUser.authUid = authUser.uid;
+            currentUser.authEmail = authUser.email || emailForAuth;
+            return authUser;
+        }
+
+        window.sendAccountEmailVerificationLink = async function() {
+            const button = document.querySelector('button[onclick="sendAccountEmailVerificationLink()"]');
+            try {
+                const email = (document.getElementById('account-email-input')?.value || '').trim().toLowerCase();
+                const password = document.getElementById('acc-old-pass')?.value || '';
+                if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid email address first', 'error'); return; }
+                if (!password) { showToast('Enter your current JB HUB password first', 'error'); return; }
+                if (!currentUser || !mySessionId) { showToast('Please log in again before verifying email', 'error'); return; }
+                if (button) { button.disabled = true; button.textContent = 'Preparing link...'; }
+
+                let authUser = await ensureFirebaseAuthForCurrentAccount(password);
+                const existingAuthEmail = String(authUser.email || '').toLowerCase();
+                if (existingAuthEmail !== email) {
+                    const credential = firebase.auth.EmailAuthProvider.credential(existingAuthEmail, password);
+                    await authUser.reauthenticateWithCredential(credential);
+                    await authUser.updateEmail(email);
+                    authUser = auth.currentUser;
+                    await db.ref('users/' + currentUser.username.toLowerCase()).update({ authEmail: email });
+                    currentUser.authEmail = email;
+                }
+
+                await authUser.reload();
+                authUser = auth.currentUser;
+                if (authUser.emailVerified && String(authUser.email || '').toLowerCase() === email) {
+                    accountEmailVerifiedFor = email;
+                    const status = document.getElementById('email-verification-status');
+                    if (status) { status.textContent = 'Verified'; status.className = 'text-xs font-semibold text-green-400'; }
+                    showToast('This email is already verified. You can save your changes.', 'success');
+                    return;
+                }
+
+                await authUser.sendEmailVerification({
+                    url: window.location.origin + window.location.pathname,
+                    handleCodeInApp: false
+                });
+                accountEmailVerifiedFor = '';
+                const status = document.getElementById('email-verification-status');
+                if (status) { status.textContent = 'Link sent — check inbox'; status.className = 'text-xs font-semibold text-sky-300'; }
+                showToast('Verification link sent to ' + email + '. Check your inbox and spam folder.', 'success');
+            } catch (err) {
+                showToast(authErrorMessage(err), 'error');
+            } finally {
+                if (button) { button.disabled = false; button.textContent = 'Send Verification Link'; }
+            }
+        };
+
+        window.checkAccountEmailVerification = async function() {
+            try {
+                const email = (document.getElementById('account-email-input')?.value || '').trim().toLowerCase();
+                if (!currentUser || !auth.currentUser) {
+                    showToast('Please send a verification link from this account first, then return to this browser.', 'error');
+                    return;
+                }
+                await auth.currentUser.reload();
+                const authUser = auth.currentUser;
+                if (String(authUser.email || '').toLowerCase() !== email) {
+                    accountEmailVerifiedFor = '';
+                    showToast('The verified Firebase email does not match the email entered here. Send a link to this address.', 'error');
+                    return;
+                }
+                if (!authUser.emailVerified) {
+                    accountEmailVerifiedFor = '';
+                    const status = document.getElementById('email-verification-status');
+                    if (status) { status.textContent = 'Not verified yet'; status.className = 'text-xs font-semibold text-amber-300'; }
+                    showToast('Firebase has not confirmed verification yet. Open the link in your email, then try again.', 'error');
+                    return;
+                }
+                accountEmailVerifiedFor = email;
+                await db.ref('users/' + currentUser.username.toLowerCase()).update({ authUid: authUser.uid, authEmail: email });
+                currentUser.authUid = authUser.uid;
+                currentUser.authEmail = email;
+                const status = document.getElementById('email-verification-status');
+                if (status) { status.textContent = 'Verified'; status.className = 'text-xs font-semibold text-green-400'; }
+                showToast('Email verified successfully. Click Save Account Updates to finish.', 'success');
+            } catch (err) {
+                showToast(authErrorMessage(err), 'error');
+            }
+        };
+
         // ---- Account update limit (per calendar day, local time) ----
         const MAX_ACCOUNT_UPDATES_PER_DAY = 2;
         function getLocalDayKey() {
@@ -4363,11 +4520,13 @@
             const newGender = document.getElementById('account-gender-input').value;
             const newPassword = document.getElementById('acc-new-pass').value;
             const oldPassword = document.getElementById('acc-old-pass').value;
+            let authUserForPasswordChange = null;
 
             // Nothing changed? Then the update is unsuccessful and does NOT use up a daily update.
             const nothingChanged =
                 newUsername === currentUser.username &&
                 newEmail === (currentUser.email || '').toLowerCase() &&
+                currentUser.emailVerified === true &&
                 (!newDob || newDob === currentUser.dob) &&
                 newGender === currentUser.gender &&
                 (!newPassword || newPassword === currentUser.password);
@@ -4381,6 +4540,36 @@
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
             if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
             if (!newGender) { showToast("Please select Male or Female", "error"); return; }
+
+            // Keep Firebase Auth's password in sync for accounts already linked to Auth.
+            // Reauthenticate before any database write so a wrong password cannot partially update the profile.
+            if (newPassword && currentUser.authUid) {
+                try {
+                    authUserForPasswordChange = await ensureFirebaseAuthForCurrentAccount(oldPassword);
+                    const authEmailForReauth = authUserForPasswordChange.email;
+                    await authUserForPasswordChange.reauthenticateWithCredential(
+                        firebase.auth.EmailAuthProvider.credential(authEmailForReauth, oldPassword)
+                    );
+                } catch (authErr) {
+                    showToast(authErrorMessage(authErr), 'error');
+                    return;
+                }
+            }
+
+            const needsEmailVerification = newEmail !== (currentUser.email || '').toLowerCase() || currentUser.emailVerified !== true;
+            if (needsEmailVerification) {
+                try {
+                    if (!auth.currentUser) throw new Error('Send a verification link first, then return to this browser.');
+                    await auth.currentUser.reload();
+                    if (!auth.currentUser.emailVerified || String(auth.currentUser.email || '').toLowerCase() !== newEmail) {
+                        throw new Error('Verify the exact email address using the link sent by Firebase before saving.');
+                    }
+                    accountEmailVerifiedFor = newEmail;
+                } catch (verifyErr) {
+                    showToast(verifyErr.message || 'Email verification is required before saving', 'error');
+                    return;
+                }
+            }
 
             // Protection Feature: Age must be strictly greater than 1 year when editing profile
             if (newDob) {
@@ -4414,6 +4603,7 @@
                 accountEdits: newEditLog,
                 username: newUsername,
                 email: newEmail,
+                emailVerified: true,
                 password: newPassword || currentUser.password,
                 dob: newDob || currentUser.dob || fullRecord.dob || '',
                 gender: newGender,
@@ -4429,7 +4619,6 @@
                     showToast("Username already taken", "error");
                     return;
                 }
-
                 // Stop everything that could write to the OLD path.
                 detachSessionListener();
                 detachMyBanListener();
@@ -4489,17 +4678,30 @@
                 // Same username: update only the editable fields (never replace the node).
                 const profileUpdates = {
                     username: mergedRecord.username,
-                    email: mergedRecord.email, // Save the edited email for accounts that keep the same username.
+                    email: mergedRecord.email,
+                    emailVerified: true,
                     password: mergedRecord.password,
                     dob: mergedRecord.dob,
                     gender: mergedRecord.gender,
                     id: mergedRecord.id,
-                    accountEdits: newEditLog
+                    accountEdits: newEditLog,
+                    authUid: mergedRecord.authUid || currentUser.authUid || null,
+                    authEmail: mergedRecord.authEmail || currentUser.authEmail || newEmail
                 };
                 await oldRef.update(profileUpdates);
                 Object.assign(currentUser, profileUpdates);
             }
 
+            if (authUserForPasswordChange && newPassword) {
+                try {
+                    await authUserForPasswordChange.updatePassword(newPassword);
+                } catch (authPasswordErr) {
+                    console.error('Firebase Auth password sync failed:', authPasswordErr);
+                    showToast('Profile saved, but Firebase Authentication password sync failed. Please contact the site administrator before changing email again.', 'error');
+                }
+            }
+            accountEmailVerifiedFor = '';
+            currentUser.emailVerified = true;
             showToast("Profile updated successfully!");
             renderAccountTab(document.getElementById('tab-content'));
         }
