@@ -632,8 +632,8 @@
 
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
                 <div>
-                    <label class="text-xs text-gray-400 mb-1 block">Email</label>
-                    <input type="text" id="username" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="Enter your email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
+                    <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 
                 <div>
@@ -710,11 +710,7 @@
 
             <!-- Forgot password panel -->
             <div id="forgot-panel" class="hidden space-y-4">
-                <p class="text-xs text-gray-400 text-center">Enter your username and the email address on your account. We'll email you a link to set a new password.</p>
-                <div>
-                    <label class="text-xs text-gray-400 mb-1 block">Username</label>
-                    <input type="text" id="forgot-username" autocapitalize="none" spellcheck="false" placeholder="Your username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
-                </div>
+                <p class="text-xs text-gray-400 text-center">Enter the email address on your account. We'll email you a link to set a new password.</p>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Email</label>
                     <input type="text" id="forgot-email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email on your account" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
@@ -1301,10 +1297,12 @@
             
             applyWaveEffect(document.getElementById('auth-title'), 'JB HUB');
             
-            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your username or email';
             document.getElementById('auth-btn').innerText = isSignupMode ? 'Sign Up' : 'Login';
             document.getElementById('toggle-text').innerText = isSignupMode ? 'Already have an account? Login' : 'Create Account';
             document.getElementById('forgot-link').classList.toggle('hidden', isSignupMode);
+            document.getElementById('identifier-label').innerText = isSignupMode ? 'Email' : 'Username or Email';
+            document.getElementById('username').placeholder = isSignupMode ? 'Enter your email' : 'Enter username or email';
             
             humanTestPassed = false;
             document.getElementById('human-verify').checked = false;
@@ -1442,7 +1440,7 @@
             stopSignupVerifyPolling();
             document.getElementById('signup-verify-panel').classList.add('hidden');
             document.getElementById('auth-form').classList.remove('hidden');
-            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your username or email';
         }
 
         async function sendSignupVerificationEmail(user) {
@@ -1614,26 +1612,23 @@
         window.hideForgotPassword = function() {
             document.getElementById('forgot-panel').classList.add('hidden');
             document.getElementById('auth-form').classList.remove('hidden');
-            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your email and password';
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your username or email';
         };
 
         window.sendPasswordResetLink = async function() {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-            const uname = document.getElementById('forgot-username').value.trim();
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
-            if (!uname || !email) { showToast("Enter your username and email", "error"); return; }
+            if (!email) { showToast("Enter your email", "error"); return; }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Please enter a valid email address", "error"); return; }
 
             const btn = document.getElementById('forgot-send-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
             try {
-                const snap = await db.ref('users/' + uname.toLowerCase()).once('value');
-                const rec = snap.val();
-                const accountEmails = rec ? [rec.email, rec.authEmail].map(x => String(x || '').trim().toLowerCase()) : [];
-                if (!rec || !accountEmails.includes(email)) {
-                    showToast("Username and email do not match an account", "error");
+                const matches = await findUserRecordsByEmail(email);
+                if (!matches.length) {
+                    showToast("No account found with this email", "error");
                     return;
                 }
 
@@ -1662,7 +1657,7 @@
                 }
 
                 const st = document.getElementById('forgot-status');
-                st.textContent = 'Reset link sent to ' + email + '. Open it, set a new password, then log in here with your email and the new password.';
+                st.textContent = 'Reset link sent to ' + email + '. Open it, set a new password, then log in here with your username or email and the new password.';
                 st.classList.remove('hidden');
                 showToast('Password reset link sent. Check your inbox and spam folder.', 'success');
             } catch (err) {
@@ -1739,7 +1734,7 @@
                 }
 
                 if (!userVal || !passwordOk) {
-                    showToast("Invalid email or password", "error");
+                    showToast("Invalid username/email or password", "error");
                     return;
                 }
                 const userRef = db.ref('users/' + usernameKey);
