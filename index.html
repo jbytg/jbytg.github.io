@@ -4973,19 +4973,53 @@
                 const email = (document.getElementById('account-email-input')?.value || '').trim().toLowerCase();
                 const password = document.getElementById('acc-old-pass')?.value || '';
                 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid email address first', 'error'); return; }
+                if (currentUser && currentUser.googleAccount === true && !currentUser.password) {
+                    if (email === String(currentUser.email || '').toLowerCase()) {
+                        accountEmailVerifiedFor = email;
+                        const gs = document.getElementById('email-verification-status');
+                        if (gs) { gs.textContent = 'Verified'; gs.className = 'text-xs font-semibold text-green-400'; }
+                        showToast('This email is verified through your Google account.', 'success');
+                    } else {
+                        showToast("Your email is linked to your Google account and can't be changed.", 'error');
+                    }
+                    return;
+                }
                 if (!password) { showToast('Enter your current JB HUB password first', 'error'); return; }
                 if (!currentUser || !mySessionId) { showToast('Please log in again before verifying email', 'error'); return; }
                 if (button) { button.disabled = true; button.textContent = 'Preparing link...'; }
+
+                // Stop here if another JB HUB account already uses this email
+                if (await emailTakenByOther(email, currentUser.username.toLowerCase())) {
+                    const st = document.getElementById('email-verification-status');
+                    if (st) { st.textContent = 'Email already registered'; st.className = 'text-xs font-semibold text-red-400'; }
+                    showToast('This email is already registered to another account. Use a different email.', 'error');
+                    return;
+                }
 
                 let authUser = await ensureFirebaseAuthForCurrentAccount(password);
                 const existingAuthEmail = String(authUser.email || '').toLowerCase();
                 if (existingAuthEmail !== email) {
                     const credential = firebase.auth.EmailAuthProvider.credential(existingAuthEmail, password);
                     await authUser.reauthenticateWithCredential(credential);
-                    await authUser.updateEmail(email);
-                    authUser = auth.currentUser;
-                    await db.ref('users/' + currentUser.username.toLowerCase()).update({ authEmail: email });
-                    currentUser.authEmail = email;
+
+                    // updateEmail() is blocked (auth/operation-not-allowed) when Firebase's email
+                    // enumeration protection is on. verifyBeforeUpdateEmail() emails a link to the
+                    // NEW address and switches the Firebase email only after that link is clicked.
+                    const changeSettings = { url: window.location.origin + window.location.pathname, handleCodeInApp: false };
+                    try {
+                        await authUser.verifyBeforeUpdateEmail(email, changeSettings);
+                    } catch (changeErr) {
+                        if (changeErr.code === 'auth/unauthorized-continue-uri' || changeErr.code === 'auth/invalid-continue-uri' || changeErr.code === 'auth/missing-continue-uri') {
+                            await authUser.verifyBeforeUpdateEmail(email);
+                        } else {
+                            throw changeErr;
+                        }
+                    }
+                    accountEmailVerifiedFor = '';
+                    const changeStatus = document.getElementById('email-verification-status');
+                    if (changeStatus) { changeStatus.textContent = 'Link sent — check inbox'; changeStatus.className = 'text-xs font-semibold text-sky-300'; }
+                    showToast('Verification link sent to ' + email + '. Click it, then press the verify-check button here and save.', 'success');
+                    return;
                 }
 
                 await authUser.reload();
