@@ -701,6 +701,10 @@
 
                 <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
                 <p id="forgot-link" class="text-center text-xs text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showForgotPassword()">Forgot password?</p>
+                <div class="flex items-center gap-3 text-[11px] text-gray-500 uppercase tracking-wider"><div class="flex-1 h-px bg-white/10"></div>or<div class="flex-1 h-px bg-white/10"></div></div>
+                <button type="button" id="google-btn" onclick="handleGoogleAuth()" class="w-full p-3 bg-white text-gray-800 hover:bg-gray-100 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-brands fa-google text-red-500"></i><span id="google-btn-text">Continue with Google</span>
+                </button>
                 
                 <div class="flex justify-between items-center text-xs sm:text-sm pt-2">
                     <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="toggleMode()"><span id="toggle-text">Create Account</span></p>
@@ -718,6 +722,33 @@
                 <button type="button" id="forgot-send-btn" onclick="sendPasswordResetLink()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Send Reset Link</button>
                 <p id="forgot-status" class="text-xs text-center text-sky-300 hidden"></p>
                 <button type="button" onclick="hideForgotPassword()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Back to Login</button>
+            </div>
+
+            <!-- Google sign-up: finish profile panel -->
+            <div id="google-signup-panel" class="hidden space-y-4">
+                <div class="text-center">
+                    <p class="text-xs text-gray-400">Signed in with Google as</p>
+                    <p id="google-signup-email" class="text-sm font-bold text-purple-200 break-all"></p>
+                    <p class="text-xs text-gray-400 mt-1">Choose a username to finish creating your account.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
+                    <input type="text" id="gs-username" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Date of Birth</label>
+                    <input type="date" id="gs-dob" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                    <select id="gs-gender" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <button type="button" id="gs-create-btn" onclick="finishGoogleSignup()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Create Account</button>
+                <button type="button" onclick="cancelGoogleSignup()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
             </div>
 
             <!-- Sign-up email verification panel -->
@@ -1302,6 +1333,7 @@
             document.getElementById('toggle-text').innerText = isSignupMode ? 'Already have an account? Login' : 'Create Account';
             document.getElementById('forgot-link').classList.toggle('hidden', isSignupMode);
             document.getElementById('identifier-label').innerText = isSignupMode ? 'Email' : 'Username or Email';
+            document.getElementById('google-btn-text').innerText = isSignupMode ? 'Sign up with Google' : 'Continue with Google';
             document.getElementById('username').placeholder = isSignupMode ? 'Enter your email' : 'Enter username or email';
             
             humanTestPassed = false;
@@ -1512,9 +1544,20 @@
                 await finishSignupAfterVerification(authUser);
                 return;
             }
-            await sendSignupVerificationEmail(authUser);
-            showSignupVerifyPanel(email);
-            showToast('Verification link sent to ' + email + '. Check your inbox and spam folder.', 'success');
+            try {
+                await sendSignupVerificationEmail(authUser);
+                showSignupVerifyPanel(email);
+                showToast('Verification link sent to ' + email + '. Check your inbox and spam folder.', 'success');
+            } catch (sendErr) {
+                if (sendErr.code === 'auth/too-many-requests') {
+                    // Firebase already sent a link recently: keep the account pending instead of failing.
+                    signupResendAt = Date.now() + 120000;
+                    showSignupVerifyPanel(email);
+                    showToast('A link was already sent recently. Check your inbox/spam, or use Resend link in a few minutes.', 'error');
+                } else {
+                    throw sendErr;
+                }
+            }
         }
 
         async function finishSignupAfterVerification(authUser) {
@@ -1668,6 +1711,179 @@
             }
         };
 
+        // ================= GOOGLE SIGN-IN / SIGN-UP =================
+        let pendingGoogle = null;
+
+        function googleErrorMessage(err) {
+            const c = err && err.code;
+            if (c === 'auth/popup-closed-by-user' || c === 'auth/cancelled-popup-request') return 'Google sign-in was cancelled.';
+            if (c === 'auth/popup-blocked') return 'Your browser blocked the Google pop-up. Allow pop-ups for this page and try again.';
+            if (c === 'auth/operation-not-allowed') return 'Google sign-in is not enabled yet. In Firebase Console > Authentication > Sign-in method, enable Google.';
+            if (c === 'auth/unauthorized-domain') return 'This domain is not authorised for Google sign-in. Add it in Firebase Console > Authentication > Settings > Authorized domains.';
+            if (c === 'auth/operation-not-supported-in-this-environment') return 'Google sign-in needs the page opened over http(s), not as a local file.';
+            return authErrorMessage(err);
+        }
+
+        function showGoogleSignupPanel() {
+            document.getElementById('auth-form').classList.add('hidden');
+            document.getElementById('google-signup-email').textContent = pendingGoogle.email;
+            const suggested = String(pendingGoogle.name || '').replace(/[@.#$\[\]\/\s]+/g, '').slice(0, 20);
+            document.getElementById('gs-username').value = suggested.length >= 3 ? suggested : '';
+            document.getElementById('auth-subtitle').innerText = 'Finish creating your account';
+            document.getElementById('google-signup-panel').classList.remove('hidden');
+        }
+
+        function hideGoogleSignupPanel() {
+            document.getElementById('google-signup-panel').classList.add('hidden');
+            document.getElementById('auth-form').classList.remove('hidden');
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your username or email';
+        }
+
+        window.cancelGoogleSignup = async function() {
+            pendingGoogle = null;
+            hideGoogleSignupPanel();
+            try { await auth.signOut(); } catch (e) {}
+        };
+
+        async function completeGoogleLogin(usernameKey, userVal, gUser, email) {
+            const userRef = db.ref('users/' + usernameKey);
+
+            if (!userVal.id) {
+                userVal.id = 'u_' + Date.now();
+                await userRef.update({ id: userVal.id });
+            }
+
+            if (userVal.ban && userVal.ban.isBanned) {
+                const banExpired = userVal.ban.type === 'temporary' && userVal.ban.unbanAt && Date.now() >= userVal.ban.unbanAt;
+                if (banExpired) {
+                    await db.ref('users/' + usernameKey + '/ban').remove();
+                    delete userVal.ban;
+                } else {
+                    showBanScreen(userVal.ban);
+                    return;
+                }
+            }
+
+            // Google proved ownership of this email, so link/verify the account
+            const upd = {};
+            if (!userVal.authUid) upd.authUid = gUser.uid;
+            if (!userVal.authEmail) upd.authEmail = email;
+            if (userVal.emailVerified !== true) upd.emailVerified = true;
+            if (Object.keys(upd).length) {
+                await userRef.update(upd);
+                Object.assign(userVal, upd);
+            }
+
+            currentUser = userVal;
+            mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            await userRef.update({ activeSession: mySessionId });
+            setupPresence(usernameKey);
+            setupBanWatcher(usernameKey);
+            setupSessionWatcher(usernameKey);
+            showToast("Logged in with Google!");
+            proceedAfterLogin();
+        }
+
+        window.handleGoogleAuth = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+
+            const btn = document.getElementById('google-btn');
+            if (btn) btn.disabled = true;
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ prompt: 'select_account' });
+                const result = await auth.signInWithPopup(provider);
+                const gUser = result.user;
+                const email = String(gUser.email || '').trim().toLowerCase();
+
+                if (!email || !gUser.emailVerified) {
+                    await auth.signOut();
+                    showToast("Your Google account has no verified email address.", "error");
+                    return;
+                }
+
+                const matches = await findUserRecordsByEmail(email);
+                const pick = matches.find(m => m.val && m.val.authUid === gUser.uid) || matches[0];
+                if (pick) {
+                    await completeGoogleLogin(pick.key, pick.val, gUser, email);
+                    return;
+                }
+
+                // No JB HUB account for this Google email yet: collect username, DOB, gender
+                pendingGoogle = { email: email, uid: gUser.uid, name: gUser.displayName || '' };
+                showGoogleSignupPanel();
+                showToast("Google verified your email. Choose a username to finish.", "success");
+            } catch (err) {
+                console.error(err);
+                showToast(googleErrorMessage(err), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        window.finishGoogleSignup = async function() {
+            if (!pendingGoogle) return;
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!auth.currentUser || auth.currentUser.uid !== pendingGoogle.uid) {
+                showToast("Google session expired. Please try again.", "error");
+                pendingGoogle = null;
+                hideGoogleSignupPanel();
+                return;
+            }
+
+            const username = document.getElementById('gs-username').value.trim();
+            const dob = document.getElementById('gs-dob').value;
+            const gender = document.getElementById('gs-gender').value;
+
+            const usernameErr = usernameRuleError(username);
+            if (usernameErr) { showToast(usernameErr, "error"); return; }
+            if (!dob) { showToast("Please enter your Date of Birth", "error"); return; }
+            if (!gender) { showToast("Please select Male or Female", "error"); return; }
+            if (getAgeInYears(dob) <= 1) {
+                showToast("Account Protection: Age must be greater than 1 year to create an account", "error");
+                return;
+            }
+
+            const btn = document.getElementById('gs-create-btn');
+            if (btn) btn.disabled = true;
+            try {
+                const usernameKey = username.toLowerCase();
+                const userRef = db.ref('users/' + usernameKey);
+                if ((await userRef.once('value')).exists()) { showToast("Username already exists", "error"); return; }
+                if (await emailTakenByOther(pendingGoogle.email, usernameKey)) {
+                    showToast("An account with this email already exists. Please log in.", "error");
+                    return;
+                }
+
+                const allUsersSnap = await db.ref('users').once('value');
+                const isFirstUser = !allUsersSnap.exists();
+
+                const newUser = {
+                    username: username, password: '', email: pendingGoogle.email,
+                    authEmail: pendingGoogle.email, authUid: pendingGoogle.uid,
+                    emailVerified: true, googleAccount: true,
+                    dob: dob, gender: gender, isAdmin: isFirstUser, id: 'u_' + Date.now()
+                };
+                await userRef.set(newUser);
+                currentUser = newUser;
+                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                await userRef.update({ activeSession: mySessionId });
+                setupPresence(usernameKey);
+                setupBanWatcher(usernameKey);
+                setupSessionWatcher(usernameKey);
+                pendingGoogle = null;
+                hideGoogleSignupPanel();
+                showToast("Account created with Google!");
+                proceedAfterLogin();
+            } catch (err) {
+                console.error(err);
+                showToast(googleErrorMessage(err), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
         window.handleAuth = async function() {
             if (!navigator.onLine) {
                 showToast("No Internet", "error");
@@ -1733,6 +1949,10 @@
                     }
                 }
 
+                if (userVal && !passwordOk && userVal.googleAccount === true && !userVal.password) {
+                    showToast("This account uses Google sign-in. Tap \"Continue with Google\".", "error");
+                    return;
+                }
                 if (!userVal || !passwordOk) {
                     showToast("Invalid username/email or password", "error");
                     return;
@@ -4862,8 +5082,14 @@
                 return;
             }
 
-            if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
-            if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
+            const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password;
+            if (isGoogleAcct) {
+                if (newPassword) { showToast("Google accounts have no password here. Use Forgot password on the login page to set one.", "error"); return; }
+                if (newEmail !== (currentUser.email || '').toLowerCase()) { showToast("Your email is linked to your Google account and can't be changed.", "error"); return; }
+            } else {
+                if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
+                if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
+            }
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
             if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
             if (!newGender) { showToast("Please select Male or Female", "error"); return; }
@@ -5058,13 +5284,16 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const enteredPass = document.getElementById('delete-confirm-pass').value;
-                if (!enteredPass) {
-                    showToast("Password confirmation required!", "error");
-                    return;
-                }
-                if (enteredPass !== currentUser.password) {
-                    showToast("Incorrect current password! Account deletion canceled.", "error");
-                    return;
+                const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password;
+                if (!isGoogleAcct) {
+                    if (!enteredPass) {
+                        showToast("Password confirmation required!", "error");
+                        return;
+                    }
+                    if (enteredPass !== currentUser.password) {
+                        showToast("Incorrect current password! Account deletion canceled.", "error");
+                        return;
+                    }
                 }
 
                 const usernameKey = currentUser.username.toLowerCase();
