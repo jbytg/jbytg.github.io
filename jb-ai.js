@@ -862,8 +862,8 @@
   .jbai-msg a{color:#c4b5fd;text-decoration:underline}
   .jbai-bot{align-self:flex-start;background:rgba(255,255,255,.08);border-bottom-left-radius:4px}
   .jbai-user{align-self:flex-end;background:linear-gradient(135deg,#9333ea,#6366f1);border-bottom-right-radius:4px}
-  .jbai-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px;max-height:84px;overflow-y:auto}
-  .jbai-chips button{font-size:11px;padding:5px 10px;border-radius:999px;border:1px solid rgba(168,85,247,.5);background:rgba(168,85,247,.15);color:#e9d5ff;cursor:pointer}
+  .jbai-chips{display:flex;flex-wrap:nowrap;gap:6px;padding:0 12px 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+  .jbai-chips button{flex:0 0 auto;white-space:nowrap;font-size:11px;padding:5px 10px;border-radius:999px;border:1px solid rgba(168,85,247,.5);background:rgba(168,85,247,.15);color:#e9d5ff;cursor:pointer}
   .jbai-chips button:hover{background:rgba(168,85,247,.35)}
   .jbai-form{display:flex;gap:8px;padding:10px;border-top:1px solid rgba(255,255,255,.1)}
   .jbai-form input{flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#fff;font-size:13px;outline:none}
@@ -913,9 +913,9 @@
       return d;
     }
 
-    function showChips(list) {
+    function showChips() {
       chips.innerHTML = '';
-      (Array.isArray(list) && list.length ? list : SUGGESTIONS).forEach(s => {
+      SUGGESTIONS.forEach(s => {
         const b = document.createElement('button');
         b.type = 'button';
         b.textContent = s;
@@ -935,7 +935,6 @@
         const r = reply(text);
         t.innerHTML = format(r.text);
         log.scrollTop = log.scrollHeight;
-        showChips(r.chips);
       }, 450);
     }
 
