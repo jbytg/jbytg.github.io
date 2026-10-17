@@ -48,6 +48,9 @@
     <link rel="manifest" href="/favicon/site.webmanifest" />
 
 
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDKs -->
@@ -102,6 +105,51 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
+        }
+
+
+        /* ===== Graphics modes (Settings -> Graphics) =====
+           low    : static gradient, no blur, no animations
+           medium : DEFAULT for every new user - light animated background, no blur, no looping glow animations
+           high   : all the original effects
+           ultra  : high + denser/sharper background, stronger blur and glow */
+        #modal-inputs { max-height: 58vh; overflow-y: auto; }
+
+        body.gfx-medium .glass {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background: rgba(18, 14, 32, 0.84) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+        }
+        body.gfx-medium [class*="backdrop-blur"],
+        body.gfx-medium #side-menu,
+        body.gfx-medium #side-menu-overlay,
+        body.gfx-medium #side-menu-overlay.open {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        /* looping text-shadow / colour animation on every letter is one of the most expensive effects */
+        body.gfx-medium .glowing-logo,
+        body.gfx-medium .wave-char {
+            animation: none !important;
+            text-shadow: none !important;
+            will-change: auto !important;
+            background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        /* looping box-shadow animations repaint constantly */
+        body.gfx-medium button[class*="bg-purple-600"],
+        body.gfx-medium span[class*="bg-red-500/20"],
+        body.gfx-medium span[class*="bg-amber-500/20"] { animation: none !important; }
+        body.gfx-medium span.animate-pulse[class*="bg-emerald-400"] { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important; }
+
+        body.gfx-ultra .glass {
+            backdrop-filter: blur(18px) saturate(1.4);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            border-color: rgba(168, 85, 247, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), 0 0 26px rgba(168, 85, 247, 0.22);
         }
 
         /* Ultra-Smooth Hardware-Accelerated Per-Letter Wave Animation */
@@ -509,6 +557,19 @@
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
+    <script>
+        /* Graphics mode: applied immediately so there is no flash of the wrong look. Default = medium. */
+        (function () {
+            var m = "medium";
+            try {
+                var saved = localStorage.getItem("gfx_mode");
+                if (/^(low|medium|high|ultra)$/.test(saved)) m = saved;
+                else if (localStorage.getItem("perf_disableBg") === "true" || localStorage.getItem("perf_disableAnim") === "true") m = "low";
+            } catch (e) {}
+            document.body.classList.add("gfx-" + m);
+            if (m === "low") document.body.classList.add("perf-low-graphics", "perf-disable-animations");
+        })();
+    </script>
     <canvas id="canvas-bg"></canvas>
 
     <!-- Global Top-Left Three-Dots Menu Button -->
@@ -792,62 +853,100 @@
     </div>
 
     <script>
-        // Performance Mode State
-        let perfSettings = {
-            disableBg: localStorage.getItem('perf_disableBg') === 'true',
-            disableAnim: localStorage.getItem('perf_disableAnim') === 'true'
+        // ===== Graphics modes: low | medium (default for everyone) | high | ultra =====
+        const GFX_MODES = {
+            low:    { label: 'Low',    icon: 'fa-leaf',        tag: 'Fastest',  desc: 'Static background, no blur, no animations. Best for slow phones.' },
+            medium: { label: 'Medium', icon: 'fa-gauge-high',  tag: 'Default',  desc: 'Light animated background. Smooth and battery friendly.' },
+            high:   { label: 'High',   icon: 'fa-wand-magic-sparkles', tag: 'Pretty', desc: 'Glass blur, glowing text and buttons.' },
+            ultra:  { label: 'Ultra',  icon: 'fa-fire',        tag: 'Max',      desc: 'Sharper, denser background and extra glow. Needs a strong device.' }
         };
+        const GFX_DEFAULT = 'medium';
+
+        function loadGfxMode() {
+            let m = null, legacy = false;
+            try {
+                m = localStorage.getItem('gfx_mode');
+                legacy = localStorage.getItem('perf_disableBg') === 'true' || localStorage.getItem('perf_disableAnim') === 'true';
+            } catch (e) {}
+            if (GFX_MODES[m]) return m;
+            // Nothing saved yet: people who had switched the old "disable" options on keep a light look (Low);
+            // everybody else - including every brand-new user - starts on Medium.
+            return legacy ? 'low' : GFX_DEFAULT;
+        }
+
+        let gfxMode = loadGfxMode();
+        // kept so older code that reads perfSettings keeps working
+        let perfSettings = { disableBg: gfxMode === 'low', disableAnim: gfxMode === 'low' };
         // Tracks whether the open custom-modal is specifically the settings
         // panel, so closeModal() knows when to spin the gear icon shut.
         let settingsModalOpen = false;
 
         function applyPerformanceSettings() {
-            if (perfSettings.disableBg) {
-                document.body.classList.add('perf-low-graphics');
-            } else {
-                document.body.classList.remove('perf-low-graphics');
-            }
-
-            if (perfSettings.disableAnim) {
-                document.body.classList.add('perf-disable-animations');
-            } else {
-                document.body.classList.remove('perf-disable-animations');
-            }
+            const b = document.body;
+            Object.keys(GFX_MODES).forEach(m => b.classList.toggle('gfx-' + m, m === gfxMode));
+            b.classList.toggle('perf-low-graphics', gfxMode === 'low');
+            b.classList.toggle('perf-disable-animations', gfxMode === 'low');
+            perfSettings.disableBg = perfSettings.disableAnim = (gfxMode === 'low');
+            if (typeof window.updateBackgroundQuality === 'function') window.updateBackgroundQuality();
         }
         applyPerformanceSettings();
 
         window.openPerformanceSettingsModal = function() {
             settingsModalOpen = true;
+            let pending = gfxMode;
             const osReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const cardHtml = (key) => {
+                const m = GFX_MODES[key];
+                const on = key === pending;
+                return `
+                    <button type="button" data-gfx="${key}" aria-pressed="${on}" class="gfx-card text-left p-3 rounded-xl border transition ${on ? 'border-purple-400 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-bold text-gray-100"><i class="fa ${m.icon} mr-1.5 text-purple-300"></i>${m.label}</span>
+                            <i class="fa fa-circle-check text-purple-300 gfx-check ${on ? '' : 'hidden'}"></i>
+                        </div>
+                        <span class="inline-block text-[10px] px-1.5 py-0.5 rounded-full ${key === GFX_DEFAULT ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-gray-400'} mb-1">${m.tag}</span>
+                        <p class="text-[11px] leading-snug text-gray-400">${m.desc}</p>
+                    </button>`;
+            };
+
             const inputsHtml = `
                 <div class="space-y-3 text-left">
-                    <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
-                        <input type="checkbox" id="perf-toggle-bg" ${perfSettings.disableBg ? 'checked' : ''} class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
-                        <span class="text-xs text-gray-200">Disable Background Particle Effects & Blur (Saves CPU/GPU)</span>
-                    </label>
-                    <label class="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-white/5 transition">
-                        <input type="checkbox" id="perf-toggle-anim" ${perfSettings.disableAnim ? 'checked' : ''} class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
-                        <span class="text-xs text-gray-200">Disable Animations & Glow Effects (Reduces Lag)</span>
-                    </label>
+                    <div class="grid grid-cols-2 gap-2" id="gfx-grid">
+                        ${Object.keys(GFX_MODES).map(cardHtml).join('')}
+                    </div>
+                    <p class="text-[11px] text-gray-500">New users start on <b class="text-gray-300">Medium</b>. If the site lags, choose <b class="text-gray-300">Low</b>. Your choice is saved on this device.</p>
                     <div class="p-2.5 rounded-lg border ${osReducedMotion ? 'border-amber-500/40 bg-amber-500/10' : 'border-white/10 bg-white/5'} text-[11px] leading-relaxed">
                         <p class="${osReducedMotion ? 'text-amber-300' : 'text-gray-400'} font-semibold mb-0.5">
                             <i class="fa fa-${osReducedMotion ? 'triangle-exclamation' : 'circle-check'} mr-1"></i>
                             This browser/OS's "Reduce Motion" setting: ${osReducedMotion ? 'ON' : 'off'}
                         </p>
-                        <p class="text-gray-500">${osReducedMotion ? "This is a setting on this device (not this site) — it's why fades, spins, and other motion look disabled here even though the app supports them. Turn it off in your OS/browser accessibility settings if you want to see them." : "Motion is not being suppressed by your system on this device."}</p>
+                        <p class="text-gray-500">${osReducedMotion ? "This is a setting on this device (not this site) — it's why fades, spins, and other motion look disabled here even though the app supports them. Turn it off in your OS/browser accessibility settings if you want to see them." : "Motion is not being suppressed by your device."}</p>
                     </div>
                 </div>
             `;
 
-            openModal("Performance & Optimization Settings", "Toggle settings to boost performance on low-end mobile and desktop devices.", inputsHtml, () => {
-                perfSettings.disableBg = document.getElementById('perf-toggle-bg').checked;
-                perfSettings.disableAnim = document.getElementById('perf-toggle-anim').checked;
-
-                localStorage.setItem('perf_disableBg', perfSettings.disableBg);
-                localStorage.setItem('perf_disableAnim', perfSettings.disableAnim);
-
+            openModal("Graphics & Performance", "Pick a graphics mode. Lower modes run smoother on slow devices.", inputsHtml, () => {
+                gfxMode = pending;
+                try { localStorage.setItem('gfx_mode', gfxMode); } catch (e) {}
                 applyPerformanceSettings();
-                showToast("Performance settings updated!");
+                showToast("Graphics set to " + GFX_MODES[gfxMode].label + "!");
+            });
+
+            // clicking a card only selects it; Confirm saves and applies
+            document.querySelectorAll('#gfx-grid .gfx-card').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    pending = btn.getAttribute('data-gfx');
+                    document.querySelectorAll('#gfx-grid .gfx-card').forEach(c => {
+                        const on = c.getAttribute('data-gfx') === pending;
+                        c.setAttribute('aria-pressed', on);
+                        c.classList.toggle('border-purple-400', on);
+                        c.classList.toggle('bg-purple-500/20', on);
+                        c.classList.toggle('border-white/10', !on);
+                        c.classList.toggle('bg-white/5', !on);
+                        c.querySelector('.gfx-check').classList.toggle('hidden', !on);
+                    });
+                });
             });
         }
 
@@ -1244,33 +1343,43 @@
             }
         }
 
-        // Canvas Particle Background
+        // Canvas Particle Background - quality follows the Graphics mode
         const canvas = document.getElementById('canvas-bg');
         const ctx = canvas.getContext('2d');
+        const BG_QUALITY = {
+            // scale = canvas resolution vs the screen, fps = frame cap, count = rain streaks, glow = streak glow
+            medium: { scale: 0.5, fps: 30, count: 30,  glow: 0 },
+            high:   { scale: 1,   fps: 60, count: 70,  glow: 0 },
+            ultra:  { scale: Math.min(window.devicePixelRatio || 1, 2), fps: 60, count: 140, glow: 6 }
+        };
         let particles = [], step = 0;
+        let bgW = window.innerWidth, bgH = window.innerHeight;
+        let bgQ = BG_QUALITY.medium, bgRunning = false, bgLast = 0;
 
-        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
-        window.onresize = resizeCanvas;
-        resizeCanvas();
-
-        for (let i = 0; i < 70; i++) {
-            particles.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
+        function makeParticle() {
+            return {
+                x: Math.random() * bgW,
+                y: Math.random() * bgH,
                 length: Math.random() * 20 + 10,
                 speed: Math.random() * 1.5 + 0.5,
                 opacity: Math.random(),
                 fadeSpeed: Math.random() * 0.015 + 0.003
-            });
+            };
         }
 
-        function animateBackground() {
-            if (perfSettings.disableBg) {
-                requestAnimationFrame(animateBackground);
-                return;
-            }
-            step += 0.002;
-            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        function sizeBackground() {
+            bgQ = BG_QUALITY[gfxMode] || BG_QUALITY.medium;
+            bgW = window.innerWidth; bgH = window.innerHeight;
+            canvas.width = Math.max(1, Math.round(bgW * bgQ.scale));
+            canvas.height = Math.max(1, Math.round(bgH * bgQ.scale));
+            ctx.setTransform(bgQ.scale, 0, 0, bgQ.scale, 0, 0); // draw in screen pixels, the canvas just stores fewer/more
+            while (particles.length < bgQ.count) particles.push(makeParticle());
+            particles.length = bgQ.count;
+        }
+
+        function drawBackgroundFrame(k) {
+            step += 0.002 * k;
+            const grad = ctx.createLinearGradient(0, 0, bgW, bgH);
             const h1 = (Math.sin(step) * 120) + 120;
             const h2 = (Math.cos(step * 0.7) * 120) + 240;
 
@@ -1278,26 +1387,69 @@
             grad.addColorStop(0.5, `hsl(${(h1 + 60) % 360}, 75%, 10%)`);
             grad.addColorStop(1, `hsl(${h2 % 360}, 80%, 14%)`);
 
+            ctx.shadowBlur = 0;
             ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillRect(0, 0, bgW, bgH);
 
             ctx.lineWidth = 1.5;
+            if (bgQ.glow) { ctx.shadowColor = 'rgba(168, 85, 247, 0.9)'; ctx.shadowBlur = bgQ.glow; }
             particles.forEach(p => {
-                p.y += p.speed;
-                p.opacity += p.fadeSpeed;
+                p.y += p.speed * k;
+                p.opacity += p.fadeSpeed * k;
                 if (p.opacity > 1 || p.opacity < 0.2) p.fadeSpeed *= -1;
-                if (p.y > canvas.height) { p.y = -20; p.x = Math.random() * canvas.width; }
+                if (p.y > bgH) { p.y = -20; p.x = Math.random() * bgW; }
 
-                ctx.strokeStyle = `rgba(255, 255, 255, ${p.opacity})`;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, Math.max(0, p.opacity))})`;
                 ctx.beginPath();
                 ctx.moveTo(p.x, p.y);
                 ctx.lineTo(p.x, p.y + p.length);
                 ctx.stroke();
             });
-
-            requestAnimationFrame(animateBackground);
         }
-        animateBackground();
+
+        function bgFrame(now) {
+            if (!bgRunning) return;
+            requestAnimationFrame(bgFrame);
+            if (document.hidden) { bgLast = now; return; }
+            const gap = now - bgLast;
+            if (gap < 1000 / bgQ.fps - 2) return;                 // frame-rate cap
+            bgLast = now;
+            drawBackgroundFrame(Math.min(gap / 16.667, 4));       // same speed at 30 or 60 fps
+        }
+
+        function startBackground() {
+            if (bgRunning || gfxMode === 'low') return;
+            bgRunning = true;
+            bgLast = performance.now();
+            requestAnimationFrame(bgFrame);
+        }
+
+        // called whenever the Graphics mode changes
+        window.updateBackgroundQuality = function () {
+            if (gfxMode === 'low') { bgRunning = false; return; } // Low: canvas hidden by CSS, no loop at all
+            sizeBackground();
+            drawBackgroundFrame(0);
+            startBackground();
+        };
+
+        // First paint gets one cheap static frame; the animation starts once the page has finished loading
+        sizeBackground();
+        if (gfxMode !== 'low') {
+            drawBackgroundFrame(0);
+            const beginAnimation = () => startBackground();
+            const afterLoad = () => ('requestIdleCallback' in window) ? requestIdleCallback(beginAnimation, { timeout: 3000 }) : setTimeout(beginAnimation, 1500);
+            if (document.readyState === 'complete') afterLoad(); else window.addEventListener('load', afterLoad, { once: true });
+        }
+
+        // resize: ignore tiny height changes (mobile address bar) so the canvas is not rebuilt constantly
+        let bgResizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(bgResizeTimer);
+            bgResizeTimer = setTimeout(() => {
+                if (gfxMode === 'low') return;
+                if (window.innerWidth !== bgW || Math.abs(window.innerHeight - bgH) > 150) sizeBackground();
+            }, 200);
+        });
 
         window.showToast = function(msg, type = 'success') {
             const toast = document.getElementById('toast');

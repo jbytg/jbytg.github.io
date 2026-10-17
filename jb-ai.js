@@ -195,14 +195,16 @@
     },
     {
       id: 'settings',
-      title: 'Settings / performance',
-      keys: ['settings', 'setting', 'performance', 'lag', 'slow', 'laggy', 'lagging', 'lags', 'freeze', 'stuck', 'fast', 'speed', 'animation', 'animations', 'particles', 'blur', 'glow', 'low graphics', 'optimize', 'reduce motion', 'smooth', 'hang', 'hanging', 'battery'],
+      title: 'Settings / graphics modes',
+      keys: ['settings', 'setting', 'graphics', 'graphic', 'graphics mode', 'graphics settings', 'low graphics', 'medium graphics', 'high graphics', 'ultra graphics', 'quality', 'default graphics', 'performance', 'lag', 'slow', 'laggy', 'lagging', 'lags', 'freeze', 'stuck', 'fast', 'speed', 'animation', 'animations', 'particles', 'blur', 'glow', 'low mode', 'ultra mode', 'optimize', 'reduce motion', 'smooth', 'hang', 'hanging', 'battery', 'fps'],
       answer:
-        'Open **Settings** from the ⋮ menu (it is available even before login). If the site feels laggy, turn on:\n' +
-        '• **Disable Background Particle Effects & Blur** (saves CPU/GPU)\n' +
-        '• **Disable Animations & Glow Effects** (reduces lag)\n' +
-        'Confirm and you will see "Performance settings updated!". Your choice is stored in your browser. The window also shows whether your device\'s own **Reduce Motion** setting is on – if it is, motion looks switched off even when these boxes are unticked.\n' +
-        'Extra tips: close other tabs/apps and use an up-to-date browser.'
+        'Open **Settings** from the ⋮ menu (it is available even before login) and choose a **graphics mode**:\n' +
+        '• **Low** – static background, no blur, no animations (best for slow phones)\n' +
+        '• **Medium** – light animated background, smooth and battery friendly (**default for every new user**)\n' +
+        '• **High** – glass blur, glowing text and buttons\n' +
+        '• **Ultra** – sharper, denser background and extra glow (needs a strong device)\n' +
+        'Tap a mode, then press **Confirm**. Your choice is saved on this device. If the site lags, switch to **Low**.\n' +
+        'The window also shows whether your device\'s own **Reduce Motion** setting is on – if it is, motion looks switched off whatever mode you pick.'
     },
     {
       id: 'admin',
