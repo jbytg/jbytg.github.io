@@ -57,6 +57,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check-compat.js"></script>
     <style>
         body { margin: 0; overflow-x: hidden; background: #050505; color: white; font-family: sans-serif; min-height: 100vh; }
         #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
@@ -760,6 +761,17 @@
                     </div>
                 </div>
 
+                <!-- Login captcha: appears after more than 3 wrong login attempts -->
+                <div id="login-captcha-box" class="hidden p-3 bg-white/5 border border-amber-500/30 rounded-xl space-y-2">
+                    <p class="text-xs text-amber-300 font-semibold"><i class="fa fa-shield-halved mr-1"></i>Security check</p>
+                    <p class="text-[11px] text-gray-400">Too many wrong login attempts. Type the characters you see to prove you are human.</p>
+                    <div class="flex items-center gap-2">
+                        <canvas id="login-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                        <button type="button" onclick="refreshLoginCaptcha()" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
+                    </div>
+                    <input type="text" id="login-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+                </div>
+
                 <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
                 <p id="forgot-link" class="text-center text-xs text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showForgotPassword()">Forgot password?</p>
                 <div class="flex items-center gap-3 text-[11px] text-gray-500 uppercase tracking-wider"><div class="flex-1 h-px bg-white/10"></div>or<div class="flex-1 h-px bg-white/10"></div></div>
@@ -994,6 +1006,23 @@
         };
 
         firebase.initializeApp(firebaseConfig);
+
+        // ===== Firebase App Check (reCAPTCHA Enterprise / Fraud Defense) =====
+        // Lets Firebase's servers verify that database and sign-in requests come from the real JB HUB website in a real
+        // browser. The site key is public by design (it is safe to keep in this file). Until you switch enforcement on in
+        // the Firebase console this only collects verification data and blocks nothing.
+        const APP_CHECK_SITE_KEY = '6Lf-PaUtAAAAAGkNMPNiXTFTWHXf1WxblRJg3r3u';
+        try {
+            if (APP_CHECK_SITE_KEY && firebase.appCheck && firebase.appCheck.ReCaptchaEnterpriseProvider) {
+                // On localhost / a test copy, set  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true  in the console to get a debug token.
+                firebase.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY), true);
+            } else {
+                console.warn('App Check is not available in this browser build; continuing without it.');
+            }
+        } catch (appCheckErr) {
+            console.warn('App Check could not start; continuing without it:', appCheckErr);
+        }
+
         const db = firebase.database();
         const auth = firebase.auth();
 
@@ -1493,6 +1522,7 @@
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
             
             checkPasswordStrength('password', 'strength-bar', 'strength-text');
+            updateLoginCaptchaUI();
         }
 
         window.showAbout = function() {
@@ -1730,7 +1760,7 @@
                 const isFirstUser = !allUsersSnap.exists();
 
                 const newUser = {
-                    username: p.username, password: p.password, email: p.email,
+                    username: p.username, email: p.email,
                     authEmail: p.email, authUid: authUser.uid, emailVerified: true,
                     dob: p.dob, gender: p.gender, isAdmin: isFirstUser, id: 'u_' + Date.now()
                 };
@@ -2036,6 +2066,153 @@
             }
         };
 
+        // ===== Login captcha: required after more than 3 wrong login attempts =====
+        const LOGIN_FAIL_LIMIT = 3;                    // after this many wrong attempts the captcha appears
+        const LOGIN_FAIL_RESET_MS = 30 * 60 * 1000;    // old failures are forgotten after 30 minutes
+        let loginCaptchaCode = '';
+        let loginFailsMem = { c: 0, t: 0 };            // fallback if localStorage is unavailable
+
+        function getLoginFails() {
+            let o = loginFailsMem;
+            try {
+                const saved = JSON.parse(localStorage.getItem('jb_login_fails') || 'null');
+                if (saved && typeof saved.c === 'number' && saved.c > o.c) o = saved;
+            } catch (e) {}
+            return (o.c > 0 && Date.now() - o.t <= LOGIN_FAIL_RESET_MS) ? o.c : 0;
+        }
+        function setLoginFails(n) {
+            loginFailsMem = { c: n, t: Date.now() };
+            try {
+                if (n > 0) localStorage.setItem('jb_login_fails', JSON.stringify(loginFailsMem));
+                else localStorage.removeItem('jb_login_fails');
+            } catch (e) {}
+        }
+        function loginCaptchaNeeded() { return getLoginFails() >= LOGIN_FAIL_LIMIT; }
+
+        function makeCaptchaCode(len) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I so people can read it
+            const buf = new Uint32Array(len);
+            if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(buf);
+            else for (let i = 0; i < len; i++) buf[i] = Math.floor(Math.random() * 4294967295);
+            let out = '';
+            for (let i = 0; i < len; i++) out += chars[buf[i] % chars.length];
+            return out;
+        }
+
+        function drawLoginCaptcha() {
+            const cv = document.getElementById('login-captcha-canvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const W = cv.width, H = cv.height;
+            const rnd = (a, b) => a + Math.random() * (b - a);
+            loginCaptchaCode = makeCaptchaCode(5);
+
+            const bg = g.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#1b1030'); bg.addColorStop(1, '#10203a');
+            g.fillStyle = bg; g.fillRect(0, 0, W, H);
+
+            for (let i = 0; i < 80; i++) {                    // speckle noise
+                g.fillStyle = `rgba(${rnd(120, 255) | 0}, ${rnd(120, 255) | 0}, ${rnd(120, 255) | 0}, ${rnd(0.2, 0.6)})`;
+                g.fillRect(rnd(0, W), rnd(0, H), 2, 2);
+            }
+            const step = W / (loginCaptchaCode.length + 1);
+            for (let i = 0; i < loginCaptchaCode.length; i++) { // wobbly, rotated characters
+                g.save();
+                g.translate(step * (i + 1), H / 2 + rnd(-6, 6));
+                g.rotate(rnd(-0.45, 0.45));
+                g.font = `bold ${rnd(26, 34) | 0}px Arial, sans-serif`;
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillStyle = `hsl(${rnd(0, 360) | 0}, 85%, 75%)`;
+                g.fillText(loginCaptchaCode[i], 0, 0);
+                g.restore();
+            }
+            for (let i = 0; i < 4; i++) {                       // lines drawn over the text
+                g.strokeStyle = `rgba(${rnd(150, 255) | 0}, ${rnd(150, 255) | 0}, ${rnd(150, 255) | 0}, 0.55)`;
+                g.lineWidth = 1.5;
+                g.beginPath();
+                g.moveTo(rnd(0, W * 0.3), rnd(0, H));
+                g.bezierCurveTo(rnd(0, W), rnd(0, H), rnd(0, W), rnd(0, H), rnd(W * 0.7, W), rnd(0, H));
+                g.stroke();
+            }
+        }
+
+        window.refreshLoginCaptcha = function () {
+            drawLoginCaptcha();
+            const input = document.getElementById('login-captcha-input');
+            if (input) { input.value = ''; input.focus(); }
+        };
+
+        // shows/hides the captcha box (only on the Login form, never on Sign Up which has its own human check)
+        function updateLoginCaptchaUI() {
+            const box = document.getElementById('login-captcha-box');
+            if (!box) return;
+            const show = !isSignupMode && loginCaptchaNeeded();
+            const wasHidden = box.classList.contains('hidden');
+            box.classList.toggle('hidden', !show);
+            if (show && (wasHidden || !loginCaptchaCode)) drawLoginCaptcha();
+        }
+
+        function resetLoginCaptcha() {
+            setLoginFails(0);
+            loginCaptchaCode = '';
+            const input = document.getElementById('login-captcha-input');
+            if (input) input.value = '';
+            updateLoginCaptchaUI();
+        }
+
+        // called after every wrong username/email/password; returns how many wrong attempts so far
+        function registerLoginFailure() {
+            const n = getLoginFails() + 1;
+            setLoginFails(n);
+            const input = document.getElementById('login-captcha-input');
+            if (input) input.value = '';
+            const box = document.getElementById('login-captcha-box');
+            if (box && !box.classList.contains('hidden')) drawLoginCaptcha(); // fresh code after each failed attempt
+            else updateLoginCaptchaUI();
+            return n;
+        }
+        updateLoginCaptchaUI(); // a visitor who already failed 3 times (then reloaded) still sees it
+
+        // ===== Passwords are verified by Firebase Authentication (server side) =====
+        // Accounts linked to Firebase Auth (they have an authUid) are checked on Firebase's servers: the password is
+        // stored hashed there, and Firebase itself blocks repeated wrong guesses (auth/too-many-requests), so this
+        // protection cannot be bypassed from the browser. Their password is NOT kept in the JB HUB database any more.
+        // Older accounts that never got a Firebase identity keep working with the stored value until they verify an email.
+        function accountAuthEmail(rec) {
+            return String((rec && (rec.authEmail || rec.email)) || '').trim().toLowerCase();
+        }
+
+        // Checks the password a logged-in user typed (account edit / account deletion)
+        async function verifyCurrentUserPassword(typed) {
+            if (!currentUser || !typed) return false;
+            if (!currentUser.authUid) return typed === currentUser.password;       // older account, no Firebase identity yet
+            try {
+                const cred = await auth.signInWithEmailAndPassword(accountAuthEmail(currentUser), typed);
+                return cred.user.uid === currentUser.authUid;
+            } catch (e) {
+                if (e && e.code === 'auth/too-many-requests') showToast(authErrorMessage(e), 'error');
+                return false;
+            }
+        }
+
+        // Removes any leftover stored password from accounts that Firebase Authentication already protects.
+        // Runs quietly when an admin logs in, so old plaintext copies disappear even for people who have not logged in since.
+        async function scrubSecuredAccountPasswords() {
+            try {
+                const snap = await db.ref('users').once('value');
+                const updates = {};
+                let n = 0;
+                snap.forEach(child => {
+                    const v = child.val();
+                    if (v && v.authUid && typeof v.password === 'string' && v.password !== '') { updates[child.key + '/password'] = null; n++; }
+                });
+                if (n) {
+                    await db.ref('users').update(updates);
+                    showToast('Security: removed stored passwords from ' + n + ' protected account' + (n === 1 ? '' : 's') + '.');
+                }
+            } catch (e) { console.warn('Password clean-up skipped:', e); }
+        }
+
         window.handleAuth = async function() {
             if (!navigator.onLine) {
                 showToast("No Internet", "error");
@@ -2059,6 +2236,17 @@
 
             if (!identifier || !password) { showToast("Please fill in all fields", "error"); return; }
 
+            // Security check: after more than 3 wrong attempts the captcha must be solved before we even look up the account
+            if (!isSignupMode && loginCaptchaNeeded()) {
+                const typed = (document.getElementById('login-captcha-input').value || '').trim().toUpperCase();
+                if (!typed) { showToast("Please enter the captcha characters", "error"); return; }
+                if (typed !== loginCaptchaCode) {
+                    showToast("Incorrect captcha. Here is a new one.", "error");
+                    refreshLoginCaptcha();
+                    return;
+                }
+            }
+
             const btn = document.getElementById('auth-btn');
             if (btn) btn.disabled = true;
             try {
@@ -2072,33 +2260,60 @@
                 let userVal = null;
                 if (identifier.includes('@')) {
                     const matches = await findUserRecordsByEmail(identifier.toLowerCase());
-                    const pick = matches.find(m => m.val && m.val.password === password) || matches[0];
+                    const pick = matches.find(m => m.val && !m.val.authUid && m.val.password === password) || matches.find(m => m.val && m.val.authUid) || matches[0];
                     if (pick) { usernameKey = pick.key; userVal = pick.val; }
                 } else {
                     const snap = await db.ref('users/' + identifier.toLowerCase()).once('value');
                     if (snap.exists()) { usernameKey = snap.key; userVal = snap.val(); }
                 }
 
-                let passwordOk = !!userVal && userVal.password === password;
+                const acctEmail = accountAuthEmail(userVal);
+                let passwordOk = false;
+                let blockMsg = '';   // set when Firebase refuses to even check (too many attempts, network, disabled)
 
-                // Password may have been reset through the emailed Firebase link. Firebase Auth
-                // verifies the new password, then we sync it into the JB HUB account.
-                if (userVal && !passwordOk && password.length >= 6) {
-                    const acctEmail = String(userVal.authEmail || userVal.email || '').trim().toLowerCase();
-                    if (acctEmail) {
+                if (userVal && userVal.authUid && acctEmail) {
+                    // Firebase-protected account: the password is verified on Firebase's servers (hashed + rate-limited).
+                    // There is deliberately NO fallback to a stored copy, so a leaked database cannot log anyone in.
+                    try {
+                        const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
+                        const au = cred.user;
+                        if (au.uid === userVal.authUid && au.emailVerified) passwordOk = true;
+                        else await auth.signOut();
+                    } catch (e) {
+                        if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // anything else = wrong password
+                    }
+                    if (passwordOk && Object.prototype.hasOwnProperty.call(userVal, 'password')) {
+                        try { await db.ref('users/' + usernameKey + '/password').remove(); } catch (e) {}
+                        delete userVal.password; // clean up an old stored copy
+                    }
+                } else {
+                    // Older account without a Firebase identity yet: still checked against the stored value so nobody is locked out.
+                    passwordOk = !!userVal && userVal.password === password;
+
+                    // Password may have been reset through the emailed Firebase link. Firebase Auth
+                    // verifies the new password, then we link it to the JB HUB account (no password is stored).
+                    if (userVal && !passwordOk && password.length >= 6 && acctEmail) {
                         try {
                             const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
                             const au = cred.user;
                             if (au.emailVerified && (!userVal.authUid || userVal.authUid === au.uid)) {
-                                const upd = { password: password, authUid: au.uid, authEmail: acctEmail, emailVerified: true };
+                                const upd = { password: null, authUid: au.uid, authEmail: acctEmail, emailVerified: true };
                                 await db.ref('users/' + usernameKey).update(upd);
-                                Object.assign(userVal, upd);
+                                delete userVal.password;
+                                Object.assign(userVal, { authUid: au.uid, authEmail: acctEmail, emailVerified: true });
                                 passwordOk = true;
                             } else {
                                 await auth.signOut();
                             }
-                        } catch (e) { /* wrong password */ }
+                        } catch (e) {
+                            if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // otherwise: wrong password
+                        }
                     }
+                }
+
+                if (blockMsg && !passwordOk) {
+                    showToast(blockMsg, "error"); // not counted as a wrong password
+                    return;
                 }
 
                 if (userVal && !passwordOk && userVal.googleAccount === true && !userVal.password) {
@@ -2106,9 +2321,11 @@
                     return;
                 }
                 if (!userVal || !passwordOk) {
-                    showToast("Invalid username/email or password", "error");
+                    const fails = registerLoginFailure();
+                    showToast(fails === LOGIN_FAIL_LIMIT ? "Wrong details 3 times. Please complete the captcha to continue." : "Invalid username/email or password", "error");
                     return;
                 }
+                resetLoginCaptcha(); // correct details: forget earlier failed attempts
                 const userRef = db.ref('users/' + usernameKey);
 
                 // Repair accounts damaged by the old rename bug (record saved without an id)
@@ -2137,6 +2354,7 @@
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
                 showToast("Logged in successfully!");
+                if (userVal.isAdmin) setTimeout(scrubSecuredAccountPasswords, 2000);
                 proceedAfterLogin();
             } catch (err) {
                 console.error(err);
@@ -5274,7 +5492,7 @@
                 if (newEmail !== (currentUser.email || '').toLowerCase()) { showToast("Your email is linked to your Google account and can't be changed.", "error"); return; }
             } else {
                 if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
-                if (oldPassword !== currentUser.password) { showToast("Incorrect current password!", "error"); return; }
+                if (!(await verifyCurrentUserPassword(oldPassword))) { showToast("Incorrect current password!", "error"); return; }
             }
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
             if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
@@ -5351,13 +5569,15 @@
                 username: newUsername,
                 email: newEmail,
                 emailVerified: true,
-                password: newPassword || currentUser.password,
                 dob: newDob || currentUser.dob || fullRecord.dob || '',
                 gender: newGender,
                 // Notes / chat / bug reports are linked by this id, so it MUST survive a rename.
                 id: fullRecord.id || currentUser.id || ('u_' + Date.now()),
                 isAdmin: (fullRecord.isAdmin !== undefined) ? fullRecord.isAdmin : !!currentUser.isAdmin
             });
+            // Firebase-protected accounts never get a password written to the database; older accounts keep the stored value for now
+            if (currentUser.authUid) delete mergedRecord.password;
+            else mergedRecord.password = newPassword || currentUser.password;
             if (sessionId) mergedRecord.activeSession = sessionId;
 
             if (usernameChanged) {
@@ -5427,7 +5647,7 @@
                     username: mergedRecord.username,
                     email: mergedRecord.email,
                     emailVerified: true,
-                    password: mergedRecord.password,
+                    password: (mergedRecord.password !== undefined ? mergedRecord.password : null),
                     dob: mergedRecord.dob,
                     gender: mergedRecord.gender,
                     id: mergedRecord.id,
@@ -5476,7 +5696,7 @@
                         showToast("Password confirmation required!", "error");
                         return;
                     }
-                    if (enteredPass !== currentUser.password) {
+                    if (!(await verifyCurrentUserPassword(enteredPass))) {
                         showToast("Incorrect current password! Account deletion canceled.", "error");
                         return;
                     }
@@ -5764,7 +5984,7 @@
                                                         ${banExpired ? 'BAN EXPIRED (PENDING AUTO-UNBAN)' : (ban.type === 'permanent' ? 'BANNED (PERMANENT)' : 'BANNED (TEMPORARY)')}
                                                     </span>` : ''}
                                                 </div>
-                                                <p class="text-xs text-gray-300 mt-1">Password: <span class="font-mono text-pink-300 font-semibold">${escapeHtml(u.password)}</span></p>
+                                                <p class="text-xs text-gray-300 mt-1">Password: <span class="text-pink-300 font-semibold">${u.authUid ? 'Protected by Firebase Authentication' : (u.googleAccount === true ? 'Google sign-in' : 'Legacy (not yet protected)')}</span></p>
                                                 <p class="text-xs text-gray-400">DOB: ${u.dob || 'N/A'} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
                                                 <p class="text-xs text-gray-400">Gender: <span class="text-purple-300 font-medium">${escapeHtml(u.gender || 'N/A')}</span></p>
                                                 <p class="text-xs text-purple-300/80 mt-1"><i class="fa fa-clock text-pink-400 mr-1"></i>Last Login: <span class="font-medium text-gray-200">${lastLoginFormatted}</span></p>
@@ -6367,7 +6587,13 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Password</label>
-                    <input type="text" id="admin-edit-password" value="${escapeHtml(user.password)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    ${user.authUid ? `
+                        <input type="hidden" id="admin-edit-password" value="">
+                        <div class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-xs text-gray-300 space-y-2">
+                            <p><i class="fa fa-shield-halved text-emerald-400 mr-1"></i>Protected by Firebase Authentication. Passwords are not stored or visible here.</p>
+                            <button type="button" onclick="adminSendPasswordReset('${escapeHtml(user.authEmail || user.email || '')}')" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition"><i class="fa fa-envelope mr-1"></i>Send password reset email</button>
+                        </div>` : `
+                        <input type="text" id="admin-edit-password" value="" placeholder="${user.googleAccount === true ? 'Google account (no password)' : 'Leave empty to keep the current password'}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">`}
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
@@ -6392,7 +6618,7 @@
                 const newDob = document.getElementById('admin-edit-dob').value;
                 const newGender = document.getElementById('admin-edit-gender').value;
 
-                if (!newUsername || !newPassword) { showToast("Username and password required", "error"); return; }
+                if (!newUsername) { showToast("Username required", "error"); return; }
                 if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
                 if (usernameKey !== newUsername.toLowerCase()) {
                     const unameErr = usernameRuleError(newUsername);
@@ -6443,7 +6669,8 @@
 
                 user.username = newUsername;
                 user.email = newEmail;
-                user.password = newPassword;
+                if (user.authUid) delete user.password;            // Firebase-protected: never store a password
+                else if (newPassword) user.password = newPassword; // older account: only change it when the admin typed one
                 user.dob = newDob;
                 user.gender = newGender;
                 await db.ref('users/' + newKey).set(user);
@@ -6451,13 +6678,22 @@
                 if (currentUser.username.toLowerCase() === usernameKey) {
                     currentUser.username = newUsername;
                     currentUser.email = newEmail;
-                    currentUser.password = newPassword;
+                    if (!currentUser.authUid && newPassword) currentUser.password = newPassword;
                     currentUser.dob = newDob;
                     currentUser.gender = newGender;
                 }
 
                 showToast("User updated successfully!");
             });
+        }
+
+        window.adminSendPasswordReset = async function(email) {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!email) { showToast("This account has no email address", "error"); return; }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showToast("Password reset email sent to " + email);
+            } catch (e) { showToast(authErrorMessage(e), 'error'); }
         }
 
         window.adminToggleRole = async function(usernameKey, newAdminStatus) {

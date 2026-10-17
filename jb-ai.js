@@ -169,6 +169,7 @@
       keys: ['password', 'strong password', 'strength', 'change password', 'password length', 'password rules', 'minimum password', 'confirm password'],
       answer:
         'Passwords must be **at least 6 characters**. The sign-up form shows a **Password Strength** bar and asks you to type it twice. To change it later go to **Account → Change Password** and enter your **current password**.\n' +
+        'Passwords are verified by **Firebase Authentication**, so they are not kept as plain text in the JB HUB database. If you changed your password and cannot log in, use **Forgot password?** once to re-sync it.\n' +
         'Tip: use a strong password that you do not use on any other website, and never share it.'
     },
     {
@@ -214,7 +215,7 @@
         'The **Admin Panel** is only visible to admins. Admins can:\n' +
         '• edit the About text, rules and Special Thanks\n' +
         '• set **section maintenance** or a full **Server Shutdown**\n' +
-        '• manage user accounts (see who is online/offline, give **temporary or permanent bans** with a reason)\n' +
+        '• manage user accounts (see who is online/offline, give **temporary or permanent bans** with a reason, send a **password reset email** – admins cannot see passwords)\n' +
         '• read bug reports, set **Pending / In Progress / Solved** and reply\n' +
         '• manage leaderboard entries for all 8 games\n' +
         '• control notes and clear Global Chat\n' +
@@ -242,6 +243,7 @@
       keys: ['secure', 'security', 'safe', 'safety', 'firebase', 'database', 'cloud', 'sync', 'hacked', 'hacker', 'trust', 'trustworthy', 'scam', 'fake', 'legit', 'is it safe'],
       answer:
         'JB HUB is a cloud platform: accounts, notes, chat and leaderboards are synced through **Firebase** (database + authentication) over the internet. Your notes are private to your account.\n' +
+        'Passwords are checked by **Firebase Authentication** on Firebase\'s servers, which also **blocks repeated wrong guesses**. For protected accounts the password is **not stored in the JB HUB database**, and admins cannot see it.\n' +
         'To stay safe: never share your password, use one you do not use elsewhere, log out on shared devices, and do not store very sensitive information in notes. If you notice something suspicious, email **' + SITE.email + '**.'
     },
     {
@@ -421,7 +423,21 @@
         '• **This account was removed or renamed** – just log in again.\n' +
         '• **Could not connect this account to Firebase Authentication** – re-check the email and your current password.\n' +
         '• **Account Suspended** – an admin restricted the account; email **' + SITE.email + '**.\n' +
+        '• **Security check / captcha** – appears after 3 wrong attempts; type the characters shown.\n' +
+        '• **Too many attempts** – Firebase temporarily paused sign-in after repeated wrong passwords; wait a few minutes or use **Forgot password?**\n' +
         '• **No Internet / Cant connect to server** – fix your connection first.'
+    },
+    {
+      id: 'login_captcha',
+      title: 'Login captcha / too many attempts',
+      keys: ['captcha', 'security check', 'verify human', 'prove human', 'prove you are human', 'wrong attempts', 'too many wrong', 'too many login', 'three times', '3 times', 'more than 3', 'captcha login', 'login captcha', 'why captcha', 'captcha appears', 'captcha not working', 'wrong captcha', 'incorrect captcha', 'new captcha', 'refresh captcha', 'cant read captcha', "can't read captcha", 'enter the characters', 'characters you see'],
+      answer:
+        'After **3 wrong username/email or password attempts**, a **Security check** (captcha) appears on the login form. Type the **5 characters** shown in the picture to continue.\n' +
+        '• Can\'t read it? Tap the **refresh (↻) button** for a new one. A new captcha also appears after every failed attempt.\n' +
+        '• **Incorrect captcha** just means the characters did not match – letters are not case-sensitive, and the code never contains 0, O, 1 or I.\n' +
+        '• It disappears after a **successful login**, and old failed attempts are forgotten after **30 minutes**.\n' +
+        '• Besides the captcha, **Firebase blocks repeated wrong guesses on its own servers** – if you see **Too many attempts**, wait a few minutes or use **Forgot password?**.\n' +
+        'Forgot your details? Use **Forgot password?** or **Continue with Google**.'
     },
     {
       id: 'err_signup',
@@ -542,7 +558,7 @@
       title: 'Privacy & your data',
       keys: ['privacy', 'privacy policy', 'terms', 'terms and conditions', 'cookies', 'personal data', 'my data', 'data collected', 'what data', 'who can see', 'see my notes', 'see my password', 'admin see', 'is my data safe', 'are my passwords safe', 'password safe', 'store password', 'delete my data', 'gdpr'],
       answer:
-        'JB HUB stores your **account details, notes, chat messages and scores** in the **Firebase** cloud database, and keeps small settings (performance options, best scores) in **your browser**. Other users cannot read your notes, but the site **admins have management tools**, so do not save very sensitive things in notes.\n' +
+        'JB HUB stores your **account details, notes, chat messages and scores** in the **Firebase** cloud database, and keeps small settings (performance options, best scores) in **your browser**. Other users cannot read your notes, but the site **admins have management tools**, so do not save very sensitive things in notes. Passwords of protected accounts are verified by **Firebase Authentication** and are not stored in the database, so admins cannot see them.\n' +
         'You can erase your account and notes any time from **Account → Danger Zone**. I do not have a formal privacy policy to quote – for questions email **' + SITE.email + '**.'
     },
     {
