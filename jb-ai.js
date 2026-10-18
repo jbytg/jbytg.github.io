@@ -39,6 +39,7 @@
         '• **Cyber Arcade** – 8 games\n' +
         '• **Bug & Suggest** – send bugs/ideas\n' +
         '• **Leaderboard** – arcade high scores\n' +
+        '• **Tools** – extra tools such as **JB TV**\n' +
         '• **Admin Message** – rules & announcements\n' +
         '• **Account** – your profile\n' +
         '• **About Us**\n' +
@@ -226,7 +227,7 @@
       title: 'Maintenance / shutdown',
       keys: ['maintenance', 'under maintenance', 'shutdown', 'shut down', 'server down', 'back soon', 'site down', 'locked section', 'section locked', 'black screen', 'temporarily closed'],
       answer:
-        'Admins can put one of these sections **under maintenance**: Notes, Global Chat, Cyber Arcade, Bug & Suggest or Leaderboard. They can also run a full **Server Shutdown**: a full-screen message with no close button that blocks all regular users until an admin turns it off.\n' +
+        'Admins can put one of these sections **under maintenance**: Notes, Global Chat, Cyber Arcade, Bug & Suggest, Leaderboard or Tools. They can also run a full **Server Shutdown**: a full-screen message with no close button that blocks all regular users until an admin turns it off.\n' +
         'During that time please wait and come back later. If it lasts very long, email **' + SITE.email + '**.'
     },
     {
@@ -294,7 +295,7 @@
       answer:
         'The **main menu** is the **three-dots button (⋮)** in the **top-left corner** of the screen. Tap it and a side menu slides in from the left.\n' +
         '• **Before login** it shows only **Settings** (the **About Us** link is on the login screen).\n' +
-        '• **After login** it also shows Notes, Global Chat, Cyber Arcade, Bug & Suggest, Leaderboard, Admin Message, Account, About Us and **Logout** (red, at the bottom).\n' +
+        '• **After login** it also shows Notes, Global Chat, Cyber Arcade, Bug & Suggest, Leaderboard, Tools, Admin Message, Account, About Us and **Logout** (red, at the bottom).\n' +
         'Tap the **×** at the top of the menu, or tap anywhere outside it, to close it.'
     },
     {
@@ -438,6 +439,14 @@
         '• It disappears after a **successful login**, and old failed attempts are forgotten after **30 minutes**.\n' +
         '• Besides the captcha, **Firebase blocks repeated wrong guesses on its own servers** – if you see **Too many attempts**, wait a few minutes or use **Forgot password?**.\n' +
         'Forgot your details? Use **Forgot password?** or **Continue with Google**.'
+    },
+    {
+      id: 'tools',
+      title: 'Tools / JB TV',
+      keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv'],
+      answer:
+        'Open the **⋮ menu → Tools** (you need to be logged in). Right now it contains **JB TV** – tap its card and it opens **https://jbhub.ryzn.pro/jb_tv/** in a **new tab**, so you do not lose your JB HUB session.\n' +
+        'New tools will appear in the same place.'
     },
     {
       id: 'err_signup',

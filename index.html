@@ -593,6 +593,7 @@
             <button type="button" data-tab="arcade" onclick="menuGoTo('arcade')" class="menu-item"><i class="fa fa-gamepad"></i><span>Cyber Arcade</span></button>
             <button type="button" data-tab="bugs" onclick="menuGoTo('bugs')" class="menu-item"><i class="fa fa-bug"></i><span>Bug & Suggest</span></button>
             <button type="button" data-tab="leaderboard" onclick="menuGoTo('leaderboard')" class="menu-item"><i class="fa fa-trophy"></i><span>Leaderboard</span></button>
+            <button type="button" data-tab="tools" onclick="menuGoTo('tools')" class="menu-item"><i class="fa fa-toolbox"></i><span>Tools</span></button>
             <button type="button" data-tab="rules" onclick="menuGoTo('rules')" class="menu-item"><i class="fa fa-bullhorn"></i><span>Admin Message</span></button>
             <button type="button" data-tab="account" onclick="menuGoTo('account')" class="menu-item"><i class="fa fa-user"></i><span>Account</span></button>
             <button type="button" data-tab="about" onclick="menuGoTo('about')" class="menu-item"><i class="fa fa-circle-info"></i><span>About Us</span></button>
@@ -1051,8 +1052,8 @@
         };
 
         // Sections that admins can lock behind a maintenance notice
-        const MAINTAINABLE_SECTIONS = ['notes', 'chat', 'arcade', 'bugs', 'leaderboard'];
-        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard' };
+        const MAINTAINABLE_SECTIONS = ['notes', 'chat', 'arcade', 'bugs', 'leaderboard', 'tools'];
+        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', tools: 'Tools' };
 
         function getMaintenanceConfig(section) {
             const m = (globalSettings.maintenance && globalSettings.maintenance[section]) || {};
@@ -2863,7 +2864,7 @@
             });
         }
 
-        const TAB_TITLES = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', rules: 'Admin Message', account: 'Account', about: 'About Us', admin: 'Admin Panel' };
+        const TAB_TITLES = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', tools: 'Tools', rules: 'Admin Message', account: 'Account', about: 'About Us', admin: 'Admin Panel' };
 
         window.switchTab = function(tab) {
             currentTab = tab;
@@ -2968,6 +2969,7 @@
             else if (tab === 'arcade') renderArcadeTab(container);
             else if (tab === 'bugs') renderBugReportsTab(container);
             else if (tab === 'leaderboard') renderLeaderboardTab(container);
+            else if (tab === 'tools') renderToolsTab(container);
             else if (tab === 'rules') renderRulesTab(container);
             else if (tab === 'account') renderAccountTab(container);
             else if (tab === 'about') renderAboutTab(container);
@@ -5172,6 +5174,34 @@
 
         function renderRulesTab(container) {
             container.innerHTML = `<div class="glass p-6 rounded-xl max-w-md mx-auto text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.rulesText}</div>`;
+        }
+
+        // --- TOOLS TAB ---
+        // To add another tool, add one more object to this list.
+        const TOOLS = [
+            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://jbhub.ryzn.pro/jb_tv/' }
+        ];
+
+        function renderToolsTab(container) {
+            container.innerHTML = `
+                <div class="max-w-md mx-auto space-y-4">
+                    <div class="text-center">
+                        <h2 class="text-lg font-bold text-purple-300"><i class="fa fa-toolbox mr-2"></i>Tools</h2>
+                        <p class="text-xs text-gray-400">Extra tools from JB HUB</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3">
+                        ${TOOLS.map(t => `
+                            <a href="${escapeHtml(t.url)}" target="_blank" rel="noopener noreferrer" class="glass p-4 rounded-xl border border-white/10 flex items-center gap-4 hover:border-purple-400/60 hover:bg-white/5 transition">
+                                <span class="w-12 h-12 shrink-0 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl text-purple-300"><i class="fa ${escapeHtml(t.icon)}"></i></span>
+                                <span class="flex-1 min-w-0">
+                                    <span class="block font-bold text-gray-100">${escapeHtml(t.name)}</span>
+                                    <span class="block text-xs text-gray-400">${escapeHtml(t.desc)}</span>
+                                </span>
+                                <i class="fa fa-arrow-up-right-from-square text-gray-400 text-sm"></i>
+                            </a>`).join('')}
+                    </div>
+                </div>
+            `;
         }
 
         // --- ACCOUNT TAB ---
