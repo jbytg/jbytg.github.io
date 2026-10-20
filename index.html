@@ -153,6 +153,14 @@
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), 0 0 26px rgba(168, 85, 247, 0.22);
         }
 
+
+        /* ===== Saved accounts chooser (shown instead of the login form when this device has saved accounts) ===== */
+        #account-chooser { display: none; }
+        #back-to-accounts { display: none; }
+        body.jb-chooser-mode #auth-form { display: none; }
+        body.jb-chooser-mode #account-chooser { display: block; }
+        body.jb-has-saved #back-to-accounts { display: inline-flex; }
+
         /* Ultra-Smooth Hardware-Accelerated Per-Letter Wave Animation */
         @keyframes letterWave {
             0%, 100% {
@@ -568,6 +576,10 @@
                 else if (localStorage.getItem("perf_disableBg") === "true" || localStorage.getItem("perf_disableAnim") === "true") m = "low";
             } catch (e) {}
             document.body.classList.add("gfx-" + m);
+            try {
+                var sa = JSON.parse(localStorage.getItem("jb_saved_accounts") || "[]");
+                if (Array.isArray(sa) && sa.length) document.body.classList.add("jb-has-saved", "jb-chooser-mode");
+            } catch (e) {}
             if (m === "low") document.body.classList.add("perf-low-graphics", "perf-disable-animations");
         })();
     </script>
@@ -693,7 +705,16 @@
                 <p id="auth-subtitle" class="text-xs text-gray-400 mt-1">Sign in to your secure server account</p>
             </div>
 
+            <!-- Accounts saved on this device -->
+            <div id="account-chooser" class="space-y-3">
+                <p class="text-sm text-gray-200 text-center font-semibold">Choose an account</p>
+                <div id="account-chooser-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
+                <button type="button" onclick="useAnotherAccount()" class="w-full p-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-semibold transition"><i class="fa fa-user-plus mr-2"></i>Use another account</button>
+                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. Passwords are never saved.</p>
+            </div>
+
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
+                <button type="button" id="back-to-accounts" onclick="backToSavedAccounts()" class="items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition"><i class="fa fa-arrow-left"></i>Saved accounts</button>
                 <div>
                     <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
                     <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
@@ -761,6 +782,11 @@
                         </div>
                     </div>
                 </div>
+
+                <label id="save-account-row" class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
+                    <input type="checkbox" id="save-account-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
+                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list. Your password is not saved.</span></span>
+                </label>
 
                 <!-- Login captcha: appears after more than 3 wrong login attempts -->
                 <div id="login-captcha-box" class="hidden p-3 bg-white/5 border border-amber-500/30 rounded-xl space-y-2">
@@ -1119,6 +1145,7 @@
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
                 initAllWaveLogos();
+                refreshAuthEntry();
             });
         }
 
@@ -1178,6 +1205,7 @@
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
                 initAllWaveLogos();
+                refreshAuthEntry();
                 showBanScreen(ban);
             });
         }
@@ -1240,6 +1268,7 @@
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
                 initAllWaveLogos();
+                refreshAuthEntry();
                 document.getElementById('other-device-screen').classList.remove('hidden');
             });
         }
@@ -1967,7 +1996,7 @@
             proceedAfterLogin();
         }
 
-        window.handleGoogleAuth = async function() {
+        window.handleGoogleAuth = async function(hintEmail) {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
@@ -1975,7 +2004,7 @@
             if (btn) btn.disabled = true;
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                provider.setCustomParameters({ prompt: 'select_account' });
+                provider.setCustomParameters(typeof hintEmail === 'string' && hintEmail ? { login_hint: hintEmail } : { prompt: 'select_account' });
                 const result = await auth.signInWithPopup(provider);
                 const gUser = result.user;
                 const email = String(gUser.email || '').trim().toLowerCase();
@@ -2066,6 +2095,144 @@
                 if (btn) btn.disabled = false;
             }
         };
+
+        // ===== Saved accounts on this device =====
+        // Only the username (+ email, to pre-select a Google account) is kept in this browser's storage, and only when the
+        // user ticked "Save this account on this device". Passwords and login tokens are never saved.
+        const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
+        const MAX_SAVED_ACCOUNTS = 5;
+
+        function getSavedAccounts() {
+            try {
+                const list = JSON.parse(localStorage.getItem(SAVED_ACCOUNTS_KEY) || '[]');
+                return Array.isArray(list) ? list.filter(a => a && typeof a.u === 'string' && a.u) : [];
+            } catch (e) { return []; }
+        }
+        function setSavedAccounts(list) {
+            try {
+                if (list.length) localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(list.slice(0, MAX_SAVED_ACCOUNTS)));
+                else localStorage.removeItem(SAVED_ACCOUNTS_KEY);
+            } catch (e) {}
+        }
+        function isAccountSaved(username) {
+            const k = String(username || '').toLowerCase();
+            return getSavedAccounts().some(a => a.u.toLowerCase() === k);
+        }
+        function rememberAccountOnThisDevice(user) {
+            if (!user || !user.username) return;
+            const k = user.username.toLowerCase();
+            const rest = getSavedAccounts().filter(a => a.u.toLowerCase() !== k);
+            rest.unshift({ u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), t: Date.now() });
+            setSavedAccounts(rest);
+        }
+        function maskEmail(email) {
+            const m = String(email || '').match(/^([^@]+)@(.+)$/);
+            if (!m) return 'Password sign-in';
+            return m[1].slice(0, 2) + '***@' + m[2];
+        }
+        function applySavedAccountsUI() {
+            const has = getSavedAccounts().length > 0;
+            document.body.classList.toggle('jb-has-saved', has);
+            if (!has) document.body.classList.remove('jb-chooser-mode');
+            return has;
+        }
+
+        function renderAccountChooser() {
+            const host = document.getElementById('account-chooser-list');
+            if (!host) return;
+            host.innerHTML = getSavedAccounts().map((a, i) => `
+                <div class="flex items-stretch gap-2">
+                    <button type="button" onclick="chooseSavedAccount(${i})" class="flex-1 min-w-0 flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-400/60 transition text-left">
+                        <span class="w-10 h-10 shrink-0 rounded-full bg-purple-500/25 border border-purple-400/40 flex items-center justify-center font-bold text-purple-200">${escapeHtml(a.u.charAt(0).toUpperCase())}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-semibold text-gray-100 truncate">${escapeHtml(a.u)}</span>
+                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${escapeHtml(maskEmail(a.e))}</span>
+                        </span>
+                        <i class="fa fa-chevron-right text-gray-500 text-xs"></i>
+                    </button>
+                    <button type="button" onclick="removeSavedAccount(${i})" aria-label="Remove ${escapeHtml(a.u)} from this device" title="Remove from this device" class="px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-red-500/20 hover:border-red-400/50 text-gray-400 hover:text-red-300 transition"><i class="fa fa-xmark"></i></button>
+                </div>`).join('');
+        }
+
+        // Decides what a visitor sees first: their saved accounts, or the normal login page.
+        window.refreshAuthEntry = function () {
+            if (applySavedAccountsUI()) {
+                renderAccountChooser();
+                document.body.classList.add('jb-chooser-mode');
+                const sub = document.getElementById('auth-subtitle');
+                if (sub) sub.textContent = 'Welcome back! Pick an account to continue';
+                verifySavedAccountsStillExist();
+            } else {
+                document.body.classList.remove('jb-chooser-mode');
+            }
+        };
+
+        function showLoginFormFromChooser() {
+            document.body.classList.remove('jb-chooser-mode');
+            if (isSignupMode) toggleMode();
+            const sub = document.getElementById('auth-subtitle');
+            if (sub) sub.textContent = 'Sign in to your secure server account';
+        }
+
+        window.useAnotherAccount = function () {
+            showLoginFormFromChooser();
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('save-account-checkbox').checked = false;
+            document.getElementById('username').focus();
+        };
+
+        window.backToSavedAccounts = function () {
+            if (!applySavedAccountsUI()) return;
+            document.getElementById('password').value = '';
+            window.refreshAuthEntry();
+        };
+
+        window.chooseSavedAccount = function (i) {
+            const a = getSavedAccounts()[i];
+            if (!a) return;
+            showLoginFormFromChooser();
+            document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
+            if (a.g) {
+                document.getElementById('username').value = a.u;
+                handleGoogleAuth(a.e);                                          // Google account: continue with Google
+            } else {
+                document.getElementById('username').value = a.u;
+                document.getElementById('password').value = '';
+                const sub = document.getElementById('auth-subtitle');
+                if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
+                document.getElementById('password').focus();
+            }
+        };
+
+        window.removeSavedAccount = function (i) {
+            const list = getSavedAccounts();
+            const a = list[i];
+            if (!a) return;
+            list.splice(i, 1);
+            setSavedAccounts(list);
+            if (applySavedAccountsUI()) renderAccountChooser();
+            else window.refreshAuthEntry();
+            showToast('Removed ' + a.u + ' from this device');
+        };
+
+        // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
+        async function verifySavedAccountsStillExist() {
+            if (!navigator.onLine) return;
+            try {
+                const list = getSavedAccounts();
+                const keep = [];
+                for (const a of list) {
+                    const snap = await db.ref('users/' + a.u.toLowerCase()).once('value');
+                    if (snap.exists()) keep.push(a);
+                }
+                if (keep.length !== list.length) {
+                    setSavedAccounts(keep);
+                    if (applySavedAccountsUI()) renderAccountChooser();
+                    else window.refreshAuthEntry();
+                }
+            } catch (e) { /* offline or no permission: keep the list as it is */ }
+        }
 
         // ===== Login captcha: required after more than 3 wrong login attempts =====
         const LOGIN_FAIL_LIMIT = 3;                    // after this many wrong attempts the captcha appears
@@ -2173,6 +2340,7 @@
             return n;
         }
         updateLoginCaptchaUI(); // a visitor who already failed 3 times (then reloaded) still sees it
+        window.refreshAuthEntry(); // saved accounts on this device -> show them first, otherwise the normal login page
 
         // ===== Passwords are verified by Firebase Authentication (server side) =====
         // Accounts linked to Firebase Auth (they have an authUid) are checked on Firebase's servers: the password is
@@ -2428,6 +2596,10 @@
         // lockdown screen instead of the normal welcome animation + dashboard.
         // Admin accounts always bypass the lockdown so they can turn it back off.
         function proceedAfterLogin() {
+            try {
+                const saveBox = document.getElementById('save-account-checkbox');
+                if (currentUser && ((saveBox && saveBox.checked) || isAccountSaved(currentUser.username))) rememberAccountOnThisDevice(currentUser);
+            } catch (e) {}
             if (globalSettings.shutdown && globalSettings.shutdown.enabled && !currentUser.isAdmin) {
                 document.getElementById('auth-view').classList.add('hidden');
                 document.getElementById('about-view').classList.add('hidden');
@@ -2854,6 +3026,7 @@
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
+            { const sb = document.getElementById('save-account-checkbox'); if (sb) sb.checked = false; }
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
             showToast("Logged out successfully");
@@ -2861,6 +3034,7 @@
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
                 initAllWaveLogos();
+                refreshAuthEntry();
             });
         }
 

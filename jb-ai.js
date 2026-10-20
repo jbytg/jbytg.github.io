@@ -449,6 +449,18 @@
         'New tools will appear in the same place.'
     },
     {
+      id: 'saved_accounts',
+      title: 'Saved accounts on this device',
+      keys: ['saved accounts', 'saved account', 'save account', 'save this account', 'save account on this device', 'remember account', 'account chooser', 'choose account', 'choose an account', 'pick account', 'use another account', 'previous accounts', 'earlier accounts', 'early accounts', 'old accounts', 'accounts i logged in', 'remove saved account', 'forget account', 'quick login', 'login quickly', 'welcome back', 'my accounts', 'accounts on this device', 'accounts list'],
+      answer:
+        '**Saved accounts:** when you log in you can tick **Save this account on this device**. Next time you open the website, JB HUB shows a **Choose an account** list with the accounts saved on that device:\n' +
+        '• Tap an account to sign in – for a password account your username is filled in and you only type your **password**; a Google account continues with Google\n' +
+        '• Tap **Use another account** to log in with a different one or create a new account\n' +
+        '• Tap the **×** next to an account to remove it from this device\n' +
+        '• If nothing is saved you go straight to the normal login page\n' +
+        'Only your username (and email, to pick the right Google account) is saved on that device – **never your password**. Do not save accounts on a shared or public computer.'
+    },
+    {
       id: 'err_signup',
       title: 'Sign-up errors',
       keys: ['username already exists', 'username exists', 'username taken', 'email already exists', 'email already', 'already exists', 'passwords do not match', 'password mismatch', 'password too short', 'at least 6', 'weak password', 'age must be', 'account protection', 'username rules', 'username must', 'cannot contain', 'sign up error', 'signup error', "cant sign up", "can't sign up", "cant create account", "can't create account", 'valid email', 'select male or female', 'date of birth required'],
@@ -538,7 +550,8 @@
       keys: ['refresh', 'reload', 'refresh page', 'reload page', 'after refresh', 'leave page', 'leaving page', 'close tab', 'close browser', 'back button', 'stay logged in', 'keep me logged in', 'remember me', 'auto login', 'session ended', 'terminate session', 'warning leave', 'leave site', 'are you sure you want to leave', 'logged out after refresh', 'refreshed', 'i refreshed', 'refreshed and got logged out', 'refreshed and logged out', 'reloaded', 'logged out after reload', 'lost my note', 'lost progress', 'progress lost', 'game progress lost'],
       answer:
         'Refreshing or leaving the page **ends your JB HUB session** – the browser even shows a warning first. After a refresh you must **log in again**, and anything temporary (an unsaved note in the box, a game in progress) is lost.\n' +
-        'Saved notes, scores and your account stay safe in the cloud.'
+        'Saved notes, scores and your account stay safe in the cloud.\n' +
+        'Tip: tick **Save this account on this device** when you log in, and next time you can pick your account from a list instead of typing your username.'
     },
     {
       id: 'username_rules',
@@ -553,7 +566,7 @@
       title: 'Multiple accounts',
       keys: ['two accounts', 'multiple accounts', 'second account', 'another account', 'same email two', 'more than one account', 'many accounts', 'switch account', 'change account', 'different account'],
       answer:
-        'You get **one account per email**, and every **username must be unique**. For a second account use a different email and username. To switch accounts, press **Logout** in the ⋮ menu and log in with the other one.\n' +
+        'You get **one account per email**, and every **username must be unique**. For a second account use a different email and username. To switch accounts, press **Logout** in the ⋮ menu and log in with the other one (accounts you saved on this device appear in the **Choose an account** list).\n' +
         'Remember: an account can be active on **only one device at a time**.'
     },
     {
