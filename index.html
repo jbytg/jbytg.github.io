@@ -710,7 +710,7 @@
                 <p class="text-sm text-gray-200 text-center font-semibold">Choose an account</p>
                 <div id="account-chooser-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
                 <button type="button" onclick="useAnotherAccount()" class="w-full p-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-semibold transition"><i class="fa fa-user-plus mr-2"></i>Use another account</button>
-                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. Passwords are never saved.</p>
+                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. JB HUB never stores your password; only your browser's password manager can, if you choose.</p>
             </div>
 
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
@@ -723,7 +723,7 @@
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Password</label>
                     <div class="relative">
-                        <input type="password" id="password" placeholder="Enter password" oninput="checkPasswordStrength('password', 'strength-bar', 'strength-text')" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                        <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" oninput="checkPasswordStrength('password', 'strength-bar', 'strength-text')" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
                         <button type="button" onclick="togglePass('password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-password"></i></button>
                     </div>
                 </div>
@@ -758,7 +758,7 @@
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">Confirm Password</label>
                         <div class="relative">
-                            <input type="password" id="conf-password" placeholder="Confirm password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                            <input type="password" id="conf-password" autocomplete="new-password" placeholder="Confirm password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
                             <button type="button" onclick="togglePass('conf-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-conf-password"></i></button>
                         </div>
                     </div>
@@ -784,8 +784,12 @@
                 </div>
 
                 <label id="save-account-row" class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
-                    <input type="checkbox" id="save-account-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list. Your password is not saved.</span></span>
+                    <input type="checkbox" id="save-account-checkbox" onchange="updateSavePasswordRow()" class="mt-0.5 w-4 h-4 accent-purple-500">
+                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list.</span></span>
+                </label>
+                <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
+                    <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
+                    <span>Also save my password<span class="block text-[11px] text-gray-500">Kept by your browser's password manager, not by JB HUB. Then one tap signs you in.</span></span>
                 </label>
 
                 <!-- Login captcha: appears after more than 3 wrong login attempts -->
@@ -1546,6 +1550,7 @@
             document.getElementById('identifier-label').innerText = isSignupMode ? 'Email' : 'Username or Email';
             document.getElementById('google-btn-text').innerText = isSignupMode ? 'Sign up with Google' : 'Continue with Google';
             document.getElementById('username').placeholder = isSignupMode ? 'Enter your email' : 'Enter username or email';
+            document.getElementById('password').setAttribute('autocomplete', isSignupMode ? 'new-password' : 'current-password');
             
             humanTestPassed = false;
             document.getElementById('human-verify').checked = false;
@@ -2099,6 +2104,9 @@
         // ===== Saved accounts on this device =====
         // Only the username (+ email, to pre-select a Google account) is kept in this browser's storage, and only when the
         // user ticked "Save this account on this device". Passwords and login tokens are never saved.
+        // Passwords are NOT kept by JB HUB. If the user ticks "Also save my password", the browser's own password manager
+        // (Credential Management API) holds it in the browser/OS vault, and offers it back with one tap.
+        const CAN_STORE_PASSWORD = !!(window.PasswordCredential && navigator.credentials && navigator.credentials.store && navigator.credentials.get);
         const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
         const MAX_SAVED_ACCOUNTS = 5;
 
@@ -2118,13 +2126,25 @@
             const k = String(username || '').toLowerCase();
             return getSavedAccounts().some(a => a.u.toLowerCase() === k);
         }
-        function rememberAccountOnThisDevice(user) {
+        function rememberAccountOnThisDevice(user, withPassword) {
             if (!user || !user.username) return;
             const k = user.username.toLowerCase();
-            const rest = getSavedAccounts().filter(a => a.u.toLowerCase() !== k);
-            rest.unshift({ u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), t: Date.now() });
+            const all = getSavedAccounts();
+            const prev = all.find(a => a.u.toLowerCase() === k);
+            const rest = all.filter(a => a.u.toLowerCase() !== k);
+            rest.unshift({ u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), p: !!(withPassword || (prev && prev.p)), t: Date.now() });
             setSavedAccounts(rest);
         }
+        // the "Also save my password" option only appears when "Save this account" is ticked and the browser supports it
+        function updateSavePasswordRow() {
+            const row = document.getElementById('save-password-row');
+            const main = document.getElementById('save-account-checkbox');
+            const pw = document.getElementById('save-password-checkbox');
+            if (!row || !main || !pw) return;
+            row.classList.toggle('hidden', !(CAN_STORE_PASSWORD && main.checked));
+            if (!main.checked) pw.checked = false;
+        }
+        window.updateSavePasswordRow = updateSavePasswordRow;
         function maskEmail(email) {
             const m = String(email || '').match(/^([^@]+)@(.+)$/);
             if (!m) return 'Password sign-in';
@@ -2146,7 +2166,7 @@
                         <span class="w-10 h-10 shrink-0 rounded-full bg-purple-500/25 border border-purple-400/40 flex items-center justify-center font-bold text-purple-200">${escapeHtml(a.u.charAt(0).toUpperCase())}</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-sm font-semibold text-gray-100 truncate">${escapeHtml(a.u)}</span>
-                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${escapeHtml(maskEmail(a.e))}</span>
+                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${a.p ? '<i class="fa fa-key mr-1 text-emerald-300" title="Password saved in your browser"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
                         </span>
                         <i class="fa fa-chevron-right text-gray-500 text-xs"></i>
                     </button>
@@ -2179,6 +2199,7 @@
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
             document.getElementById('save-account-checkbox').checked = false;
+            updateSavePasswordRow();
             document.getElementById('username').focus();
         };
 
@@ -2188,21 +2209,34 @@
             window.refreshAuthEntry();
         };
 
-        window.chooseSavedAccount = function (i) {
+        window.chooseSavedAccount = async function (i) {
             const a = getSavedAccounts()[i];
             if (!a) return;
             showLoginFormFromChooser();
             document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
+            document.getElementById('save-password-checkbox').checked = !!a.p;
+            updateSavePasswordRow();
+            document.getElementById('username').value = a.u;
             if (a.g) {
-                document.getElementById('username').value = a.u;
                 handleGoogleAuth(a.e);                                          // Google account: continue with Google
-            } else {
-                document.getElementById('username').value = a.u;
-                document.getElementById('password').value = '';
-                const sub = document.getElementById('auth-subtitle');
-                if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
-                document.getElementById('password').focus();
+                return;
             }
+            document.getElementById('password').value = '';
+            if (a.p && CAN_STORE_PASSWORD) {
+                // ask the browser's password manager for the saved password and sign in with one tap
+                try {
+                    const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
+                    if (cred && cred.password) {
+                        document.getElementById('username').value = cred.id || a.u;
+                        document.getElementById('password').value = cred.password;
+                        handleAuth();
+                        return;
+                    }
+                } catch (e) { /* cancelled or not available: fall back to typing the password */ }
+            }
+            const sub = document.getElementById('auth-subtitle');
+            if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
+            document.getElementById('password').focus();
         };
 
         window.removeSavedAccount = function (i) {
@@ -2213,7 +2247,12 @@
             setSavedAccounts(list);
             if (applySavedAccountsUI()) renderAccountChooser();
             else window.refreshAuthEntry();
-            showToast('Removed ' + a.u + ' from this device');
+            if (a.p) {
+                try { navigator.credentials.preventSilentAccess(); } catch (e) {}
+                showToast('Removed ' + a.u + '. To delete its saved password, use your browser\'s password manager.');
+            } else {
+                showToast('Removed ' + a.u + ' from this device');
+            }
         };
 
         // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
@@ -2598,7 +2637,15 @@
         function proceedAfterLogin() {
             try {
                 const saveBox = document.getElementById('save-account-checkbox');
-                if (currentUser && ((saveBox && saveBox.checked) || isAccountSaved(currentUser.username))) rememberAccountOnThisDevice(currentUser);
+                if (currentUser && ((saveBox && saveBox.checked) || isAccountSaved(currentUser.username))) {
+                    const pwBox = document.getElementById('save-password-checkbox');
+                    const typedPw = (document.getElementById('password') || {}).value || '';
+                    const wantsPw = !!(saveBox && saveBox.checked && pwBox && pwBox.checked && CAN_STORE_PASSWORD && currentUser.googleAccount !== true && typedPw);
+                    if (wantsPw) {
+                        try { navigator.credentials.store(new PasswordCredential({ id: currentUser.username, password: typedPw, name: currentUser.username })).catch(() => {}); } catch (e) {}
+                    }
+                    rememberAccountOnThisDevice(currentUser, wantsPw);
+                }
             } catch (e) {}
             if (globalSettings.shutdown && globalSettings.shutdown.enabled && !currentUser.isAdmin) {
                 document.getElementById('auth-view').classList.add('hidden');
@@ -3026,7 +3073,8 @@
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
-            { const sb = document.getElementById('save-account-checkbox'); if (sb) sb.checked = false; }
+            { const sb = document.getElementById('save-account-checkbox'); if (sb) sb.checked = false; updateSavePasswordRow(); }
+            try { if (navigator.credentials && navigator.credentials.preventSilentAccess) navigator.credentials.preventSilentAccess(); } catch (e) {}
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
             showToast("Logged out successfully");

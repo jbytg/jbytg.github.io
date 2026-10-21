@@ -458,7 +458,20 @@
         '• Tap **Use another account** to log in with a different one or create a new account\n' +
         '• Tap the **×** next to an account to remove it from this device\n' +
         '• If nothing is saved you go straight to the normal login page\n' +
-        'Only your username (and email, to pick the right Google account) is saved on that device – **never your password**. Do not save accounts on a shared or public computer.'
+        'JB HUB saves only your username (and email, to pick the right Google account) on that device – **never your password itself**. Want one-tap login? See **Save password**. Do not save accounts on a shared or public computer.'
+    },
+    {
+      id: 'save_password',
+      title: 'Save password',
+      keys: ['save password', 'save my password', 'also save my password', 'remember password', 'password manager', 'saved password', 'autofill', 'auto fill', 'autofill password', 'auto login', 'one tap login', 'one tap', 'stored password', 'forget saved password', 'remove saved password', 'delete saved password', 'key icon', 'password not saving', 'password not saved'],
+      answer:
+        '**Save password:** tick **Save this account on this device**, then tick **Also save my password** and log in. Your browser may ask to save the password – choose **Save**.\n' +
+        '• The password is kept by **your browser\'s password manager** (not by JB HUB), so it stays in your browser/device vault.\n' +
+        '• Next time, tap the account (it shows a **key icon**) and your browser offers the saved password – one tap signs you in.\n' +
+        '• If you cancel the browser prompt you just type the password as usual.\n' +
+        '• Not shown? The option appears only in browsers that support it (Chrome, Edge and similar). In other browsers you can still use their own "save password" prompt.\n' +
+        '• To delete a saved password, open your browser\'s **password manager** settings and remove it there; removing the account from the list (×) does not delete it.\n' +
+        'Do not save passwords on a shared or public computer.'
     },
     {
       id: 'err_signup',
