@@ -710,7 +710,7 @@
                 <p class="text-sm text-gray-200 text-center font-semibold">Choose an account</p>
                 <div id="account-chooser-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
                 <button type="button" onclick="useAnotherAccount()" class="w-full p-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-semibold transition"><i class="fa fa-user-plus mr-2"></i>Use another account</button>
-                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. JB HUB never stores your password; only your browser's password manager can, if you choose.</p>
+                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. A saved password is encrypted and never leaves this device. Tap × to delete an account and its password.</p>
             </div>
 
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
@@ -789,7 +789,7 @@
                 </label>
                 <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
                     <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Also save my password<span class="block text-[11px] text-gray-500">Kept by your browser's password manager, not by JB HUB. Then one tap signs you in.</span></span>
+                    <span>Also save my password on this device<span class="block text-[11px] text-gray-500">Stored encrypted on this device only, so one tap signs you in. Use it only on your own device.</span></span>
                 </label>
 
                 <!-- Login captcha: appears after more than 3 wrong login attempts -->
@@ -2102,13 +2102,14 @@
         };
 
         // ===== Saved accounts on this device =====
-        // Only the username (+ email, to pre-select a Google account) is kept in this browser's storage, and only when the
-        // user ticked "Save this account on this device". Passwords and login tokens are never saved.
-        // Passwords are NOT kept by JB HUB. If the user ticks "Also save my password", the browser's own password manager
-        // (Credential Management API) holds it in the browser/OS vault, and offers it back with one tap.
-        const CAN_STORE_PASSWORD = !!(window.PasswordCredential && navigator.credentials && navigator.credentials.store && navigator.credentials.get);
+        // Kept in this browser's storage only when the user ticks "Save this account on this device":
+        //   - username (+ email, to pre-select a Google account)
+        //   - optionally the password, but only ENCRYPTED (AES-GCM) with a non-extractable key that lives in IndexedDB.
+        // The password is never sent anywhere except to sign in, and it is deleted automatically if it stops working.
+        const CAN_SAVE_PASSWORD = !!(window.crypto && window.crypto.subtle && window.indexedDB);
         const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
         const MAX_SAVED_ACCOUNTS = 5;
+        let oneTapUser = null; // username of the account being signed in with a saved password (one tap)
 
         function getSavedAccounts() {
             try {
@@ -2126,25 +2127,78 @@
             const k = String(username || '').toLowerCase();
             return getSavedAccounts().some(a => a.u.toLowerCase() === k);
         }
-        function rememberAccountOnThisDevice(user, withPassword) {
+        function rememberAccountOnThisDevice(user) {
             if (!user || !user.username) return;
             const k = user.username.toLowerCase();
             const all = getSavedAccounts();
             const prev = all.find(a => a.u.toLowerCase() === k);
             const rest = all.filter(a => a.u.toLowerCase() !== k);
-            rest.unshift({ u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), p: !!(withPassword || (prev && prev.p)), t: Date.now() });
+            const entry = { u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), t: Date.now() };
+            if (prev && prev.pw) entry.pw = prev.pw;      // keep an already saved (encrypted) password
+            rest.unshift(entry);
             setSavedAccounts(rest);
         }
-        // the "Also save my password" option only appears when "Save this account" is ticked and the browser supports it
-        function updateSavePasswordRow() {
-            const row = document.getElementById('save-password-row');
-            const main = document.getElementById('save-account-checkbox');
-            const pw = document.getElementById('save-password-checkbox');
-            if (!row || !main || !pw) return;
-            row.classList.toggle('hidden', !(CAN_STORE_PASSWORD && main.checked));
-            if (!main.checked) pw.checked = false;
+
+        // ---- encryption helpers (AES-GCM, key can never be exported from the browser) ----
+        function idbRequest(req) {
+            return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
         }
-        window.updateSavePasswordRow = updateSavePasswordRow;
+        function idbOpen() {
+            const open = indexedDB.open('jb_secure', 1);
+            open.onupgradeneeded = () => open.result.createObjectStore('keys');
+            return idbRequest(open);
+        }
+        async function getDeviceKey(createIfMissing) {
+            const idb = await idbOpen();
+            let key = await idbRequest(idb.transaction('keys', 'readonly').objectStore('keys').get('device'));
+            if (!key && createIfMissing) {
+                key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+                await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').put(key, 'device'));
+            }
+            return key || null;
+        }
+        async function deleteDeviceKey() {
+            try { const idb = await idbOpen(); await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').delete('device')); } catch (e) {}
+        }
+        const toB64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+        const fromB64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        const aad = username => new TextEncoder().encode(String(username).toLowerCase()); // ties the secret to its account
+
+        async function encryptPassword(username, password) {
+            const key = await getDeviceKey(true);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad(username) }, key, new TextEncoder().encode(password));
+            return { iv: toB64(iv), ct: toB64(ct) };
+        }
+        async function decryptPassword(username, blob) {
+            try {
+                const key = await getDeviceKey(false);
+                if (!key || !blob) return null;
+                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(blob.iv), additionalData: aad(username) }, key, fromB64(blob.ct));
+                return new TextDecoder().decode(plain);
+            } catch (e) { return null; }
+        }
+
+        // set (or with null, delete) the encrypted password of a saved account
+        async function setSavedPassword(username, passwordOrNull) {
+            const k = String(username || '').toLowerCase();
+            let blob = null;
+            if (passwordOrNull) { try { blob = await encryptPassword(username, passwordOrNull); } catch (e) { return false; } }
+            const list = getSavedAccounts();
+            const entry = list.find(a => a.u.toLowerCase() === k);
+            if (!entry) return false;
+            if (blob) entry.pw = blob; else delete entry.pw;
+            setSavedAccounts(list);
+            if (!list.some(a => a.pw)) deleteDeviceKey();   // no encrypted passwords left: drop the key too
+            return true;
+        }
+        // called when a login made with a saved password was rejected: the saved password is out of date
+        function discardStaleSavedPassword(username) {
+            if (!username) return;
+            setSavedPassword(username, null);
+            if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
+        }
+
         function maskEmail(email) {
             const m = String(email || '').match(/^([^@]+)@(.+)$/);
             if (!m) return 'Password sign-in';
@@ -2156,6 +2210,16 @@
             if (!has) document.body.classList.remove('jb-chooser-mode');
             return has;
         }
+        // the "Also save my password" option only appears when "Save this account" is ticked and the browser can encrypt
+        function updateSavePasswordRow() {
+            const row = document.getElementById('save-password-row');
+            const main = document.getElementById('save-account-checkbox');
+            const pw = document.getElementById('save-password-checkbox');
+            if (!row || !main || !pw) return;
+            row.classList.toggle('hidden', !(CAN_SAVE_PASSWORD && main.checked));
+            if (!main.checked) pw.checked = false;
+        }
+        window.updateSavePasswordRow = updateSavePasswordRow;
 
         function renderAccountChooser() {
             const host = document.getElementById('account-chooser-list');
@@ -2166,7 +2230,7 @@
                         <span class="w-10 h-10 shrink-0 rounded-full bg-purple-500/25 border border-purple-400/40 flex items-center justify-center font-bold text-purple-200">${escapeHtml(a.u.charAt(0).toUpperCase())}</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-sm font-semibold text-gray-100 truncate">${escapeHtml(a.u)}</span>
-                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${a.p ? '<i class="fa fa-key mr-1 text-emerald-300" title="Password saved in your browser"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
+                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${a.pw ? '<i class="fa fa-key mr-1 text-emerald-300" title="Password saved on this device (encrypted): one tap signs you in"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
                         </span>
                         <i class="fa fa-chevron-right text-gray-500 text-xs"></i>
                     </button>
@@ -2209,12 +2273,13 @@
             window.refreshAuthEntry();
         };
 
+        // Tap on a saved account: with a saved password it signs in right away, otherwise it just asks for the password.
         window.chooseSavedAccount = async function (i) {
             const a = getSavedAccounts()[i];
             if (!a) return;
             showLoginFormFromChooser();
             document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
-            document.getElementById('save-password-checkbox').checked = !!a.p;
+            document.getElementById('save-password-checkbox').checked = !!a.pw;
             updateSavePasswordRow();
             document.getElementById('username').value = a.u;
             if (a.g) {
@@ -2222,17 +2287,16 @@
                 return;
             }
             document.getElementById('password').value = '';
-            if (a.p && CAN_STORE_PASSWORD) {
-                // ask the browser's password manager for the saved password and sign in with one tap
-                try {
-                    const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
-                    if (cred && cred.password) {
-                        document.getElementById('username').value = cred.id || a.u;
-                        document.getElementById('password').value = cred.password;
-                        handleAuth();
-                        return;
-                    }
-                } catch (e) { /* cancelled or not available: fall back to typing the password */ }
+            if (a.pw) {
+                const saved = await decryptPassword(a.u, a.pw);
+                if (saved) {
+                    document.getElementById('password').value = saved;
+                    oneTapUser = a.u;
+                    handleAuth();                                               // normal login: all server-side checks still apply
+                    return;
+                }
+                setSavedPassword(a.u, null);                                    // cannot be decrypted any more (browser data cleared)
+                renderAccountChooser();
             }
             const sub = document.getElementById('auth-subtitle');
             if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
@@ -2245,14 +2309,10 @@
             if (!a) return;
             list.splice(i, 1);
             setSavedAccounts(list);
+            if (!list.some(x => x.pw)) deleteDeviceKey();
             if (applySavedAccountsUI()) renderAccountChooser();
             else window.refreshAuthEntry();
-            if (a.p) {
-                try { navigator.credentials.preventSilentAccess(); } catch (e) {}
-                showToast('Removed ' + a.u + '. To delete its saved password, use your browser\'s password manager.');
-            } else {
-                showToast('Removed ' + a.u + ' from this device');
-            }
+            showToast('Removed ' + a.u + (a.pw ? ' and its saved password' : '') + ' from this device');
         };
 
         // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
@@ -2267,6 +2327,7 @@
                 }
                 if (keep.length !== list.length) {
                     setSavedAccounts(keep);
+                    if (!keep.some(x => x.pw)) deleteDeviceKey();
                     if (applySavedAccountsUI()) renderAccountChooser();
                     else window.refreshAuthEntry();
                 }
@@ -2422,6 +2483,7 @@
         }
 
         window.handleAuth = async function() {
+            const usedSavedPasswordFor = oneTapUser; oneTapUser = null; // set by a one-tap login from the saved-accounts list
             if (!navigator.onLine) {
                 showToast("No Internet", "error");
                 return;
@@ -2530,6 +2592,13 @@
                 }
                 if (!userVal || !passwordOk) {
                     const fails = registerLoginFailure();
+                    if (usedSavedPasswordFor) { // the saved password no longer works (changed elsewhere): delete it and ask for the new one
+                        discardStaleSavedPassword(usedSavedPasswordFor);
+                        document.getElementById('password').value = '';
+                        showToast('Your saved password is out of date. Please type your password.', 'error');
+                        document.getElementById('password').focus();
+                        return;
+                    }
                     showToast(fails === LOGIN_FAIL_LIMIT ? "Wrong details 3 times. Please complete the captcha to continue." : "Invalid username/email or password", "error");
                     return;
                 }
@@ -2638,13 +2707,14 @@
             try {
                 const saveBox = document.getElementById('save-account-checkbox');
                 if (currentUser && ((saveBox && saveBox.checked) || isAccountSaved(currentUser.username))) {
-                    const pwBox = document.getElementById('save-password-checkbox');
-                    const typedPw = (document.getElementById('password') || {}).value || '';
-                    const wantsPw = !!(saveBox && saveBox.checked && pwBox && pwBox.checked && CAN_STORE_PASSWORD && currentUser.googleAccount !== true && typedPw);
-                    if (wantsPw) {
-                        try { navigator.credentials.store(new PasswordCredential({ id: currentUser.username, password: typedPw, name: currentUser.username })).catch(() => {}); } catch (e) {}
+                    rememberAccountOnThisDevice(currentUser);
+                    // the user decides about the password every time they tick/untick "Save this account" + "Also save my password"
+                    if (saveBox && saveBox.checked) {
+                        const pwBox = document.getElementById('save-password-checkbox');
+                        const typedPw = (document.getElementById('password') || {}).value || '';
+                        if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && currentUser.googleAccount !== true && typedPw) setSavedPassword(currentUser.username, typedPw);
+                        else if (pwBox && !pwBox.checked) setSavedPassword(currentUser.username, null);
                     }
-                    rememberAccountOnThisDevice(currentUser, wantsPw);
                 }
             } catch (e) {}
             if (globalSettings.shutdown && globalSettings.shutdown.enabled && !currentUser.isAdmin) {
@@ -3074,7 +3144,6 @@
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             { const sb = document.getElementById('save-account-checkbox'); if (sb) sb.checked = false; updateSavePasswordRow(); }
-            try { if (navigator.credentials && navigator.credentials.preventSilentAccess) navigator.credentials.preventSilentAccess(); } catch (e) {}
             document.getElementById('human-verify').checked = false;
             document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
             showToast("Logged out successfully");
@@ -5401,7 +5470,7 @@
         // --- TOOLS TAB ---
         // To add another tool, add one more object to this list.
         const TOOLS = [
-            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://jbhub.ryzn.pro/jb_tv/' }
+            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://tv.jbhub.ryzn.pro/' }
         ];
 
         function renderToolsTab(container) {

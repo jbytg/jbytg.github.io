@@ -445,7 +445,7 @@
       title: 'Tools / JB TV',
       keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv'],
       answer:
-        'Open the **⋮ menu → Tools** (you need to be logged in). Right now it contains **JB TV** – tap its card and it opens **https://jbhub.ryzn.pro/jb_tv/** in a **new tab**, so you do not lose your JB HUB session.\n' +
+        'Open the **⋮ menu → Tools** (you need to be logged in). Right now it contains **JB TV** – tap its card and it opens **https://tv.jbhub.ryzn.pro/** in a **new tab**, so you do not lose your JB HUB session.\n' +
         'New tools will appear in the same place.'
     },
     {
@@ -458,20 +458,19 @@
         '• Tap **Use another account** to log in with a different one or create a new account\n' +
         '• Tap the **×** next to an account to remove it from this device\n' +
         '• If nothing is saved you go straight to the normal login page\n' +
-        'JB HUB saves only your username (and email, to pick the right Google account) on that device – **never your password itself**. Want one-tap login? See **Save password**. Do not save accounts on a shared or public computer.'
+        'JB HUB saves your username (and email, to pick the right Google account) on that device. A password is saved **only if you also tick "Also save my password"**, and then it is stored encrypted – see **Save password**. Do not save accounts on a shared or public computer.'
     },
     {
       id: 'save_password',
       title: 'Save password',
-      keys: ['save password', 'save my password', 'also save my password', 'remember password', 'password manager', 'saved password', 'autofill', 'auto fill', 'autofill password', 'auto login', 'one tap login', 'one tap', 'stored password', 'forget saved password', 'remove saved password', 'delete saved password', 'key icon', 'password not saving', 'password not saved'],
+      keys: ['save password', 'save my password', 'also save my password', 'remember password', 'saved password', 'one tap login', 'one tap', 'tap to login', 'click account to login', 'auto login', 'login automatically', 'key icon', 'forget saved password', 'remove saved password', 'delete saved password', 'password not saving', 'password not saved', 'saved password not working', 'out of date'],
       answer:
-        '**Save password:** tick **Save this account on this device**, then tick **Also save my password** and log in. Your browser may ask to save the password – choose **Save**.\n' +
-        '• The password is kept by **your browser\'s password manager** (not by JB HUB), so it stays in your browser/device vault.\n' +
-        '• Next time, tap the account (it shows a **key icon**) and your browser offers the saved password – one tap signs you in.\n' +
-        '• If you cancel the browser prompt you just type the password as usual.\n' +
-        '• Not shown? The option appears only in browsers that support it (Chrome, Edge and similar). In other browsers you can still use their own "save password" prompt.\n' +
-        '• To delete a saved password, open your browser\'s **password manager** settings and remove it there; removing the account from the list (×) does not delete it.\n' +
-        'Do not save passwords on a shared or public computer.'
+        '**Save password (one-tap login):** on the login form tick **Save this account on this device**, then **Also save my password on this device**, and log in. Next time, tap that account in **Choose an account** and JB HUB logs you in straight away. Accounts with a saved password show a **key icon**.\n' +
+        '• The password is **encrypted** and kept **on this device only** – it is used just to sign you in.\n' +
+        '• If the saved password stops working (for example you changed it), JB HUB deletes it and asks you to type the new one.\n' +
+        '• Tap **×** to remove an account together with its saved password. Unticking **Also save my password** at your next login also deletes it.\n' +
+        '• If the security check (captcha) is active, you still have to solve it.\n' +
+        '• Be careful: anyone who can use this browser can tap the account and get in. Use this only on your own phone or computer, never on a shared one.'
     },
     {
       id: 'err_signup',
