@@ -216,6 +216,7 @@
         'The **Admin Panel** is only visible to admins. Admins can:\n' +
         '• edit the About text, rules and Special Thanks\n' +
         '• set **section maintenance** or a full **Server Shutdown**\n' +
+        '• send a **temporary notification** to every member who is online\n' +
         '• manage user accounts (see who is online/offline, give **temporary or permanent bans** with a reason, send a **password reset email** – admins cannot see passwords)\n' +
         '• read bug reports, set **Pending / In Progress / Solved** and reply\n' +
         '• manage leaderboard entries for all 8 games\n' +
@@ -407,11 +408,18 @@
     {
       id: 'err_network',
       title: 'No Internet / Cant connect to server',
-      keys: ['no internet', 'cant connect', "can't connect", 'cant connect to server', 'connect to server', 'connection', 'internet', 'wifi', 'wi-fi', 'network', 'server connection', 'loading forever', 'not loading'],
+      keys: ['no internet', 'cant connect', "can't connect", 'cant connect to server', 'connect to server', 'connecting to server', 'still connecting', 'retry now', 'loading screen', 'startup screen', 'stuck on loading', 'taking long', 'taking too long', 'website not opening', 'page not loading', 'not loading', 'loading forever', 'connection lost', 'reconnecting', 'connection', 'internet', 'wifi', 'wi-fi', 'network', 'server connection', 'connected again'],
       answer:
-        '**No Internet** means your device is offline. **Cant connect to server** means JB HUB cannot reach its **Firebase** database at the moment.\n' +
-        'Try: check Wi-Fi or mobile data, reload the page (you will need to log in again), switch off any VPN or ad-blocker that may block it, and wait a minute. ' +
-        'Saving notes, chat, bug reports and scores all need a connection, so they stay blocked until it returns. If other websites load fine, JB HUB may be under **maintenance**.'
+        '**"Connecting to server…"** appears each time you open JB HUB and normally lasts about a second, then you see your saved accounts or the login page. If it takes longer, press **Retry now**. After about 20 seconds it shows **Can\'t connect to server** with the most likely cause marked, and JB HUB keeps **retrying by itself** until the server answers.\n' +
+        '**Causes and fixes:**\n' +
+        '• **Internet off or weak** – turn Wi-Fi/mobile data on, move closer to the router, or switch networks\n' +
+        '• **Security check could not verify your browser** – wait a few seconds and press Retry; make sure Google reCAPTCHA is not blocked and your browser is up to date\n' +
+        '• **Ad-blocker, VPN or privacy tool** – turn it off for this site, or try a private window or another browser\n' +
+        '• **School/office/public Wi-Fi** – try mobile data\n' +
+        '• **Wrong date/time** – turn on automatic date & time\n' +
+        '• **Old copy of the site** – reload with Ctrl+Shift+R or clear this site\'s data (reloading signs you out)\n' +
+        '• **Server busy or under maintenance** – wait a few minutes and retry; if it continues, email **' + SITE.email + '**\n' +
+        'Later, if the connection drops while you are using the site, **Connection lost. Reconnecting…** appears after a few seconds and **Connected to server again** when it is back.'
     },
     {
       id: 'err_login',
@@ -471,6 +479,23 @@
         '• Tap **×** to remove an account together with its saved password. Unticking **Also save my password** at your next login also deletes it.\n' +
         '• If the security check (captcha) is active, you still have to solve it.\n' +
         '• Be careful: anyone who can use this browser can tap the account and get in. Use this only on your own phone or computer, never on a shared one.'
+    },
+    {
+      id: 'notifications',
+      title: 'Admin notifications',
+      keys: ['notification', 'notifications', 'admin notification', 'notification from admin', 'send notification', 'temporary notification', 'temporary message', 'live notification', 'broadcast', 'alert from admin', 'popup message', 'pop up message', 'banner', 'bell', 'announcement banner', 'message for everyone', 'message to all members', 'notify members', 'notify all'],
+      answer:
+        '**Admin notifications:** an admin can send a short message (up to 200 characters) to **every member who is online**. It appears as a **banner at the top of the screen** with a bell icon and a countdown bar, and it **disappears by itself** after 15 seconds, 30 seconds, 1 minute or 5 minutes – whatever the admin chose.\n' +
+        '• You can close it early with the **×** button; it will not come back.\n' +
+        '• It is only for members who are online when it is sent (or log in before it expires) – it is not saved, so nothing is waiting for you later.\n' +
+        '• **Admins:** open the **Admin Panel → Send Notification**, type the message, pick how long it shows and press **Send to online members**. **Clear now** removes it for everyone.\n' +
+        'For permanent rules and announcements, see **Admin Message**.'
+    },
+    {
+      id: 'enter_key',
+      title: 'Enter key on the login form',
+      keys: ['enter key', 'press enter', 'pressing enter', 'enter button', 'next field', 'enter not working', 'enter to login', 'submit with enter', 'keyboard login', 'go to password', 'move to password'],
+      answer: 'On the login form press **Enter** in the username box to jump to the **password** box, then **Enter** again to **log in**. On Sign Up, Enter in the password box moves to **Confirm Password**, and Enter there creates the account. Enter also works in the captcha box.'
     },
     {
       id: 'err_signup',

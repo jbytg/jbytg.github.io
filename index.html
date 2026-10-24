@@ -154,6 +154,13 @@
         }
 
 
+        /* ===== Startup (connecting) screen ===== */
+        @keyframes startupspin { to { transform: rotate(360deg); } }
+        #startup-spinner { width: 42px; height: 42px; margin: 18px auto 14px; border-radius: 50%; border: 4px solid rgba(255,255,255,.15); border-top-color: #a855f7; animation: startupspin .9s linear infinite; }
+        #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
+        #startup-screen[data-failsafe] #startup-failsafe { display: block; }
+        #startup-screen[data-failsafe] .startup-main { display: none; }
+
         /* ===== Saved accounts chooser (shown instead of the login form when this device has saved accounts) ===== */
         #account-chooser { display: none; }
         #back-to-accounts { display: none; }
@@ -576,6 +583,11 @@
                 else if (localStorage.getItem("perf_disableBg") === "true" || localStorage.getItem("perf_disableAnim") === "true") m = "low";
             } catch (e) {}
             document.body.classList.add("gfx-" + m);
+            // failsafe: if the main page script never starts (blocked / broken), replace the spinner by a Reload message
+            window.__bootTimer = setTimeout(function () {
+                var s = document.getElementById("startup-screen");
+                if (s && !window.__bootAlive) s.setAttribute("data-failsafe", "1");
+            }, 25000);
             try {
                 var sa = JSON.parse(localStorage.getItem("jb_saved_accounts") || "[]");
                 if (Array.isArray(sa) && sa.length) document.body.classList.add("jb-has-saved", "jb-chooser-mode");
@@ -668,6 +680,42 @@
         </div>
     </div>
 
+    <!-- Startup screen: stays until the server really answers (see "Startup screen" script) -->
+    <div id="startup-screen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9800;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px, env(safe-area-inset-top)) 16px 24px;background:radial-gradient(circle at 50% 0%, #2a1650 0%, #0b0818 62%);color:#e5e7eb;">
+        <div class="startup-main" style="width:100%;max-width:440px;margin:auto 0;text-align:center;">
+            <div style="font-size:34px;font-weight:800;letter-spacing:.5px;background:linear-gradient(135deg,#c084fc,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">JB HUB</div>
+            <div id="startup-spinner" aria-hidden="true"></div>
+            <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Connecting to server…</p>
+            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 14px;">This usually takes just a second.</p>
+            <div id="startup-actions" class="hidden" style="margin-bottom:14px;">
+                <button type="button" onclick="retryStartup()" style="padding:10px 22px;border-radius:12px;border:1px solid rgba(168,85,247,.6);background:rgba(168,85,247,.25);color:#f5f3ff;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa fa-rotate-right" style="margin-right:6px;"></i>Retry now</button>
+            </div>
+            <div id="startup-problems" class="hidden" style="text-align:left;"></div>
+            <p id="startup-details" style="font-size:10px;color:#6b7280;margin-top:12px;"></p>
+        </div>
+        <div id="startup-failsafe">
+            <div style="font-size:34px;font-weight:800;color:#c084fc;">JB HUB</div>
+            <p style="font-size:17px;font-weight:700;margin:16px 0 6px;">The page did not finish loading</p>
+            <p style="font-size:12px;color:#9ca3af;margin:0 0 14px;">Check your internet connection and reload. If a browser extension (ad-blocker) is active, turn it off for this site. Still stuck? Email <a href="mailto:johanbiju15@gmail.com" style="color:#d8b4fe;text-decoration:underline;">johanbiju15@gmail.com</a>.</p>
+            <button type="button" onclick="location.reload()" style="padding:10px 22px;border-radius:12px;border:1px solid rgba(168,85,247,.6);background:rgba(168,85,247,.25);color:#f5f3ff;font-size:13px;font-weight:700;cursor:pointer;">Reload page</button>
+        </div>
+    </div>
+
+    <!-- Temporary admin notification: shown to every member who is online, disappears by itself -->
+    <div id="live-notification" role="alert" aria-live="assertive" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9500;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;pointer-events:none;">
+        <div class="mx-auto max-w-md rounded-2xl border border-amber-400/50 shadow-2xl overflow-hidden" style="pointer-events:auto;background:#1a1228;">
+            <div class="flex items-start gap-3 p-3">
+                <span class="w-9 h-9 shrink-0 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300"><i class="fa fa-bell"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Notification from admin</p>
+                    <p id="live-notification-text" class="text-sm text-gray-100 break-words"></p>
+                </div>
+                <button type="button" onclick="dismissLiveNotification()" aria-label="Close notification" class="text-gray-400 hover:text-white px-1 py-0.5"><i class="fa fa-xmark"></i></button>
+            </div>
+            <div class="h-1 bg-white/10"><div id="live-notification-bar" class="h-full bg-amber-400" style="width:100%"></div></div>
+        </div>
+    </div>
+
     <!-- Full Server Shutdown Lockdown Screen: admin-controlled, blocks all regular users, no dismiss/pause -->
     <div id="shutdown-screen" class="fixed inset-0 z-[100] bg-black hidden flex flex-col items-center justify-center p-0 overflow-hidden select-none" oncontextmenu="return false;">
         <div id="shutdown-media-container" class="absolute inset-0 flex items-center justify-center bg-black"></div>
@@ -717,13 +765,13 @@
                 <button type="button" id="back-to-accounts" onclick="backToSavedAccounts()" class="items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition"><i class="fa fa-arrow-left"></i>Saved accounts</button>
                 <div>
                     <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
-                    <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <input type="text" id="username" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Password</label>
                     <div class="relative">
-                        <input type="password" id="password" autocomplete="current-password" placeholder="Enter password" oninput="checkPasswordStrength('password', 'strength-bar', 'strength-text')" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                        <input type="password" id="password" onkeydown="authEnterKey(event, 'password')" autocomplete="current-password" placeholder="Enter password" oninput="checkPasswordStrength('password', 'strength-bar', 'strength-text')" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
                         <button type="button" onclick="togglePass('password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-password"></i></button>
                     </div>
                 </div>
@@ -758,7 +806,7 @@
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">Confirm Password</label>
                         <div class="relative">
-                            <input type="password" id="conf-password" autocomplete="new-password" placeholder="Confirm password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                            <input type="password" id="conf-password" onkeydown="authEnterKey(event, 'conf-password')" autocomplete="new-password" placeholder="Confirm password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
                             <button type="button" onclick="togglePass('conf-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-conf-password"></i></button>
                         </div>
                     </div>
@@ -1042,11 +1090,13 @@
         // Lets Firebase's servers verify that database and sign-in requests come from the real JB HUB website in a real
         // browser. The site key is public by design (it is safe to keep in this file). Until you switch enforcement on in
         // the Firebase console this only collects verification data and blocks nothing.
+        let appCheckActive = false;
         const APP_CHECK_SITE_KEY = '6LdQb_MtAAAAAOa8xgHezQVX1NEZ5HdaoiPYAQ2t';
         try {
             if (APP_CHECK_SITE_KEY && firebase.appCheck && firebase.appCheck.ReCaptchaEnterpriseProvider) {
                 // On localhost / a test copy, set  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true  in the console to get a debug token.
                 firebase.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY), true);
+                appCheckActive = true;
             } else {
                 console.warn('App Check is not available in this browser build; continuing without it.');
             }
@@ -1291,12 +1341,189 @@
             showToast("Internet connection restored");
         });
 
+        let startupDone = false, dropToastTimer = null, dropToastShown = false;
         db.ref('.info/connected').on('value', (snap) => {
             isFirebaseConnected = snap.val() === true;
-            if (!isFirebaseConnected && navigator.onLine) {
-                showToast("Cant connect to server", "error");
+            clearTimeout(dropToastTimer);
+            if (isFirebaseConnected) {
+                if (dropToastShown) { dropToastShown = false; showToast("Connected to server again"); }
+                return;
             }
+            // While the startup screen is up it explains the problem itself; afterwards only warn if it stays disconnected
+            if (!startupDone || !navigator.onLine) return;
+            dropToastTimer = setTimeout(() => {
+                if (!isFirebaseConnected && navigator.onLine) { dropToastShown = true; showToast("Connection lost. Reconnecting…", "error"); }
+            }, 4000);
         });
+
+        // ===== Startup screen: connect to the server BEFORE showing the saved accounts / login page =====
+        // The page opens on a "Connecting to server..." screen. As soon as the server really answers, it disappears and the
+        // visitor sees their saved accounts (if any) or the login page. If the server cannot be reached for a long time, the
+        // screen explains the likely problems with a solution for each and keeps retrying by itself.
+        const STARTUP_SLOW_MS = 8000;         // "taking longer than usual" + Retry button
+        const STARTUP_FAIL_MS = 20000;        // first attempt gives up: show problems + solutions
+        const STARTUP_AUTO_RETRY_MS = 10000;  // then try again by itself every 10 s
+        const OWNER_EMAIL = 'johanbiju15@gmail.com';
+        let startupRun = 0, startupTicker = null, startupRetryTimer = null, startupDiag = null, startupFailed = false;
+        window.__bootAlive = true;            // the page script is running (see the failsafe in the <head> script)
+
+        const STARTUP_PROBLEMS = [
+            { id: 'offline',  icon: 'fa-wifi',           title: 'Your internet is off or very weak', fix: 'Turn Wi-Fi or mobile data on, move closer to the router, or switch between Wi-Fi and mobile data.' },
+            { id: 'security', icon: 'fa-shield-halved',  title: 'The security check could not verify your browser', fix: 'Wait a few seconds and press Retry. Make sure Google reCAPTCHA is not blocked, update your browser, then try again.' },
+            { id: 'blocker',  icon: 'fa-ban',            title: 'An ad-blocker, VPN or privacy tool is blocking the connection', fix: 'Turn it off for this website, or open the site in a private/incognito window or another browser.' },
+            { id: 'network',  icon: 'fa-building',       title: 'School, office or public Wi-Fi is blocking it', fix: 'Try mobile data or another network.' },
+            { id: 'clock',    icon: 'fa-clock',          title: 'The date and time on your device are wrong', fix: 'Turn on automatic date & time in your device settings, then press Retry.' },
+            { id: 'cache',    icon: 'fa-rotate',         title: 'An old copy of the site is stored in your browser', fix: 'Reload with Ctrl+Shift+R (on a phone: clear this site\'s data in your browser settings), then try again.' },
+            { id: 'server',   icon: 'fa-server',         title: 'The server is busy or under maintenance', fix: 'Wait a few minutes and press Retry. If it keeps happening, email ' + OWNER_EMAIL + '.' }
+        ];
+
+        function likelyProblemIds(d) {
+            if (!d || !d.online) return ['offline'];
+            if (d.appCheck === 'failed') return ['security', 'blocker'];
+            return ['server', 'blocker', 'network'];
+        }
+
+        // Resolves {ok:true} when the server is connected AND answers a real read; otherwise {ok:false, reason}
+        function probeServer(timeoutMs) {
+            return new Promise(resolve => {
+                let finished = false, connected = false;
+                const connRef = db.ref('.info/connected');
+                let cb = null;
+                const done = (r) => {
+                    if (finished) return;
+                    finished = true; clearTimeout(timer);
+                    try { if (cb) connRef.off('value', cb); } catch (e) {}
+                    resolve(r);
+                };
+                const timer = setTimeout(() => done({ ok: false, reason: connected ? 'no-answer' : 'timeout' }), timeoutMs);
+                cb = connRef.on('value', async snap => {
+                    connected = snap.val() === true;
+                    if (!connected || finished) return;
+                    try { await db.ref('settings').once('value'); done({ ok: true }); }
+                    catch (e) { done({ ok: false, reason: 'denied', error: e }); }
+                });
+            });
+        }
+
+        async function diagnoseStartup() {
+            const d = { online: navigator.onLine, appCheck: appCheckActive ? 'checking' : 'off' };
+            if (appCheckActive) {
+                try {
+                    const r = await Promise.race([firebase.appCheck().getToken(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
+                    d.appCheck = (r && r.token && !r.error) ? 'ok' : 'failed';
+                } catch (e) { d.appCheck = 'failed'; }
+            }
+            return d;
+        }
+
+        function startupEl(id) { return document.getElementById(id); }
+        function setStartupText(title, sub) {
+            const t = startupEl('startup-title'), s = startupEl('startup-sub');
+            if (t) t.textContent = title;
+            if (s) s.textContent = sub;
+        }
+
+        function renderStartupProblems() {
+            const box = startupEl('startup-problems');
+            if (!box) return;
+            const likely = likelyProblemIds(startupDiag);
+            const ordered = STARTUP_PROBLEMS.filter(p => likely.includes(p.id)).concat(STARTUP_PROBLEMS.filter(p => !likely.includes(p.id)));
+            box.innerHTML = `
+                <p style="font-size:12px;font-weight:700;margin:0 0 8px;color:#d1d5db;">What could be wrong, and how to fix it</p>
+                ${ordered.map(p => `
+                    <div style="display:flex;gap:10px;padding:10px;margin-bottom:8px;border-radius:12px;border:1px solid ${likely.includes(p.id) ? 'rgba(251,191,36,.55)' : 'rgba(255,255,255,.10)'};background:${likely.includes(p.id) ? 'rgba(251,191,36,.08)' : 'rgba(255,255,255,.04)'};">
+                        <span style="width:30px;height:30px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(168,85,247,.2);color:#d8b4fe;"><i class="fa ${p.icon}"></i></span>
+                        <span style="min-width:0;">
+                            <span style="display:block;font-size:12px;font-weight:700;color:#f3f4f6;">${p.title}${likely.includes(p.id) ? ' <span style="font-size:10px;color:#fbbf24;font-weight:700;">· most likely</span>' : ''}</span>
+                            <span style="display:block;font-size:11px;color:#9ca3af;margin-top:2px;">${escapeHtml(p.fix)}</span>
+                        </span>
+                    </div>`).join('')}
+                <p style="font-size:11px;color:#9ca3af;margin-top:4px;">Still stuck? Email <a href="mailto:${OWNER_EMAIL}" style="color:#d8b4fe;text-decoration:underline;">${OWNER_EMAIL}</a> and say what you see on this screen.</p>`;
+        }
+
+        function showStartupProblem(result, waitedMs) {
+            startupFailed = true;
+            const sp = startupEl('startup-spinner'); if (sp) sp.style.display = 'none';
+            setStartupText("Can't connect to server", startupDiag && !startupDiag.online ? 'You seem to be offline. Your account is not affected.' : 'This is a connection problem. Your account is not affected.');
+            const act = startupEl('startup-actions'); if (act) act.classList.remove('hidden');
+            const pb = startupEl('startup-problems'); if (pb) pb.classList.remove('hidden');
+            renderStartupProblems();
+            const det = startupEl('startup-details');
+            if (det) {
+                const d = startupDiag || {};
+                det.textContent = 'Internet: ' + (d.online ? 'connected' : 'offline') + ' · Security check: ' + (d.appCheck || 'unknown') +
+                    ' · Reason: ' + (result && result.reason || 'unknown') + ' · Waited ' + Math.round((waitedMs || 0) / 1000) + ' s · Retrying automatically…';
+            }
+        }
+
+        function tickStartup(run, t0) {
+            if (run !== startupRun || startupFailed) return;
+            const secs = Math.round((Date.now() - t0) / 1000);
+            if (Date.now() - t0 >= STARTUP_SLOW_MS) {
+                setStartupText('Still connecting…', 'This is taking longer than usual (' + secs + ' s). You can retry now, or just wait.');
+                const act = startupEl('startup-actions'); if (act) act.classList.remove('hidden');
+            } else {
+                setStartupText('Connecting to server…', 'This usually takes just a second.');
+            }
+        }
+
+        function finishStartup() {
+            startupRun++; clearInterval(startupTicker); clearTimeout(startupRetryTimer);
+            startupDone = true; startupFailed = false;
+            window.__bootReady = true; clearTimeout(window.__bootTimer);
+            const el = startupEl('startup-screen');
+            if (el) {
+                setStartupText('Connected', 'Opening JB HUB…');
+                const sp = startupEl('startup-spinner'); if (sp) sp.style.display = 'none';
+                setTimeout(() => {
+                    el.style.transition = 'opacity .25s'; el.style.opacity = '0';
+                    setTimeout(() => { el.classList.add('hidden'); }, 280);
+                }, 200);
+            }
+            if (typeof window.refreshAuthEntry === 'function') window.refreshAuthEntry(); // saved accounts if any, otherwise the login page
+        }
+
+        async function runStartupCheck(auto) {
+            const run = ++startupRun;
+            clearInterval(startupTicker); clearTimeout(startupRetryTimer);
+            const t0 = Date.now();
+            if (!auto) {
+                startupFailed = false;
+                const sp = startupEl('startup-spinner'); if (sp) sp.style.display = '';
+                const act = startupEl('startup-actions'); if (act) act.classList.add('hidden');
+                const pb = startupEl('startup-problems'); if (pb) pb.classList.add('hidden');
+                const det = startupEl('startup-details'); if (det) det.textContent = '';
+                setStartupText('Connecting to server…', 'This usually takes just a second.');
+                startupTicker = setInterval(() => tickStartup(run, t0), 1000);
+            } else {
+                const det = startupEl('startup-details'); if (det) det.textContent = 'Trying again…';
+            }
+            let result;
+            if (!navigator.onLine) result = { ok: false, reason: 'offline' };
+            else result = await probeServer(auto ? 8000 : STARTUP_FAIL_MS);
+            if (run !== startupRun) return;
+            clearInterval(startupTicker);
+            if (result.ok) { finishStartup(); return; }
+            startupDiag = await diagnoseStartup();
+            if (run !== startupRun) return;
+            showStartupProblem(result, Date.now() - t0);
+            startupRetryTimer = setTimeout(() => runStartupCheck(true), STARTUP_AUTO_RETRY_MS);
+        }
+
+        window.retryStartup = function () { runStartupCheck(false); };
+        window.addEventListener('online', () => { if (!startupDone) runStartupCheck(false); });
+
+        // After the page is open, actions that need the server wait a few seconds for it instead of failing at once
+        async function ensureServerConnection(maxWaitMs) {
+            if (isFirebaseConnected) return true;
+            const t0 = Date.now(), limit = maxWaitMs || 7000;
+            showToast('Connecting to server…');
+            while (!isFirebaseConnected && Date.now() - t0 < limit) await new Promise(r => setTimeout(r, 250));
+            return isFirebaseConnected;
+        }
+
+        runStartupCheck(false);
+
 
         // Helper: Calculate exact age in years
         function getAgeInYears(dobStr) {
@@ -1877,7 +2104,7 @@
 
         window.sendPasswordResetLink = async function() {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
-            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+            if (!(await ensureServerConnection())) { showToast("Cant connect to server", "error"); return; }
 
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
             if (!email) { showToast("Enter your email", "error"); return; }
@@ -2003,7 +2230,7 @@
 
         window.handleGoogleAuth = async function(hintEmail) {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
-            if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
+            if (!(await ensureServerConnection())) { showToast("Cant connect to server", "error"); return; }
 
             const btn = document.getElementById('google-btn');
             if (btn) btn.disabled = true;
@@ -2240,6 +2467,7 @@
 
         // Decides what a visitor sees first: their saved accounts, or the normal login page.
         window.refreshAuthEntry = function () {
+            stopLiveNotifications();
             if (applySavedAccountsUI()) {
                 renderAccountChooser();
                 document.body.classList.add('jb-chooser-mode');
@@ -2482,13 +2710,25 @@
             } catch (e) { console.warn('Password clean-up skipped:', e); }
         }
 
+        // Enter key on the login form: username -> password -> (confirm password on Sign Up) -> submit
+        window.authEnterKey = function (e, fromId) {
+            if (!e || e.key !== 'Enter' || e.isComposing) return;
+            e.preventDefault();
+            if (fromId === 'username') { document.getElementById('password').focus(); return; }
+            if (fromId === 'password' && isSignupMode) {
+                const conf = document.getElementById('conf-password');
+                if (conf && conf.offsetParent !== null) { conf.focus(); return; }
+            }
+            handleAuth();
+        };
+
         window.handleAuth = async function() {
             const usedSavedPasswordFor = oneTapUser; oneTapUser = null; // set by a one-tap login from the saved-accounts list
             if (!navigator.onLine) {
                 showToast("No Internet", "error");
                 return;
             }
-            if (!isFirebaseConnected) {
+            if (!(await ensureServerConnection())) {
                 showToast("Cant connect to server", "error");
                 return;
             }
@@ -2969,7 +3209,123 @@
             switchTab('notes');
         }
 
+        // ===== Temporary admin notifications =====
+        // An admin writes one short message to  liveNotification  with an expiry time. Every member who is logged in
+        // (online) sees it as a banner right away and it disappears by itself. Nobody who comes online after it expired sees it.
+        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0;
+        let shownLiveNoteId = null;
+        const dismissedLiveNotes = new Set();
+        let adminNoticeDraft = { text: '', seconds: 30 };
+        const serverNow = () => Date.now() + liveNoteOffset; // Firebase server clock, so wrong phone clocks do not matter
+
+        function hideLiveNotification() {
+            clearTimeout(liveNoteTimer); liveNoteTimer = null; shownLiveNoteId = null;
+            const box = document.getElementById('live-notification');
+            if (box) box.classList.add('hidden');
+        }
+
+        window.dismissLiveNotification = function () {
+            if (shownLiveNoteId) dismissedLiveNotes.add(shownLiveNoteId);
+            hideLiveNotification();
+        };
+
+        function showLiveNotification(n) {
+            const remaining = n.expiresAt - serverNow();
+            if (remaining <= 0) { hideLiveNotification(); return; }
+            const box = document.getElementById('live-notification');
+            const text = document.getElementById('live-notification-text');
+            const bar = document.getElementById('live-notification-bar');
+            if (!box || !text) return;
+            text.textContent = n.text;                      // textContent: a message can never inject HTML
+            if (bar) {                                      // countdown bar
+                const total = Math.max(1, (n.expiresAt - (n.createdAt || (n.expiresAt - remaining))));
+                bar.style.transition = 'none';
+                bar.style.width = Math.max(0, Math.min(100, remaining / total * 100)) + '%';
+                void bar.offsetWidth;
+                bar.style.transition = 'width ' + remaining + 'ms linear';
+                bar.style.width = '0%';
+            }
+            box.classList.remove('hidden');
+            shownLiveNoteId = n.id;
+            clearTimeout(liveNoteTimer);
+            liveNoteTimer = setTimeout(hideLiveNotification, remaining + 50);
+        }
+
+        function handleLiveNotificationSnapshot(snap) {
+            if (!currentUser) { stopLiveNotifications(); return; }   // logged out meanwhile
+            const n = snap.val();
+            if (!n || typeof n.text !== 'string' || !n.expiresAt || !n.id) { hideLiveNotification(); return; }
+            if (dismissedLiveNotes.has(n.id) || n.id === shownLiveNoteId) return;
+            if (n.expiresAt <= serverNow()) { hideLiveNotification(); return; }
+            showLiveNotification(n);
+        }
+
+        async function startLiveNotifications() {
+            stopLiveNotifications();
+            const token = ++liveNoteToken;
+            try {
+                const off = await db.ref('.info/serverTimeOffset').once('value');
+                if (token !== liveNoteToken) return;
+                liveNoteOffset = Number(off.val()) || 0;
+                liveNoteRef = db.ref('liveNotification');
+                liveNoteCb = liveNoteRef.on('value', handleLiveNotificationSnapshot);
+            } catch (e) { console.warn('Notifications unavailable:', e); }
+        }
+
+        function stopLiveNotifications() {
+            liveNoteToken++;
+            try { if (liveNoteRef && liveNoteCb) liveNoteRef.off('value', liveNoteCb); } catch (e) {}
+            liveNoteRef = null; liveNoteCb = null;
+            hideLiveNotification();
+        }
+
+        // ---- admin side ----
+        window.adminSendNotification = async function () {
+            if (!currentUser || !currentUser.isAdmin) { showToast('Admin privileges required', 'error'); return; }
+            if (!navigator.onLine) { showToast('No Internet', 'error'); return; }
+            const text = String(adminNoticeDraft.text || '').trim();
+            const seconds = [15, 30, 60, 300].includes(Number(adminNoticeDraft.seconds)) ? Number(adminNoticeDraft.seconds) : 30;
+            if (!text) { showToast('Type a message first', 'error'); return; }
+            if (text.length > 200) { showToast('Message is too long (max 200 characters)', 'error'); return; }
+            const btn = document.getElementById('admin-notice-send');
+            if (btn) btn.disabled = true;
+            try {
+                const now = serverNow();
+                const payload = {
+                    id: 'n' + now + Math.random().toString(36).slice(2, 7),
+                    text: text,
+                    from: currentUser.username,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP,
+                    expiresAt: now + seconds * 1000
+                };
+                await db.ref('liveNotification').set(payload);
+                const online = usersData.filter(u => u.isOnline === true).length;
+                showToast('Notification sent to ' + online + ' online member' + (online === 1 ? '' : 's'));
+                adminNoticeDraft.text = '';
+                if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
+                // tidy up the database entry once it has expired (clients ignore expired ones anyway)
+                setTimeout(async () => {
+                    try {
+                        const s = await db.ref('liveNotification').once('value');
+                        if (s.val() && s.val().id === payload.id) await db.ref('liveNotification').remove();
+                    } catch (e) {}
+                }, seconds * 1000 + 2000);
+            } catch (e) {
+                showToast('Could not send notification', 'error');
+            } finally {
+                const b2 = document.getElementById('admin-notice-send');
+                if (b2) setTimeout(() => { b2.disabled = false; }, 1500);
+            }
+        };
+
+        window.adminClearNotification = async function () {
+            if (!currentUser || !currentUser.isAdmin) return;
+            try { await db.ref('liveNotification').remove(); showToast('Notification cleared for everyone'); }
+            catch (e) { showToast('Could not clear notification', 'error'); }
+        };
+
         function listenForRealtimeUpdates() {
+            startLiveNotifications();
             db.ref('settings').on('value', snap => {
                 if (snap.exists()) globalSettings = snap.val();
                 if (!globalSettings.maintenance) globalSettings.maintenance = {};
@@ -6359,11 +6715,31 @@
 
             // Remember search focus/caret so live Firebase re-renders don't interrupt typing.
             const prevActive = document.activeElement;
+            const noticeFocus = prevActive && prevActive.id === 'admin-notice-text'
+                ? { start: prevActive.selectionStart, end: prevActive.selectionEnd } : null;
             const searchFocus = prevActive && prevActive.id === 'admin-user-search'
                 ? { start: prevActive.selectionStart, end: prevActive.selectionEnd } : null;
 
             container.innerHTML = `
                 <div class="space-y-6 max-w-2xl mx-auto">
+                    <!-- Send a temporary notification to every online member -->
+                    <div class="glass p-6 rounded-xl space-y-3 border border-amber-500/30">
+                        <h2 class="text-lg font-bold text-amber-300 border-b border-white/10 pb-2"><i class="fa fa-bell mr-1"></i>Send Notification</h2>
+                        <p class="text-xs text-gray-400">Shows a temporary banner to every member who is online right now. It disappears by itself and is not kept.</p>
+                        <textarea id="admin-notice-text" rows="2" maxlength="200" placeholder="Write your message..." oninput="adminNoticeDraft.text = this.value; document.getElementById('admin-notice-count').textContent = this.value.length + '/200';" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-amber-400 transition text-sm resize-none">${escapeHtml(adminNoticeDraft.text)}</textarea>
+                        <div class="flex items-center justify-between text-[11px] text-gray-500">
+                            <span id="admin-notice-count">${adminNoticeDraft.text.length}/200</span>
+                            <span><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>${usersData.filter(u => u.isOnline === true).length} online now (including you)</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <select id="admin-notice-seconds" onchange="adminNoticeDraft.seconds = Number(this.value)" class="p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
+                                ${[[15, 'Shows for 15 seconds'], [30, 'Shows for 30 seconds'], [60, 'Shows for 1 minute'], [300, 'Shows for 5 minutes']].map(o => `<option value="${o[0]}" ${Number(adminNoticeDraft.seconds) === o[0] ? 'selected' : ''} class="bg-gray-900">${o[1]}</option>`).join('')}
+                            </select>
+                            <button type="button" id="admin-notice-send" onclick="adminSendNotification()" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold transition disabled:opacity-60"><i class="fa fa-paper-plane mr-1"></i>Send to online members</button>
+                            <button type="button" onclick="adminClearNotification()" class="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition">Clear now</button>
+                        </div>
+                    </div>
+
                     <!-- Global Settings -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
                         <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2">Global System Content</h2>
@@ -6717,6 +7093,10 @@
             // generated leaderboard/user/bug sections without changing their content.
             initAdminSectionCollapse(container);
 
+            if (noticeFocus) {
+                const nel = document.getElementById('admin-notice-text');
+                if (nel) { nel.focus(); try { nel.setSelectionRange(noticeFocus.start, noticeFocus.end); } catch (e) {} }
+            }
             if (searchFocus) {
                 const el = document.getElementById('admin-user-search');
                 if (el) { el.focus(); try { el.setSelectionRange(searchFocus.start, searchFocus.end); } catch (e) {} }
