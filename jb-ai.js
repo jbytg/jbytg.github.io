@@ -221,7 +221,7 @@
         '• read bug reports, set **Pending / In Progress / Solved** and reply\n' +
         '• manage leaderboard entries for all 8 games\n' +
         '• control notes and clear Global Chat\n' +
-        'Admin access is given by the owner, so it cannot be requested here.'
+        'Admin access is given by the owner, so it cannot be requested here. New accounts are **never** made admin automatically – an existing admin has to switch the role on in the Admin Panel.'
     },
     {
       id: 'maintenance',
@@ -496,6 +496,19 @@
       title: 'Enter key on the login form',
       keys: ['enter key', 'press enter', 'pressing enter', 'enter button', 'next field', 'enter not working', 'enter to login', 'submit with enter', 'keyboard login', 'go to password', 'move to password'],
       answer: 'On the login form press **Enter** in the username box to jump to the **password** box, then **Enter** again to **log in**. On Sign Up, Enter in the password box moves to **Confirm Password**, and Enter there creates the account. Enter also works in the captcha box.'
+    },
+    {
+      id: 'login_speed',
+      title: 'Slow login / welcome screen',
+      keys: ['slow login', 'login slow', 'login is slow', 'login taking long', 'login takes time', 'login takes long', 'login not fast', 'fast login', 'how long login', 'signing in', 'welcome screen', 'skip welcome', 'welcome animation', 'welcome message', 'takes time to login', 'logging in slow'],
+      answer:
+        '**Login speed:** pressing **Login** now shows **Signing in…** at once. JB HUB looks up your account while you are typing your password, so most of the waiting is already done when you press the button. A **welcome screen** shows for about 1.4 seconds (tap it to skip), and your data loads in the background while it is showing.\n' +
+        'If it still feels slow:\n' +
+        '• check your internet connection – on a weak signal every step takes longer\n' +
+        '• open **Settings** and choose **Low** or **Medium** graphics\n' +
+        '• if you see **Connecting to server…**, wait for it or press **Retry now**\n' +
+        '• logging in with your **username** is a little quicker than with your email\n' +
+        'Wrong details three times shows a security check, and Firebase may pause sign-in for a few minutes after many wrong tries.'
     },
     {
       id: 'err_signup',

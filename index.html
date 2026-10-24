@@ -51,6 +51,9 @@
     <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://firebaseappcheck.googleapis.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDKs -->
@@ -816,7 +819,7 @@
                 <button type="button" id="back-to-accounts" onclick="backToSavedAccounts()" class="items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition"><i class="fa fa-arrow-left"></i>Saved accounts</button>
                 <div>
                     <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
-                    <input type="text" id="username" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <input type="text" id="username" onblur="prefetchLoginRecord()" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 
                 <div>
@@ -1148,6 +1151,7 @@
                 // On localhost / a test copy, set  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true  in the console to get a debug token.
                 firebase.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY), true);
                 appCheckActive = true;
+                try { firebase.appCheck().getToken().catch(() => {}); } catch (e) {} // fetch the token now so the first request does not wait for it
             } else {
                 console.warn('App Check is not available in this browser build; continuing without it.');
             }
@@ -1961,12 +1965,13 @@
         async function findUserRecordsByEmail(email) {
             const out = [];
             const seen = {};
-            for (const field of ['email', 'authEmail']) {
-                const snap = await db.ref('users').orderByChild(field).equalTo(email).once('value');
+            // both lookups run at the same time (before: one after the other, which doubled the wait)
+            const snaps = await Promise.all(['email', 'authEmail'].map(field => db.ref('users').orderByChild(field).equalTo(email).once('value')));
+            snaps.forEach(snap => {
                 snap.forEach(child => {
                     if (!seen[child.key]) { seen[child.key] = true; out.push({ key: child.key, val: child.val() }); }
                 });
-            }
+            });
             return out;
         }
 
@@ -2115,18 +2120,17 @@
                     return;
                 }
 
-                const allUsersSnap = await db.ref('users').once('value');
-                const isFirstUser = !allUsersSnap.exists();
+                // New accounts are NEVER admins. Admin rights are given only by an existing admin (Admin Panel) or by the owner in the Firebase console.
 
                 const newUser = {
                     username: p.username, email: p.email,
                     authEmail: p.email, authUid: authUser.uid, emailVerified: true,
-                    dob: p.dob, gender: p.gender, isAdmin: isFirstUser, id: 'u_' + Date.now()
+                    dob: p.dob, gender: p.gender, isAdmin: false, id: 'u_' + Date.now()
                 };
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                await userRef.update({ activeSession: mySessionId });
+                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2317,7 +2321,7 @@
 
             currentUser = userVal;
             mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-            await userRef.update({ activeSession: mySessionId });
+            userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once
             setupPresence(usernameKey);
             setupBanWatcher(usernameKey);
             setupSessionWatcher(usernameKey);
@@ -2397,19 +2401,18 @@
                     return;
                 }
 
-                const allUsersSnap = await db.ref('users').once('value');
-                const isFirstUser = !allUsersSnap.exists();
+                // New accounts are NEVER admins. Admin rights are given only by an existing admin (Admin Panel) or by the owner in the Firebase console.
 
                 const newUser = {
                     username: username, password: '', email: pendingGoogle.email,
                     authEmail: pendingGoogle.email, authUid: pendingGoogle.uid,
                     emailVerified: true, googleAccount: true,
-                    dob: dob, gender: gender, isAdmin: isFirstUser, id: 'u_' + Date.now()
+                    dob: dob, gender: gender, isAdmin: false, id: 'u_' + Date.now()
                 };
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                await userRef.update({ activeSession: mySessionId });
+                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2806,11 +2809,33 @@
             } catch (e) { console.warn('Password clean-up skipped:', e); }
         }
 
+        // ===== Faster login =====
+        // As soon as the user leaves the username box (or presses Enter there) the account is fetched in the background,
+        // so pressing Login does not have to wait for that round trip. The copy is used once and only for 45 seconds.
+        let loginPrefetch = null; // { id, t, p }
+        function prefetchLoginRecord() {
+            const el = document.getElementById('username');
+            const id = ((el && el.value) || '').trim().toLowerCase();
+            if (!id || isSignupMode || !navigator.onLine) return;
+            if (loginPrefetch && loginPrefetch.id === id && Date.now() - loginPrefetch.t < 45000) return;
+            const p = id.includes('@')
+                ? findUserRecordsByEmail(id)
+                : db.ref('users/' + id).once('value').then(snap => (snap.exists() ? { key: snap.key, val: snap.val() } : null));
+            p.catch(() => {}); // a failed prefetch is simply not used
+            loginPrefetch = { id: id, t: Date.now(), p: p };
+        }
+        window.prefetchLoginRecord = prefetchLoginRecord;
+        function takePrefetchedLogin(id) {
+            const c = loginPrefetch;
+            loginPrefetch = null;
+            return (c && c.id === id && Date.now() - c.t < 45000) ? c.p : null;
+        }
+
         // Enter key on the login form: username -> password -> (confirm password on Sign Up) -> submit
         window.authEnterKey = function (e, fromId) {
             if (!e || e.key !== 'Enter' || e.isComposing) return;
             e.preventDefault();
-            if (fromId === 'username') { document.getElementById('password').focus(); return; }
+            if (fromId === 'username') { prefetchLoginRecord(); document.getElementById('password').focus(); return; }
             if (fromId === 'password' && isSignupMode) {
                 const conf = document.getElementById('conf-password');
                 if (conf && conf.offsetParent !== null) { conf.focus(); return; }
@@ -2865,12 +2890,21 @@
                 let usernameKey = null;
                 let userVal = null;
                 if (identifier.includes('@')) {
-                    const matches = await findUserRecordsByEmail(identifier.toLowerCase());
+                    let matches = null;
+                    const pre = takePrefetchedLogin(identifier.toLowerCase());
+                    if (pre) { try { matches = await pre; } catch (e) { matches = null; } }
+                    if (!matches) matches = await findUserRecordsByEmail(identifier.toLowerCase());
                     const pick = matches.find(m => m.val && !m.val.authUid && m.val.password === password) || matches.find(m => m.val && m.val.authUid) || matches[0];
                     if (pick) { usernameKey = pick.key; userVal = pick.val; }
                 } else {
-                    const snap = await db.ref('users/' + identifier.toLowerCase()).once('value');
-                    if (snap.exists()) { usernameKey = snap.key; userVal = snap.val(); }
+                    let rec;
+                    const pre = takePrefetchedLogin(identifier.toLowerCase());
+                    if (pre) { try { rec = await pre; } catch (e) { rec = undefined; } }
+                    if (rec === undefined) {
+                        const snap = await db.ref('users/' + identifier.toLowerCase()).once('value');
+                        rec = snap.exists() ? { key: snap.key, val: snap.val() } : null;
+                    }
+                    if (rec) { usernameKey = rec.key; userVal = rec.val; }
                 }
 
                 const acctEmail = accountAuthEmail(userVal);
@@ -2889,7 +2923,7 @@
                         if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // anything else = wrong password
                     }
                     if (passwordOk && Object.prototype.hasOwnProperty.call(userVal, 'password')) {
-                        try { await db.ref('users/' + usernameKey + '/password').remove(); } catch (e) {}
+                        db.ref('users/' + usernameKey + '/password').remove().catch(() => {}); // clean-up in the background
                         delete userVal.password; // clean up an old stored copy
                     }
                 } else {
@@ -2962,7 +2996,7 @@
 
                 currentUser = userVal;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                await userRef.update({ activeSession: mySessionId });
+                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2976,6 +3010,22 @@
                 if (btn) btn.disabled = false;
             }
         }
+
+        // Wraps handleAuth: the button shows "Signing in..." the moment it is pressed (even while we wait for the connection)
+        // and a second press while the first one is still running is ignored.
+        ;(function () { // (leading semicolon: the line above is a function assignment without one)
+            const core = window.handleAuth;
+            let busy = false;
+            window.handleAuth = async function () {
+                if (busy) return;
+                busy = true;
+                const btn = document.getElementById('auth-btn');
+                const before = btn ? btn.innerHTML : '';
+                if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa fa-circle-notch fa-spin"></i> ' + (isSignupMode ? 'Checking…' : 'Signing in…'); }
+                try { return await core.apply(this, arguments); }
+                finally { busy = false; if (btn) { btn.disabled = false; btn.innerHTML = before; } }
+            };
+        })();
 
         window.showBanScreen = function(ban) {
             document.getElementById('ban-screen-type').innerText = ban.type === 'permanent' ? 'Permanent Ban' : 'Temporary Ban';
@@ -3293,15 +3343,30 @@
             document.getElementById('win-welcome-classification').innerText = `Age Category: ${getAgeCategory(dob)}`;
             welcomeScreen.classList.remove('hidden');
 
-            setTimeout(() => {
+            ensureRealtimeListeners(); // start loading the app's data now, while the welcome screen is showing
+            let entered = false;
+            const go = () => {
+                if (entered) return;
+                entered = true;
+                welcomeScreen.onclick = null;
                 fadeOutAndHide(welcomeScreen, enterDashboard);
-            }, 2500);
+            };
+            welcomeScreen.onclick = go; // tap/click anywhere to skip
+            setTimeout(go, document.body.classList.contains('perf-disable-animations') ? 600 : 1400);
+        }
+
+        // the realtime listeners are started once per login (also guards against enterDashboard being used on its own)
+        let realtimeListeningFor = null;
+        function ensureRealtimeListeners() {
+            if (realtimeListeningFor === mySessionId) return;
+            realtimeListeningFor = mySessionId;
+            listenForRealtimeUpdates();
         }
 
         async function enterDashboard() {
             document.getElementById('dashboard-view').classList.remove('hidden');
             document.getElementById('admin-nav-btn').classList.toggle('hidden', !currentUser.isAdmin);
-            listenForRealtimeUpdates();
+            ensureRealtimeListeners();
             switchTab('notes');
         }
 
