@@ -408,9 +408,9 @@
     {
       id: 'err_network',
       title: 'No Internet / Cant connect to server',
-      keys: ['no internet', 'cant connect', "can't connect", 'cant connect to server', 'connect to server', 'connecting to server', 'still connecting', 'retry now', 'loading screen', 'startup screen', 'stuck on loading', 'taking long', 'taking too long', 'website not opening', 'page not loading', 'not loading', 'loading forever', 'connection lost', 'reconnecting', 'connection', 'internet', 'wifi', 'wi-fi', 'network', 'server connection', 'connected again'],
+      keys: ['connecting screen', 'connecting animation', 'connecting screen animation', 'loading animation', 'loader', 'did you know', 'tips while loading', 'no internet', 'cant connect', "can't connect", 'cant connect to server', 'connect to server', 'connecting to server', 'still connecting', 'retry now', 'loading screen', 'startup screen', 'stuck on loading', 'taking long', 'taking too long', 'website not opening', 'page not loading', 'not loading', 'loading forever', 'connection lost', 'reconnecting', 'connection', 'internet', 'wifi', 'wi-fi', 'network', 'server connection', 'connected again'],
       answer:
-        '**"Connecting to server…"** appears each time you open JB HUB and normally lasts about a second, then you see your saved accounts or the login page. If it takes longer, press **Retry now**. After about 20 seconds it shows **Can\'t connect to server** with the most likely cause marked, and JB HUB keeps **retrying by itself** until the server answers.\n' +
+        '**"Connecting to server…"** appears each time you open JB HUB and normally lasts about a second (you will see an animated loader with a "Did you know?" tip that changes every few seconds), then you see your saved accounts or the login page. If it takes longer, press **Retry now**. After about 20 seconds it shows **Can\'t connect to server** with the most likely cause marked, and JB HUB keeps **retrying by itself** until the server answers.\n' +
         '**Causes and fixes:**\n' +
         '• **Internet off or weak** – turn Wi-Fi/mobile data on, move closer to the router, or switch networks\n' +
         '• **Security check could not verify your browser** – wait a few seconds and press Retry; make sure Google reCAPTCHA is not blocked and your browser is up to date\n' +
@@ -485,9 +485,9 @@
       title: 'Admin notifications',
       keys: ['notification', 'notifications', 'admin notification', 'notification from admin', 'send notification', 'temporary notification', 'temporary message', 'live notification', 'broadcast', 'alert from admin', 'popup message', 'pop up message', 'banner', 'bell', 'announcement banner', 'message for everyone', 'message to all members', 'notify members', 'notify all'],
       answer:
-        '**Admin notifications:** an admin can send a short message (up to 200 characters) to **every member who is online**. It appears as a **banner at the top of the screen** with a bell icon and a countdown bar, and it **disappears by itself** after 15 seconds, 30 seconds, 1 minute or 5 minutes – whatever the admin chose.\n' +
+        '**Admin notifications:** an admin can send a short message (up to 200 characters) to **every member who is online – and to anyone looking at the login page**. It appears as a **banner at the top of the screen** with a bell icon and a countdown bar, and it **disappears by itself** after 15 seconds, 30 seconds, 1 minute or 5 minutes – whatever the admin chose.\n' +
         '• You can close it early with the **×** button; it will not come back.\n' +
-        '• It is only for members who are online when it is sent (or log in before it expires) – it is not saved, so nothing is waiting for you later.\n' +
+        '• It is only for people who are on the site when it is sent (or open it before it expires) – it is not saved, so nothing is waiting for you later.\n' +
         '• **Admins:** open the **Admin Panel → Send Notification**, type the message, pick how long it shows and press **Send to online members**. **Clear now** removes it for everyone.\n' +
         'For permanent rules and announcements, see **Admin Message**.'
     },

@@ -156,7 +156,49 @@
 
         /* ===== Startup (connecting) screen ===== */
         @keyframes startupspin { to { transform: rotate(360deg); } }
-        #startup-spinner { width: 42px; height: 42px; margin: 18px auto 14px; border-radius: 50%; border: 4px solid rgba(255,255,255,.15); border-top-color: #a855f7; animation: startupspin .9s linear infinite; }
+        /* Legendary connecting animation: glowing orb + 3 orbiting rings + sliding data bar + drifting stars (transform/opacity only = cheap) */
+        @keyframes su-spin { to { transform: rotate(360deg); } }
+        @keyframes su-spin-rev { to { transform: rotate(-360deg); } }
+        @keyframes su-pulse { 0%, 100% { transform: scale(.9); opacity: .6; } 50% { transform: scale(1.1); opacity: 1; } }
+        @keyframes su-breathe { 0%, 100% { transform: scale(.92); } 50% { transform: scale(1.08); } }
+        @keyframes su-slide { from { transform: translateX(-110%); } to { transform: translateX(260%); } }
+        @keyframes su-float { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: .9; } 100% { transform: translateY(-140px); opacity: 0; } }
+        @keyframes su-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes su-burst { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.9); opacity: 0; } }
+        .su-stars { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+        .su-dot { position: absolute; bottom: -6px; width: 3px; height: 3px; border-radius: 50%; background: #e9d5ff; opacity: 0; animation: su-float 7s linear infinite; }
+        .su-logo { font-size: 36px; font-weight: 800; letter-spacing: .5px; background: linear-gradient(135deg,#c084fc,#f472b6,#60a5fa); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; display: inline-block; animation: su-bob 3s ease-in-out infinite; }
+        #startup-spinner { position: relative; width: 132px; height: 132px; margin: 22px auto 20px; }
+        .su-glow { position: absolute; inset: -20px; border-radius: 50%; background: radial-gradient(circle, rgba(168,85,247,.5) 0%, rgba(236,72,153,.18) 45%, transparent 70%); animation: su-pulse 2.4s ease-in-out infinite; }
+        .su-ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+        .su-ring i { position: absolute; top: -5px; left: calc(50% - 4.5px); width: 9px; height: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+        .su-ring1 { inset: 0; color: #c084fc; border-top-color: #c084fc; border-right-color: rgba(192,132,252,.25); animation: su-spin 1.6s linear infinite; }
+        .su-ring2 { inset: 16px; color: #f472b6; border-bottom-color: #f472b6; border-left-color: rgba(244,114,182,.25); animation: su-spin-rev 2.2s linear infinite; }
+        .su-ring2 i { top: auto; bottom: -5px; }
+        .su-ring3 { inset: 32px; color: #60a5fa; border-top-color: #60a5fa; border-right-color: rgba(96,165,250,.25); animation: su-spin 3s linear infinite; }
+        .su-orb { position: absolute; inset: 48px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff 0%, #e9d5ff 18%, #a855f7 55%, #6d28d9 100%); box-shadow: 0 0 24px rgba(168,85,247,.85); animation: su-breathe 1.8s ease-in-out infinite; }
+        .su-bar { position: relative; width: 220px; height: 4px; margin: 4px auto 14px; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+        .su-bar span { position: absolute; top: 0; left: 0; height: 100%; width: 40%; border-radius: 99px; background: linear-gradient(90deg, transparent, #c084fc, #f472b6, transparent); animation: su-slide 1.4s ease-in-out infinite; }
+        .su-tip { max-width: 340px; margin: 14px auto 0; padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(168,85,247,.28); background: rgba(168,85,247,.09); font-size: 12px; line-height: 1.45; color: #d1d5db; text-align: left; transition: opacity .25s; }
+        .su-tip-label { display: block; margin-bottom: 3px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #c084fc; }
+        /* success: the rings burst outwards and everything turns green */
+        #startup-screen.startup-ok .su-ring { animation: su-burst .6s ease-out forwards; }
+        #startup-screen.startup-ok .su-orb { background: radial-gradient(circle at 35% 30%, #fff 0%, #bbf7d0 20%, #10b981 60%, #047857 100%); box-shadow: 0 0 28px rgba(16,185,129,.85); }
+        #startup-screen.startup-ok .su-glow { background: radial-gradient(circle, rgba(16,185,129,.5) 0%, transparent 70%); }
+        #startup-screen.startup-ok .su-bar span { animation: none; width: 100%; background: #10b981; }
+        /* problem: slow amber rings, still bar */
+        #startup-screen.startup-fail .su-ring1 { color: #fbbf24; border-top-color: #fbbf24; border-right-color: rgba(251,191,36,.25); animation-duration: 7s; }
+        #startup-screen.startup-fail .su-ring2 { color: #fb923c; border-bottom-color: #fb923c; border-left-color: rgba(251,146,60,.25); animation-duration: 9s; }
+        #startup-screen.startup-fail .su-ring3 { color: #f87171; border-top-color: #f87171; border-right-color: rgba(248,113,113,.25); animation-duration: 11s; }
+        #startup-screen.startup-fail .su-orb { background: radial-gradient(circle at 35% 30%, #fff 0%, #fde68a 20%, #f59e0b 60%, #b45309 100%); box-shadow: 0 0 22px rgba(245,158,11,.7); animation-duration: 3.5s; }
+        #startup-screen.startup-fail .su-glow { background: radial-gradient(circle, rgba(245,158,11,.4) 0%, transparent 70%); }
+        #startup-screen.startup-fail .su-bar span { animation: none; width: 100%; background: rgba(251,191,36,.6); }
+        /* graphics modes: Medium keeps it light, Low is a still picture, Ultra adds extra glow */
+        body.gfx-medium .su-dot:nth-child(n+8) { display: none; }
+        body.gfx-ultra .su-ring { filter: drop-shadow(0 0 5px currentColor); }
+        body.perf-disable-animations #startup-screen *, body.perf-disable-animations #startup-screen *::before { animation: none !important; transition: none !important; }
+        body.perf-disable-animations .su-bar span { width: 40%; left: 30%; }
+        @media (prefers-reduced-motion: reduce) { #startup-screen *, #startup-screen *::before { animation: none !important; transition: none !important; } }
         #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
         #startup-screen[data-failsafe] #startup-failsafe { display: block; }
         #startup-screen[data-failsafe] .startup-main { display: none; }
@@ -682,12 +724,21 @@
 
     <!-- Startup screen: stays until the server really answers (see "Startup screen" script) -->
     <div id="startup-screen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9800;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px, env(safe-area-inset-top)) 16px 24px;background:radial-gradient(circle at 50% 0%, #2a1650 0%, #0b0818 62%);color:#e5e7eb;">
-        <div class="startup-main" style="width:100%;max-width:440px;margin:auto 0;text-align:center;">
-            <div style="font-size:34px;font-weight:800;letter-spacing:.5px;background:linear-gradient(135deg,#c084fc,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">JB HUB</div>
-            <div id="startup-spinner" aria-hidden="true"></div>
+        <div class="su-stars" aria-hidden="true"><span class="su-dot" style="left:6%;animation-delay:0.0s;animation-duration:7.2s;"></span><span class="su-dot" style="left:14%;animation-delay:2.1s;animation-duration:8.5s;"></span><span class="su-dot" style="left:23%;animation-delay:4.3s;animation-duration:6.8s;"></span><span class="su-dot" style="left:31%;animation-delay:1.2s;animation-duration:9.0s;"></span><span class="su-dot" style="left:40%;animation-delay:5.5s;animation-duration:7.4s;"></span><span class="su-dot" style="left:48%;animation-delay:3.1s;animation-duration:8.1s;"></span><span class="su-dot" style="left:57%;animation-delay:0.7s;animation-duration:6.6s;"></span><span class="su-dot" style="left:65%;animation-delay:4.8s;animation-duration:9.2s;"></span><span class="su-dot" style="left:73%;animation-delay:2.6s;animation-duration:7.7s;"></span><span class="su-dot" style="left:81%;animation-delay:5.9s;animation-duration:8.3s;"></span><span class="su-dot" style="left:88%;animation-delay:1.8s;animation-duration:6.9s;"></span><span class="su-dot" style="left:94%;animation-delay:3.7s;animation-duration:8.8s;"></span><span class="su-dot" style="left:10%;animation-delay:6.4s;animation-duration:9.5s;"></span><span class="su-dot" style="left:52%;animation-delay:6.9s;animation-duration:7.1s;"></span></div>
+        <div class="startup-main" style="position:relative;width:100%;max-width:440px;margin:auto 0;text-align:center;">
+            <div class="su-logo">JB HUB</div>
+            <div id="startup-spinner" aria-hidden="true">
+                <span class="su-glow"></span>
+                <span class="su-ring su-ring1"><i></i></span>
+                <span class="su-ring su-ring2"><i></i></span>
+                <span class="su-ring su-ring3"><i></i></span>
+                <span class="su-orb"></span>
+            </div>
             <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Connecting to server…</p>
-            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 14px;">This usually takes just a second.</p>
-            <div id="startup-actions" class="hidden" style="margin-bottom:14px;">
+            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 12px;">This usually takes just a second.</p>
+            <div id="startup-bar" class="su-bar" aria-hidden="true"><span></span></div>
+            <div id="startup-tip" class="su-tip"><span class="su-tip-label"><i class="fa fa-lightbulb"></i> Did you know?</span><span id="startup-tip-text">Tick “Save this account on this device” when you log in, and next time you can pick your account from a list.</span></div>
+            <div id="startup-actions" class="hidden" style="margin:14px 0;">
                 <button type="button" onclick="retryStartup()" style="padding:10px 22px;border-radius:12px;border:1px solid rgba(168,85,247,.6);background:rgba(168,85,247,.25);color:#f5f3ff;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa fa-rotate-right" style="margin-right:6px;"></i>Retry now</button>
             </div>
             <div id="startup-problems" class="hidden" style="text-align:left;"></div>
@@ -1344,7 +1395,7 @@
         // ===== Notification state =====
         // Declared EARLY on purpose: the login page code runs while the script loads and already touches these
         // (stopLiveNotifications), and a `let` used before its declaration stops the whole script.
-        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0;
+        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0, liveNoteStarting = false;
         let shownLiveNoteId = null;
         const dismissedLiveNotes = new Set();
         let adminNoticeDraft = { text: '', seconds: 30 };
@@ -1425,6 +1476,40 @@
             return d;
         }
 
+        // Tips shown (one at a time, changing every few seconds) while connecting
+        const STARTUP_TIPS = [
+            'Tick “Save this account on this device” when you log in, and next time you can pick your account from a list.',
+            'Feeling lag? Open Settings (⋮ menu) and choose Low graphics mode.',
+            'Tap the ⋮ button at the top-left to open the menu: Notes, Global Chat, Cyber Arcade, Leaderboard and more.',
+            'Play 8 arcade games and climb the leaderboard.',
+            'Your Notes are saved in the cloud, so you can open them from any device.',
+            'Need help? Ask JB AI, the purple button in the corner, about anything on this site.',
+            'Found a bug or have an idea? Send it from Bug & Suggest.',
+            'Look in the Tools section of the menu for JB TV.',
+            'After 3 wrong password tries a quick security check appears – it keeps accounts safe.'
+        ];
+        let startupTipTimer = null, startupTipIdx = Math.floor(Math.random() * STARTUP_TIPS.length);
+        function stopStartupTips() { clearInterval(startupTipTimer); startupTipTimer = null; }
+        function startStartupTips() {
+            stopStartupTips();
+            const txt = document.getElementById('startup-tip-text');
+            if (txt) txt.textContent = STARTUP_TIPS[startupTipIdx];
+            startupTipTimer = setInterval(() => {
+                const box = document.getElementById('startup-tip'), t = document.getElementById('startup-tip-text');
+                if (!box || !t) return;
+                box.style.opacity = '0';
+                setTimeout(() => { if (!startupTipTimer) { box.style.opacity = '1'; return; } startupTipIdx = (startupTipIdx + 1) % STARTUP_TIPS.length; t.textContent = STARTUP_TIPS[startupTipIdx]; box.style.opacity = '1'; }, 250);
+            }, 3600);
+        }
+        // state of the animation: 'connecting' (purple), 'failed' (amber, slow), 'ok' (green burst)
+        function setStartupState(state) {
+            const scr = document.getElementById('startup-screen');
+            if (scr) { scr.classList.remove('startup-ok', 'startup-fail'); if (state === 'ok') scr.classList.add('startup-ok'); if (state === 'failed') scr.classList.add('startup-fail'); }
+            const tip = document.getElementById('startup-tip');
+            if (state === 'connecting') { if (tip) tip.classList.remove('hidden'); startStartupTips(); }
+            else { stopStartupTips(); if (tip && state === 'failed') tip.classList.add('hidden'); }
+        }
+
         function startupEl(id) { return document.getElementById(id); }
         function setStartupText(title, sub) {
             const t = startupEl('startup-title'), s = startupEl('startup-sub');
@@ -1452,7 +1537,7 @@
 
         function showStartupProblem(result, waitedMs) {
             startupFailed = true;
-            const sp = startupEl('startup-spinner'); if (sp) sp.style.display = 'none';
+            setStartupState('failed');
             setStartupText("Can't connect to server", startupDiag && !startupDiag.online ? 'You seem to be offline. Your account is not affected.' : 'This is a connection problem. Your account is not affected.');
             const act = startupEl('startup-actions'); if (act) act.classList.remove('hidden');
             const pb = startupEl('startup-problems'); if (pb) pb.classList.remove('hidden');
@@ -1483,13 +1568,15 @@
             const el = startupEl('startup-screen');
             if (el) {
                 setStartupText('Connected', 'Opening JB HUB…');
-                const sp = startupEl('startup-spinner'); if (sp) sp.style.display = 'none';
+                setStartupState('ok');
+                const burst = (document.body && document.body.classList.contains('perf-disable-animations')) ? 120 : 450; // let the rings burst
                 setTimeout(() => {
                     el.style.transition = 'opacity .25s'; el.style.opacity = '0';
                     setTimeout(() => { el.classList.add('hidden'); }, 280);
-                }, 200);
+                }, burst);
             }
             if (typeof window.refreshAuthEntry === 'function') window.refreshAuthEntry(); // saved accounts if any, otherwise the login page
+            startLiveNotifications();                                                    // admin notifications also reach people on the login page
         }
 
         async function runStartupCheck(auto) {
@@ -1498,7 +1585,7 @@
             const t0 = Date.now();
             if (!auto) {
                 startupFailed = false;
-                const sp = startupEl('startup-spinner'); if (sp) sp.style.display = '';
+                setStartupState('connecting');
                 const act = startupEl('startup-actions'); if (act) act.classList.add('hidden');
                 const pb = startupEl('startup-problems'); if (pb) pb.classList.add('hidden');
                 const det = startupEl('startup-details'); if (det) det.textContent = '';
@@ -1531,6 +1618,7 @@
             return isFirebaseConnected;
         }
 
+        startStartupTips();
         runStartupCheck(false);
 
 
@@ -2476,7 +2564,6 @@
 
         // Decides what a visitor sees first: their saved accounts, or the normal login page.
         window.refreshAuthEntry = function () {
-            stopLiveNotifications();
             if (applySavedAccountsUI()) {
                 renderAccountChooser();
                 document.body.classList.add('jb-chooser-mode');
@@ -3257,7 +3344,6 @@
         }
 
         function handleLiveNotificationSnapshot(snap) {
-            if (!currentUser) { stopLiveNotifications(); return; }   // logged out meanwhile
             const n = snap.val();
             if (!n || typeof n.text !== 'string' || !n.expiresAt || !n.id) { hideLiveNotification(); return; }
             if (dismissedLiveNotes.has(n.id) || n.id === shownLiveNoteId) return;
@@ -3265,8 +3351,10 @@
             showLiveNotification(n);
         }
 
+        // Starts once (right after the startup screen connects) and then keeps running: it covers the login page AND the logged-in app
         async function startLiveNotifications() {
-            stopLiveNotifications();
+            if (liveNoteRef || liveNoteStarting) return;
+            liveNoteStarting = true;
             const token = ++liveNoteToken;
             try {
                 const off = await db.ref('.info/serverTimeOffset').once('value');
@@ -3275,6 +3363,7 @@
                 liveNoteRef = db.ref('liveNotification');
                 liveNoteCb = liveNoteRef.on('value', handleLiveNotificationSnapshot);
             } catch (e) { console.warn('Notifications unavailable:', e); }
+            finally { liveNoteStarting = false; }
         }
 
         function stopLiveNotifications() {
@@ -6730,7 +6819,7 @@
                     <!-- Send a temporary notification to every online member -->
                     <div class="glass p-6 rounded-xl space-y-3 border border-amber-500/30">
                         <h2 class="text-lg font-bold text-amber-300 border-b border-white/10 pb-2"><i class="fa fa-bell mr-1"></i>Send Notification</h2>
-                        <p class="text-xs text-gray-400">Shows a temporary banner to every member who is online right now. It disappears by itself and is not kept.</p>
+                        <p class="text-xs text-gray-400">Shows a temporary banner to every member who is online right now, and to visitors on the login page. It disappears by itself and is not kept.</p>
                         <textarea id="admin-notice-text" rows="2" maxlength="200" placeholder="Write your message..." oninput="adminNoticeDraft.text = this.value; document.getElementById('admin-notice-count').textContent = this.value.length + '/200';" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-amber-400 transition text-sm resize-none">${escapeHtml(adminNoticeDraft.text)}</textarea>
                         <div class="flex items-center justify-between text-[11px] text-gray-500">
                             <span id="admin-notice-count">${adminNoticeDraft.text.length}/200</span>
