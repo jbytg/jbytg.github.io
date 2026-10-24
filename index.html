@@ -1341,6 +1341,15 @@
             showToast("Internet connection restored");
         });
 
+        // ===== Notification state =====
+        // Declared EARLY on purpose: the login page code runs while the script loads and already touches these
+        // (stopLiveNotifications), and a `let` used before its declaration stops the whole script.
+        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0;
+        let shownLiveNoteId = null;
+        const dismissedLiveNotes = new Set();
+        let adminNoticeDraft = { text: '', seconds: 30 };
+        const serverNow = () => Date.now() + liveNoteOffset; // Firebase server clock, so wrong phone clocks do not matter
+
         let startupDone = false, dropToastTimer = null, dropToastShown = false;
         db.ref('.info/connected').on('value', (snap) => {
             isFirebaseConnected = snap.val() === true;
@@ -3212,11 +3221,7 @@
         // ===== Temporary admin notifications =====
         // An admin writes one short message to  liveNotification  with an expiry time. Every member who is logged in
         // (online) sees it as a banner right away and it disappears by itself. Nobody who comes online after it expired sees it.
-        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0;
-        let shownLiveNoteId = null;
-        const dismissedLiveNotes = new Set();
-        let adminNoticeDraft = { text: '', seconds: 30 };
-        const serverNow = () => Date.now() + liveNoteOffset; // Firebase server clock, so wrong phone clocks do not matter
+        // (state variables for these notifications are declared near the top of the script, before the page first uses them)
 
         function hideLiveNotification() {
             clearTimeout(liveNoteTimer); liveNoteTimer = null; shownLiveNoteId = null;
