@@ -1,0 +1,2750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- SEO & Search Engine Optimization for JB Hub -->
+    <title>JB Hub - Digital and Cloud Platform</title>
+    <link rel="canonical" href="https://jbhub.ryzn.pro/" />
+    <meta name="description" content="Step into JB HUB, your all-in-one Cloud Workspace and Cyber Arcade. Enjoy a fun, fast, and completely ad-free platform built for everyone.">
+    <meta name="keywords" content="JB Hub, JB YT GAMER, Cloud Hub, Cyber Arcade, Secure Platform">
+    <meta name="author" content="JB HUB">
+    <meta property="og:site_name" content="JB HUB">
+    <meta property="og:title" content="JB HUB">
+    <meta property="og:description" content="Welcome to JB HUB, the ultimate Cloud Workspace and Cyber Arcade Platform. Enjoy a 100% free, completely ad-free, and fun digital experience built for seamless work and play.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://jbhub.ryzn.pro/">
+    <meta property="og:image" content="https://jbhub.ryzn.pro/logo.png">
+    <meta property="og:image:secure_url" content="https://jbhub.ryzn.pro/logo.png">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:width" content="1254">
+    <meta property="og:image:height" content="1254">
+    <meta property="og:image:alt" content="JB HUB Logo">
+
+    <!-- Twitter / X Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="JB HUB">
+    <meta name="twitter:description" content="Welcome to JB HUB, the ultimate Cloud Workspace and Cyber Arcade Platform. Enjoy a 100% free, completely ad-free, and fun digital experience built for seamless work and play.">
+    <meta name="twitter:image" content="https://jbhub.ryzn.pro/logo.png">
+
+    <!-- Structured Data (JSON-LD) for Google Sitename -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "JB HUB",
+      "alternateName": "JB Hub",
+      "url": "https://jbhub.ryzn.pro/"
+    }
+    </script>
+
+    <!-- Favicons -->
+    <link rel="icon" type="image/png" href="logo.png" sizes="1254x1254" />
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="logo.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="JB HUB" />
+    <link rel="manifest" href="/favicon/site.webmanifest" />
+
+    <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check-compat.js"></script>
+
+    <style>
+        body { margin: 0; overflow-x: hidden; background: #050505; color: white; font-family: sans-serif; min-height: 100vh; }
+        #canvas-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .glass { background: rgba(15, 15, 25, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
+        .active-tab { border-bottom: 3px solid #a855f7; color: #a855f7; font-weight: bold; }
+        .hidden { display: none !important; }
+
+        select { color: #f3f4f6 !important; background-color: rgba(15, 15, 25, 0.92) !important; }
+        select option { color: #f3f4f6 !important; background-color: #11111b !important; }
+        select option:checked, select option:hover { color: #ffffff !important; background-color: #6d28d9 !important; }
+        select:focus { color: #ffffff !important; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: rgba(168, 85, 247, 0.5); border-radius: 3px; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .win-welcome { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .dpad-btn { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+
+        /* Performance Mode Styles */
+        body.perf-low-graphics {
+            background: linear-gradient(135deg, #090915 0%, #120d24 50%, #0a1128 100%) fixed !important;
+        }
+        body.perf-low-graphics #canvas-bg { display: none !important; }
+        body.perf-low-graphics .glass { 
+            backdrop-filter: none !important; 
+            -webkit-backdrop-filter: none !important; 
+            background: rgba(20, 16, 35, 0.95) !important; 
+            border: 1px solid rgba(168, 85, 247, 0.25) !important;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        body.perf-disable-animations *, 
+        body.perf-disable-animations *::before, 
+        body.perf-disable-animations *::after {
+            animation: none !important;
+            transition: none !important;
+        }
+
+        body.perf-disable-animations .glowing-logo,
+        body.perf-disable-animations .wave-char {
+            text-shadow: none !important;
+            background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        #modal-inputs { max-height: 58vh; overflow-y: auto; }
+
+        body.gfx-medium .glass {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            background: rgba(18, 14, 32, 0.84) !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+        }
+        body.gfx-medium [class*="backdrop-blur"],
+        body.gfx-medium #side-menu,
+        body.gfx-medium #side-menu-overlay,
+        body.gfx-medium #side-menu-overlay.open {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+        body.gfx-medium .glowing-logo,
+        body.gfx-medium .wave-char {
+            animation: none !important;
+            text-shadow: none !important;
+            will-change: auto !important;
+            background: linear-gradient(135deg, #c084fc 0%, #f472b6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+        body.gfx-medium button[class*="bg-purple-600"],
+        body.gfx-medium span[class*="bg-red-500/20"],
+        body.gfx-medium span[class*="bg-amber-500/20"] { animation: none !important; }
+        body.gfx-medium span.animate-pulse[class*="bg-emerald-400"] { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important; }
+
+        body.gfx-ultra .glass {
+            backdrop-filter: blur(18px) saturate(1.4);
+            -webkit-backdrop-filter: blur(18px) saturate(1.4);
+            border-color: rgba(168, 85, 247, 0.35);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), 0 0 26px rgba(168, 85, 247, 0.22);
+        }
+
+        /* Startup (connecting) screen */
+        @keyframes startupspin { to { transform: rotate(360deg); } }
+        #startup-spinner { width: 42px; height: 42px; margin: 18px auto 14px; border-radius: 50%; border: 4px solid rgba(255,255,255,.15); border-top-color: #a855f7; animation: startupspin .9s linear infinite; }
+        #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
+        #startup-screen[data-failsafe] #startup-failsafe { display: block; }
+        #startup-screen[data-failsafe] .startup-main { display: none; }
+        #startup-screen.hidden { display: none !important; pointer-events: none !important; }
+
+        /* Saved accounts chooser */
+        #account-chooser { display: none; }
+        #back-to-accounts { display: none; }
+        body.jb-chooser-mode #auth-form { display: none; }
+        body.jb-chooser-mode #account-chooser { display: block; }
+        body.jb-has-saved #back-to-accounts { display: inline-flex; }
+
+        /* Wave Logo Animation */
+        @keyframes letterWave {
+            0%, 100% {
+                transform: translate3d(0, 0px, 0);
+                color: #a855f7;
+                text-shadow: 0 0 10px rgba(168, 85, 247, 0.7), 0 0 20px rgba(236, 72, 153, 0.5);
+            }
+            33% {
+                transform: translate3d(0, -6px, 0);
+                color: #ec4899;
+                text-shadow: 0 0 14px rgba(236, 72, 153, 0.8), 0 0 25px rgba(99, 102, 241, 0.6);
+            }
+            66% {
+                transform: translate3d(0, 2px, 0);
+                color: #6366f1;
+                text-shadow: 0 0 12px rgba(99, 102, 241, 0.7), 0 0 22px rgba(59, 130, 246, 0.5);
+            }
+        }
+        .glowing-logo {
+            display: inline-flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        .wave-char {
+            display: inline-block;
+            will-change: transform, color, text-shadow;
+            animation: letterWave 2.4s ease-in-out infinite;
+            animation-delay: calc(var(--i) * 0.12s);
+            white-space: pre;
+        }
+        .memory-card-scene { perspective: 800px; }
+        .memory-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.4s;
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-card-inner,
+        .memory-card.matched .memory-card-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-card-face {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            border-radius: 12px;
+        }
+        .memory-card-front {
+            background: linear-gradient(135deg, #4c1d95, #7e22ce);
+            border: 1px solid rgba(236, 72, 153, 0.4);
+        }
+        .memory-card-back {
+            background: linear-gradient(135deg, #1e1b3a, #2a1145);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            transform: rotateY(180deg);
+            font-size: 1.6rem;
+        }
+        .memory-card.matched .memory-card-back {
+            border-color: rgba(74, 222, 128, 0.7);
+            box-shadow: 0 0 14px rgba(74, 222, 128, 0.5);
+        }
+
+        /* Buttons & Interactions */
+        button:not(:disabled) { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; cursor: pointer; }
+        button:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.08); }
+        button:not(:disabled):active { transform: translateY(0) scale(0.97); filter: brightness(0.95); }
+
+        button[class*="bg-purple-600"]:hover, button[class*="bg-purple-600"]:active,
+        button[class*="bg-purple-700"]:hover, button[class*="bg-purple-700"]:active { box-shadow: 0 0 16px rgba(168, 85, 247, 0.55); }
+        button[class*="bg-pink-600"]:hover, button[class*="bg-pink-600"]:active,
+        button[class*="bg-pink-500"]:hover, button[class*="bg-pink-500"]:active { box-shadow: 0 0 16px rgba(236, 72, 153, 0.55); }
+        button[class*="bg-red-500"]:hover, button[class*="bg-red-500"]:active,
+        button[class*="bg-rose-600"]:hover, button[class*="bg-rose-600"]:active { box-shadow: 0 0 14px rgba(248, 113, 113, 0.5); }
+        button[class*="bg-emerald-500"]:hover, button[class*="bg-emerald-500"]:active,
+        button[class*="bg-emerald-600"]:hover, button[class*="bg-emerald-600"]:active { box-shadow: 0 0 14px rgba(52, 211, 153, 0.5); }
+
+        input:not([type="checkbox"]):not([type="radio"]):focus,
+        textarea:focus,
+        select:focus {
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15), 0 0 14px rgba(168, 85, 247, 0.35);
+            transition: box-shadow 0.2s ease;
+        }
+
+        ::selection { background: rgba(168, 85, 247, 0.4); color: #fff; }
+        * { scrollbar-width: thin; scrollbar-color: rgba(168, 85, 247, 0.5) rgba(0,0,0,0.1); }
+
+        /* Side Menu Styling - Fully Responsive & Bulletproof */
+        #side-menu-overlay { 
+            position: fixed; inset: 0; z-index: 45; 
+            background: rgba(0,0,0,0.6); 
+            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); 
+            opacity: 0; pointer-events: none; 
+            transition: opacity 0.3s ease; 
+        }
+        #side-menu-overlay.open { opacity: 1; pointer-events: auto; }
+
+        #side-menu { 
+            position: fixed; top: 0; left: 0; bottom: 0; 
+            width: 17.5rem; max-width: 85vw; z-index: 46; 
+            background: rgba(15,15,25,0.96); 
+            border-right: 1px solid rgba(168,85,247,0.35); 
+            box-shadow: 10px 0 40px rgba(0,0,0,0.5); 
+            transform: translateX(-105%); 
+            opacity: 0; 
+            display: flex; flex-direction: column; 
+            overflow-y: auto; overflow-x: hidden; 
+            pointer-events: none;
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease; 
+        }
+        #side-menu.open { 
+            transform: translateX(0); 
+            opacity: 1; 
+            pointer-events: auto; 
+            box-shadow: 10px 0 40px rgba(168,85,247,0.28); 
+        }
+
+        #side-menu .menu-head { 
+            opacity: 0; transform: translateX(-15px); 
+            transition: opacity 0.25s ease, transform 0.25s ease; 
+        }
+        #side-menu.open .menu-head { 
+            opacity: 1; transform: translateX(0); 
+        }
+
+        .menu-item { 
+            position: relative; display: flex; align-items: center; gap: 0.75rem; 
+            width: 100%; padding: 0.75rem 2rem 0.75rem 1rem; 
+            border-radius: 0.75rem; font-size: 0.875rem; color: #d1d5db; 
+            text-align: left; overflow: hidden; cursor: pointer;
+            opacity: 0; transform: translateX(-20px);
+            transition: opacity 0.25s ease, transform 0.25s ease, background 0.18s ease, color 0.18s ease; 
+        }
+        #side-menu.open .menu-item { 
+            opacity: 1; transform: translateX(0); 
+        }
+        .menu-item.hidden { display: none !important; }
+
+        .menu-item::before { 
+            content: ''; position: absolute; left: 0; top: 18%; bottom: 18%; width: 3px; 
+            border-radius: 3px; background: linear-gradient(#a855f7, #6366f1); 
+            transform: scaleY(0); transition: transform 0.2s ease; 
+        }
+        .menu-item::after { 
+            content: '\f054'; font-family: 'Font Awesome 6 Free'; font-weight: 900; 
+            font-size: 0.65rem; position: absolute; right: 0.9rem; top: 50%; 
+            color: #c4b5fd; opacity: 0; transform: translate(-8px, -50%); 
+            transition: opacity 0.2s ease, transform 0.2s ease; 
+        }
+        .menu-item:hover, .menu-item:focus-visible { 
+            background: linear-gradient(90deg, rgba(168,85,247,0.22), rgba(255,255,255,0.04)); 
+            color: #fff; transform: translateX(4px); outline: none; 
+        }
+        .menu-item:hover::before, .menu-item:focus-visible::before { transform: scaleY(1); }
+        .menu-item:hover::after, .menu-item:focus-visible::after { opacity: 1; transform: translate(0, -50%); }
+        .menu-item i { width: 1.1rem; text-align: center; color: #a78bfa; transition: transform 0.2s ease, color 0.2s ease; }
+        .menu-item:hover i { transform: scale(1.2); color: #e9d5ff; }
+        .menu-item-active { background: rgba(168,85,247,0.22); color: #c4b5fd; font-weight: 700; }
+        .menu-item-active::before { transform: scaleY(1); }
+        .menu-item-danger { color: #f87171; }
+        .menu-item-danger i { color: #f87171; }
+        .menu-item-danger::before { background: #ef4444; }
+        .menu-item-danger:hover { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+        /* Three dots toggle button */
+        #side-menu-toggle {
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.2s;
+        }
+        #side-menu-toggle:hover { transform: scale(1.08); }
+        #side-menu-toggle.menu-open { background: rgba(147,51,234,0.9); box-shadow: 0 0 18px rgba(168,85,247,0.7); }
+        #side-menu-toggle.menu-open i { transform: rotate(90deg); }
+
+        .screen-fade-out { animation: fadeOutScreen 0.35s ease forwards; }
+        @keyframes fadeOutScreen { from { opacity: 1; } to { opacity: 0; } }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
+    <script>
+        /* Immediate Graphics Mode Initialization */
+        (function () {
+            var m = "medium";
+            try {
+                var saved = localStorage.getItem("gfx_mode");
+                if (/^(low|medium|high|ultra)$/.test(saved)) m = saved;
+                else if (localStorage.getItem("perf_disableBg") === "true" || localStorage.getItem("perf_disableAnim") === "true") m = "low";
+            } catch (e) {}
+            document.body.classList.add("gfx-" + m);
+            try {
+                var sa = JSON.parse(localStorage.getItem("jb_saved_accounts") || "[]");
+                if (Array.isArray(sa) && sa.length) document.body.classList.add("jb-has-saved", "jb-chooser-mode");
+            } catch (e) {}
+            if (m === "low") document.body.classList.add("perf-low-graphics", "perf-disable-animations");
+        })();
+    </script>
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Global Top-Left Three-Dots Menu Button -->
+    <button id="side-menu-toggle" type="button" onclick="toggleSideMenu()" aria-label="Open menu" aria-haspopup="true" aria-expanded="false" class="fixed top-4 left-4 z-50 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md cursor-pointer" title="Menu">
+        <i class="fa-solid fa-ellipsis-vertical text-lg transition-transform duration-300"></i>
+    </button>
+
+    <!-- Side Menu (slides in from the left) -->
+    <div id="side-menu-overlay" onclick="closeSideMenu()"></div>
+    <nav id="side-menu" aria-hidden="true">
+        <div class="menu-head flex items-center justify-between px-4 py-4 border-b border-white/10">
+            <span class="font-extrabold tracking-tight text-purple-300">JB HUB</span>
+            <button type="button" onclick="closeSideMenu()" aria-label="Close menu" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-300 transition cursor-pointer"><i class="fa fa-xmark"></i></button>
+        </div>
+        <div class="p-3 space-y-1">
+            <button type="button" onclick="menuOpenSettings()" class="menu-item"><i class="fa fa-cog"></i><span>Settings</span></button>
+            <button type="button" onclick="menuOpenAbout()" class="menu-item menu-prelogin-item"><i class="fa fa-circle-info"></i><span>About Us</span></button>
+            <div id="menu-app-items" class="hidden space-y-1 pt-1 mt-1 border-t border-white/10">
+                <button type="button" data-tab="notes" onclick="menuGoTo('notes')" class="menu-item"><i class="fa fa-note-sticky"></i><span>Notes</span></button>
+                <button type="button" data-tab="chat" onclick="menuGoTo('chat')" class="menu-item"><i class="fa fa-comments"></i><span>Global Chat</span></button>
+                <button type="button" data-tab="arcade" onclick="menuGoTo('arcade')" class="menu-item"><i class="fa fa-gamepad"></i><span>Cyber Arcade</span></button>
+                <button type="button" data-tab="bugs" onclick="menuGoTo('bugs')" class="menu-item"><i class="fa fa-bug"></i><span>Bug & Suggest</span></button>
+                <button type="button" data-tab="leaderboard" onclick="menuGoTo('leaderboard')" class="menu-item"><i class="fa fa-trophy"></i><span>Leaderboard</span></button>
+                <button type="button" data-tab="tools" onclick="menuGoTo('tools')" class="menu-item"><i class="fa fa-toolbox"></i><span>Tools</span></button>
+                <button type="button" data-tab="rules" onclick="menuGoTo('rules')" class="menu-item"><i class="fa fa-bullhorn"></i><span>Admin Message</span></button>
+                <button type="button" data-tab="account" onclick="menuGoTo('account')" class="menu-item"><i class="fa fa-user"></i><span>Account</span></button>
+                <button type="button" data-tab="about" onclick="menuGoTo('about')" class="menu-item"><i class="fa fa-circle-info"></i><span>About Us</span></button>
+                <button type="button" id="admin-nav-btn" data-tab="admin" onclick="menuGoTo('admin')" class="menu-item hidden"><i class="fa fa-shield-halved"></i><span>Admin Panel</span></button>
+                <div class="pt-1 mt-1 border-t border-white/10">
+                    <button type="button" onclick="menuLogout()" class="menu-item menu-item-danger"><i class="fa fa-sign-out-alt"></i><span>Logout</span></button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
+        <i id="toast-icon" class="fa"></i>
+        <span id="toast-msg"></span>
+    </div>
+
+    <!-- Windows 11 Style Welcome Overlay -->
+    <div id="win-welcome-screen" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4 win-welcome">
+        <div id="win-welcome-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-4xl font-bold shadow-2xl mb-6 shadow-purple-500/50 text-white uppercase">
+            <i class="fa fa-user text-white"></i>
+        </div>
+        <h2 id="win-welcome-name" class="text-3xl sm:text-4xl font-light tracking-wide text-white mb-2 text-center">Welcome</h2>
+        <p id="win-welcome-classification" class="text-sm text-purple-300 tracking-wider font-medium mb-4 text-center"></p>
+        <p class="text-xs text-gray-400 tracking-widest uppercase font-semibold">Preparing your workspace...</p>
+        <div class="mt-6 flex space-x-1.5">
+            <div class="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+            <div class="w-2 h-2 bg-purple-400 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+        </div>
+    </div>
+
+    <!-- Account Ban Screen -->
+    <div id="ban-screen" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-2xl border border-red-500/40 text-center space-y-4 win-welcome">
+            <div class="w-20 h-20 mx-auto rounded-full bg-red-500/20 flex items-center justify-center">
+                <i class="fa fa-ban text-red-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-red-400">Account Suspended</h2>
+            <p id="ban-screen-type" class="text-xs uppercase tracking-widest font-semibold text-red-300"></p>
+            <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-left">
+                <p class="text-xs text-gray-400 mb-1">Reason:</p>
+                <p id="ban-screen-reason" class="text-sm text-gray-200 whitespace-pre-wrap"></p>
+            </div>
+            <p id="ban-screen-unban-date" class="text-xs text-amber-300 hidden"></p>
+            <button onclick="closeBanScreen()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">Back to Login</button>
+        </div>
+    </div>
+
+    <!-- Another Device Login Notice -->
+    <div id="other-device-screen" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl hidden flex flex-col items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-2xl border border-blue-500/40 text-center space-y-4 win-welcome">
+            <div class="w-20 h-20 mx-auto rounded-full bg-blue-500/20 flex items-center justify-center">
+                <i class="fa fa-shield-halved text-blue-400 text-3xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-blue-300">Logged Out For Safety</h2>
+            <p class="text-sm text-gray-300">Your account was just logged in from another device. For your account's security, this session has been signed out.</p>
+            <p class="text-xs text-gray-500">If this wasn't you, change your password immediately.</p>
+            <button onclick="closeOtherDeviceScreen()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">OK, Back to Login</button>
+        </div>
+    </div>
+
+    <!-- Startup screen: auto-dismisses smoothly -->
+    <div id="startup-screen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9800;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px, env(safe-area-inset-top)) 16px 24px;background:radial-gradient(circle at 50% 0%, #2a1650 0%, #0b0818 62%);color:#e5e7eb;">
+        <div class="startup-main" style="width:100%;max-width:440px;margin:auto 0;text-align:center;">
+            <div style="font-size:34px;font-weight:800;letter-spacing:.5px;background:linear-gradient(135deg,#c084fc,#f472b6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;">JB HUB</div>
+            <div id="startup-spinner" aria-hidden="true"></div>
+            <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Connecting to server…</p>
+            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 14px;">Preparing your secure workspace.</p>
+            <div id="startup-actions" class="hidden" style="margin-bottom:14px;">
+                <button type="button" onclick="retryStartup()" style="padding:10px 22px;border-radius:12px;border:1px solid rgba(168,85,247,.6);background:rgba(168,85,247,.25);color:#f5f3ff;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa fa-rotate-right" style="margin-right:6px;"></i>Continue to Login</button>
+            </div>
+            <div id="startup-problems" class="hidden" style="text-align:left;"></div>
+            <p id="startup-details" style="font-size:10px;color:#6b7280;margin-top:12px;"></p>
+        </div>
+    </div>
+
+    <!-- Temporary admin notification banner -->
+    <div id="live-notification" role="alert" aria-live="assertive" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9500;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;pointer-events:none;">
+        <div class="mx-auto max-w-md rounded-2xl border border-amber-400/50 shadow-2xl overflow-hidden" style="pointer-events:auto;background:#1a1228;">
+            <div class="flex items-start gap-3 p-3">
+                <span class="w-9 h-9 shrink-0 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300"><i class="fa fa-bell"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Notification from admin</p>
+                    <p id="live-notification-text" class="text-sm text-gray-100 break-words"></p>
+                </div>
+                <button type="button" onclick="dismissLiveNotification()" aria-label="Close notification" class="text-gray-400 hover:text-white px-1 py-0.5"><i class="fa fa-xmark"></i></button>
+            </div>
+            <div class="h-1 bg-white/10"><div id="live-notification-bar" class="h-full bg-amber-400" style="width:100%"></div></div>
+        </div>
+    </div>
+
+    <!-- Full Server Shutdown Screen -->
+    <div id="shutdown-screen" class="fixed inset-0 z-[100] bg-black hidden flex flex-col items-center justify-center p-0 overflow-hidden select-none" oncontextmenu="return false;">
+        <div id="shutdown-media-container" class="absolute inset-0 flex items-center justify-center bg-black"></div>
+        <div id="shutdown-message-box" class="relative z-10 max-w-md w-full mx-auto p-6 text-center space-y-3 bg-black/40 backdrop-blur-sm rounded-2xl">
+            <div class="w-16 h-16 mx-auto rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/40">
+                <i class="fa fa-power-off text-red-400 text-2xl"></i>
+            </div>
+            <h2 id="shutdown-screen-title" class="text-2xl font-black text-red-400 glowing-logo">SERVER SHUTDOWN</h2>
+            <p id="shutdown-screen-message" class="text-sm text-gray-200 whitespace-pre-wrap"></p>
+            <button id="shutdown-refresh-button" onclick="window.location.reload()" class="hidden w-full mt-3 px-5 py-3 bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white rounded-xl font-bold text-sm transition shadow-lg shadow-purple-500/20">
+                <i class="fa fa-refresh mr-2"></i> Refresh Page
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Modal Container -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass p-6 w-full max-w-sm space-y-4 border border-purple-500/30">
+            <h3 id="modal-title" class="text-lg font-bold text-purple-300">Action Required</h3>
+            <p id="modal-desc" class="text-xs text-gray-300"></p>
+            <div id="modal-inputs" class="space-y-3"></div>
+            <div class="flex space-x-2 pt-2">
+                <button id="modal-btn-cancel" onclick="closeModal()" class="flex-1 p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium text-sm transition">Cancel</button>
+                <button id="modal-btn-confirm" class="flex-1 p-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="w-full max-w-4xl z-10 flex flex-col items-center">
+        <!-- Auth View -->
+        <div id="auth-view" class="glass p-6 sm:p-8 w-full max-w-md my-auto win-welcome">
+            <div class="text-center mb-6">
+                <h1 id="auth-title" class="text-3xl sm:text-4xl font-extrabold tracking-tight glowing-logo">JB HUB</h1>
+                <p id="auth-subtitle" class="text-xs text-gray-400 mt-1">Sign in to your secure server account</p>
+            </div>
+
+            <!-- Accounts saved on this device -->
+            <div id="account-chooser" class="space-y-3">
+                <p class="text-sm text-gray-200 text-center font-semibold">Choose an account</p>
+                <div id="account-chooser-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
+                <button type="button" onclick="useAnotherAccount()" class="w-full p-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-semibold transition"><i class="fa fa-user-plus mr-2"></i>Use another account</button>
+                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. Tap × to remove an account.</p>
+            </div>
+
+            <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
+                <button type="button" id="back-to-accounts" onclick="backToSavedAccounts()" class="items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition"><i class="fa fa-arrow-left"></i>Saved accounts</button>
+                <div>
+                    <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
+                    <input type="text" id="username" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Password</label>
+                    <div class="relative">
+                        <input type="password" id="password" onkeydown="authEnterKey(event, 'password')" autocomplete="current-password" placeholder="Enter password" oninput="checkPasswordStrength('password', 'strength-bar', 'strength-text')" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                        <button type="button" onclick="togglePass('password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-password"></i></button>
+                    </div>
+                </div>
+
+                <div id="signup-fields" class="hidden space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span>Password Strength</span>
+                            <span id="strength-text">Too Weak</span>
+                        </div>
+                        <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div id="strength-bar" class="h-full w-0 bg-red-500 transition-all duration-300"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
+                        <input type="text" id="signup-username" autocomplete="nickname" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
+                        <input type="date" id="dob" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                        <select id="gender" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">Confirm Password</label>
+                        <div class="relative">
+                            <input type="password" id="conf-password" onkeydown="authEnterKey(event, 'conf-password')" autocomplete="new-password" placeholder="Confirm password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition pr-10 text-sm">
+                            <button type="button" onclick="togglePass('conf-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-conf-password"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Human Verification -->
+                    <div class="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                        <div class="flex items-center space-x-3 cursor-pointer select-none">
+                            <input type="checkbox" id="human-verify" class="w-4 h-4 accent-purple-600 rounded cursor-pointer">
+                            <label for="human-verify" class="text-xs text-gray-300 cursor-pointer flex items-center space-x-2">
+                                <i class="fa-solid fa-user-check text-purple-400"></i>
+                                <span>Verify as human</span>
+                            </label>
+                        </div>
+                        <div id="human-test-box" class="pt-2 border-t border-white/10">
+                            <button type="button" onclick="openHumanTestPrompt()" class="w-full py-2 px-3 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 rounded-lg text-xs text-purple-200 font-semibold transition flex items-center justify-center space-x-2">
+                                <i class="fa fa-robot text-pink-400"></i>
+                                <span id="human-test-btn-text">Test Human Verification</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <label id="save-account-row" class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
+                    <input type="checkbox" id="save-account-checkbox" onchange="updateSavePasswordRow()" class="mt-0.5 w-4 h-4 accent-purple-500">
+                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list.</span></span>
+                </label>
+                <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
+                    <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
+                    <span>Also save my password on this device<span class="block text-[11px] text-gray-500">Stored encrypted on this device only.</span></span>
+                </label>
+
+                <!-- Login captcha -->
+                <div id="login-captcha-box" class="hidden p-3 bg-white/5 border border-amber-500/30 rounded-xl space-y-2">
+                    <p class="text-xs text-amber-300 font-semibold"><i class="fa fa-shield-halved mr-1"></i>Security check</p>
+                    <p class="text-[11px] text-gray-400">Too many wrong login attempts. Type the characters you see to continue.</p>
+                    <div class="flex items-center gap-2">
+                        <canvas id="login-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                        <button type="button" onclick="refreshLoginCaptcha()" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
+                    </div>
+                    <input type="text" id="login-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+                </div>
+
+                <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
+                <p id="forgot-link" class="text-center text-xs text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showForgotPassword()">Forgot password?</p>
+                <div class="flex items-center gap-3 text-[11px] text-gray-500 uppercase tracking-wider"><div class="flex-1 h-px bg-white/10"></div>or<div class="flex-1 h-px bg-white/10"></div></div>
+                <button type="button" id="google-btn" onclick="handleGoogleAuth()" class="w-full p-3 bg-white text-gray-800 hover:bg-gray-100 rounded-xl font-bold transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-brands fa-google text-red-500"></i><span id="google-btn-text">Continue with Google</span>
+                </button>
+                
+                <div class="flex justify-between items-center text-xs sm:text-sm pt-2">
+                    <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="toggleMode()"><span id="toggle-text">Create Account</span></p>
+                    <p class="text-gray-400 cursor-pointer hover:text-purple-400 transition" onclick="showAbout()">About Us</p>
+                </div>
+            </form>
+
+            <!-- Forgot password panel -->
+            <div id="forgot-panel" class="hidden space-y-4">
+                <p class="text-xs text-gray-400 text-center">Enter the email address on your account. We'll email you a link to set a new password.</p>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Email</label>
+                    <input type="text" id="forgot-email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email on your account" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                <button type="button" id="forgot-send-btn" onclick="sendPasswordResetLink()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Send Reset Link</button>
+                <p id="forgot-status" class="text-xs text-center text-sky-300 hidden"></p>
+                <button type="button" onclick="hideForgotPassword()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Back to Login</button>
+            </div>
+
+            <!-- Google sign-up: finish profile panel -->
+            <div id="google-signup-panel" class="hidden space-y-4">
+                <div class="text-center">
+                    <p class="text-xs text-gray-400">Signed in with Google as</p>
+                    <p id="google-signup-email" class="text-sm font-bold text-purple-200 break-all"></p>
+                    <p class="text-xs text-gray-400 mt-1">Choose a username to finish creating your account.</p>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
+                    <input type="text" id="gs-username" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Date of Birth</label>
+                    <input type="date" id="gs-dob" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Gender</label>
+                    <select id="gs-gender" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm text-gray-200">
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <button type="button" id="gs-create-btn" onclick="finishGoogleSignup()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Create Account</button>
+                <button type="button" onclick="cancelGoogleSignup()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
+            </div>
+
+            <!-- Sign-up email verification panel -->
+            <div id="signup-verify-panel" class="hidden space-y-4 text-center">
+                <div class="w-14 h-14 mx-auto rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center">
+                    <i class="fa-solid fa-envelope-circle-check text-purple-300 text-2xl"></i>
+                </div>
+                <p class="text-sm text-gray-300">We sent a verification link to</p>
+                <p id="signup-verify-email-text" class="text-sm font-bold text-purple-200 break-all"></p>
+                <p class="text-xs text-gray-400">Open the link in your inbox. Your account is created as soon as the email is verified.</p>
+                <p id="signup-verify-status" class="text-xs font-semibold text-sky-300">Waiting for verification…</p>
+                <button type="button" onclick="checkSignupVerification()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">I've verified my email</button>
+                <div class="flex gap-2">
+                    <button type="button" onclick="resendSignupVerification()" class="flex-1 p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Resend link</button>
+                    <button type="button" onclick="cancelSignupVerification()" class="flex-1 p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- About View (Pre-login) -->
+        <div id="about-view" class="glass p-6 sm:p-8 w-full max-w-md hidden my-auto">
+            <h2 class="text-xl sm:text-2xl font-bold mb-4 glowing-logo">About JB HUB</h2>
+            <div class="text-xs sm:text-sm text-gray-300 space-y-3 mb-6">
+                <p id="prelogin-about-text">Welcome to JB HUB high-security cloud platform. All user data, notes, and leaderboards are securely synced via Firebase database.</p>
+                <div class="p-4 bg-purple-900/20 border border-purple-500/30 rounded-xl">
+                    <p class="font-bold text-purple-300 text-center">Special Thanks</p>
+                    <p id="prelogin-thanks-text" class="text-xs sm:text-sm text-purple-200 mt-2 flex flex-wrap justify-center items-center gap-1.5">JB YT GAMER</p>
+                </div>
+            </div>
+            <button onclick="showLogin()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-sm">Back to Login</button>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="dashboard-view" class="glass p-4 sm:p-6 w-full hidden flex flex-col">
+            <div class="flex items-center justify-between border-b border-white/10 pb-4 mb-6 pl-12 min-h-[2.5rem]">
+                <h2 id="current-section-title" class="text-base sm:text-lg font-bold text-purple-300 truncate">Notes</h2>
+            </div>
+            <div id="tab-content" class="min-h-[400px]"></div>
+        </div>
+    </div>
+
+    <script>
+        const GFX_MODES = {
+            low:    { label: 'Low',    icon: 'fa-leaf',        tag: 'Fastest',  desc: 'Static background, no blur, no animations. Best for slow phones.' },
+            medium: { label: 'Medium', icon: 'fa-gauge-high',  tag: 'Default',  desc: 'Light animated background. Smooth and battery friendly.' },
+            high:   { label: 'High',   icon: 'fa-wand-magic-sparkles', tag: 'Pretty', desc: 'Glass blur, glowing text and buttons.' },
+            ultra:  { label: 'Ultra',  icon: 'fa-fire',        tag: 'Max',      desc: 'Sharper, denser background and extra glow. Needs a strong device.' }
+        };
+        const GFX_DEFAULT = 'medium';
+
+        function loadGfxMode() {
+            let m = null, legacy = false;
+            try {
+                m = localStorage.getItem('gfx_mode');
+                legacy = localStorage.getItem('perf_disableBg') === 'true' || localStorage.getItem('perf_disableAnim') === 'true';
+            } catch (e) {}
+            if (GFX_MODES[m]) return m;
+            return legacy ? 'low' : GFX_DEFAULT;
+        }
+
+        let gfxMode = loadGfxMode();
+        let perfSettings = { disableBg: gfxMode === 'low', disableAnim: gfxMode === 'low' };
+        let settingsModalOpen = false;
+
+        function applyPerformanceSettings() {
+            const b = document.body;
+            Object.keys(GFX_MODES).forEach(m => b.classList.toggle('gfx-' + m, m === gfxMode));
+            b.classList.toggle('perf-low-graphics', gfxMode === 'low');
+            b.classList.toggle('perf-disable-animations', gfxMode === 'low');
+            perfSettings.disableBg = perfSettings.disableAnim = (gfxMode === 'low');
+            if (typeof window.updateBackgroundQuality === 'function') window.updateBackgroundQuality();
+        }
+        applyPerformanceSettings();
+
+        window.openPerformanceSettingsModal = function() {
+            settingsModalOpen = true;
+            let pending = gfxMode;
+            const osReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            const cardHtml = (key) => {
+                const m = GFX_MODES[key];
+                const on = key === pending;
+                return `
+                    <button type="button" data-gfx="${key}" aria-pressed="${on}" class="gfx-card text-left p-3 rounded-xl border transition ${on ? 'border-purple-400 bg-purple-500/20' : 'border-white/10 bg-white/5 hover:bg-white/10'}">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-sm font-bold text-gray-100"><i class="fa ${m.icon} mr-1.5 text-purple-300"></i>${m.label}</span>
+                            <i class="fa fa-circle-check text-purple-300 gfx-check ${on ? '' : 'hidden'}"></i>
+                        </div>
+                        <span class="inline-block text-[10px] px-1.5 py-0.5 rounded-full ${key === GFX_DEFAULT ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-gray-400'} mb-1">${m.tag}</span>
+                        <p class="text-[11px] leading-snug text-gray-400">${m.desc}</p>
+                    </button>`;
+            };
+
+            const inputsHtml = `
+                <div class="space-y-3 text-left">
+                    <div class="grid grid-cols-2 gap-2" id="gfx-grid">
+                        ${Object.keys(GFX_MODES).map(cardHtml).join('')}
+                    </div>
+                    <p class="text-[11px] text-gray-500">New users start on <b class="text-gray-300">Medium</b>. If the site lags, choose <b class="text-gray-300">Low</b>. Your choice is saved on this device.</p>
+                </div>
+            `;
+
+            openModal("Graphics & Performance", "Pick a graphics mode. Lower modes run smoother on slow devices.", inputsHtml, () => {
+                gfxMode = pending;
+                try { localStorage.setItem('gfx_mode', gfxMode); } catch (e) {}
+                applyPerformanceSettings();
+                showToast("Graphics set to " + GFX_MODES[gfxMode].label + "!");
+            });
+
+            document.querySelectorAll('#gfx-grid .gfx-card').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    pending = btn.getAttribute('data-gfx');
+                    document.querySelectorAll('#gfx-grid .gfx-card').forEach(c => {
+                        const on = c.getAttribute('data-gfx') === pending;
+                        c.setAttribute('aria-pressed', on);
+                        c.classList.toggle('border-purple-400', on);
+                        c.classList.toggle('bg-purple-500/20', on);
+                        c.classList.toggle('border-white/10', !on);
+                        c.classList.toggle('bg-white/5', !on);
+                        c.querySelector('.gfx-check').classList.toggle('hidden', !on);
+                    });
+                });
+            });
+        }
+
+        function applyWaveEffect(el, text) {
+            if (!el) return;
+            const content = text !== undefined ? text : el.textContent;
+            el.innerHTML = '';
+            let idx = 0;
+            for (let char of content) {
+                const span = document.createElement('span');
+                span.className = 'wave-char';
+                span.style.setProperty('--i', idx);
+                span.textContent = char;
+                el.appendChild(span);
+                idx++;
+            }
+        }
+
+        function initAllWaveLogos() {
+            document.querySelectorAll('.glowing-logo').forEach(el => {
+                if (!el.querySelector('.wave-char')) {
+                    applyWaveEffect(el);
+                }
+            });
+        }
+
+        window.addEventListener('beforeunload', function (e) {
+            const message = 'Refreshing or leaving the web page will terminate your active JB HUB session.';
+            e.preventDefault();
+            e.returnValue = message;
+            return message;
+        });
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDz9tvaSzzsp0mMUY0-oIaBR0hSPObPDdQ",
+            authDomain: "jb-hub-93d7a.firebaseapp.com",
+            databaseURL: "https://jb-hub-93d7a-default-rtdb.firebaseio.com",
+            projectId: "jb-hub-93d7a",
+            storageBucket: "jb-hub-93d7a.firebasestorage.app",
+            messagingSenderId: "110994910947",
+            appId: "1:110994910947:web:264def00932f82407b9fd6",
+            measurementId: "G-7WHNLQ2P9Q"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
+        // Safe App Check Initialization
+        let appCheckActive = false;
+        try {
+            const APP_CHECK_SITE_KEY = '6LdQb_MtAAAAAOa8xgHezQVX1NEZ5HdaoiPYAQ2t';
+            if (APP_CHECK_SITE_KEY && firebase.appCheck && firebase.appCheck.ReCaptchaEnterpriseProvider) {
+                firebase.appCheck().activate(new firebase.appCheck.ReCaptchaEnterpriseProvider(APP_CHECK_SITE_KEY), true);
+                appCheckActive = true;
+            }
+        } catch (appCheckErr) {
+            console.warn('App Check initialized in passive mode:', appCheckErr);
+        }
+
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        let currentUser = null;
+        let notesData = [];
+        let bugReportsData = [];
+        let chatData = [];
+        let chatPruneInterval = null;
+        const CHAT_LIFETIME_MS = 24 * 60 * 60 * 1000;
+        let leaderboardData = [];
+        let memoryLeaderboardData = [];
+        let flappyLeaderboardData = [];
+        let glitchLeaderboardData = [];
+        let breakoutLeaderboardData = [];
+        let game2048LeaderboardData = [];
+        let neonDodgerLeaderboardData = [];
+        let spaceInvadersLeaderboardData = [];
+        let leaderboardGameMode = 'snake';
+        let usersData = [];
+        let globalSettings = { 
+            aboutText: "Welcome to JB HUB cloud-powered secure platform.", 
+            rulesText: "Welcome! Please follow the platform guidelines and keep your account secure.",
+            specialThanks: "JB YT GAMER",
+            maintenance: {},
+            shutdown: { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: 'The server is currently shut down for maintenance. Please check back later.' }
+        };
+
+        const MAINTAINABLE_SECTIONS = ['notes', 'chat', 'arcade', 'bugs', 'leaderboard', 'tools'];
+        const MAINTAINABLE_SECTION_LABELS = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', tools: 'Tools' };
+
+        function getMaintenanceConfig(section) {
+            const m = (globalSettings.maintenance && globalSettings.maintenance[section]) || {};
+            return { enabled: !!m.enabled, reason: m.reason || '' };
+        }
+        let isSignupMode = false;
+        let currentTab = 'notes';
+        let toastTimeout = null;
+        let humanTestPassed = false;
+        let presenceRef = null;
+        let isFirebaseConnected = true;
+        let myBanListenerUsernameKey = null;
+        let myBanListenerHandler = null;
+
+        function renderSpecialThanksHtml(raw) {
+            if (!raw) return '';
+            const names = raw.split(/\r?\n|,/).map(s => s.trim()).filter(Boolean);
+            if (names.length === 0) return '';
+            const colors = ['#a855f7', '#ec4899', '#3b82f6', '#10b981', '#eab308', '#f43f5e', '#6366f1', '#14b8a6'];
+            return names.map((name, i) => {
+                const color = colors[i % colors.length];
+                return `<span class="inline-block px-3 py-1 rounded-full text-xs sm:text-sm font-bold border" style="color:${color}; border-color:${color}66; background:${color}1a; text-shadow:0 0 8px ${color}80;">${escapeHtml(name)}</span>`;
+            }).join('');
+        }
+
+        async function safeSetOffline(usernameKey) {
+            if (!usernameKey) return;
+            try {
+                const ref = db.ref('users/' + usernameKey);
+                await ref.child('isOnline').onDisconnect().cancel();
+                const s = await ref.child('username').once('value');
+                if (s.exists()) await ref.update({ isOnline: false });
+            } catch (e) {}
+        }
+
+        async function forceLogoutAccountRemoved() {
+            const usernameKey = sessionListenerUsernameKey;
+            detachSessionListener();
+            detachMyBanListener();
+            mySessionId = null;
+            if (usernameKey) {
+                try { await db.ref('users/' + usernameKey + '/isOnline').onDisconnect().cancel(); } catch (e) {}
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('username').value = ''; 
+            const su = document.getElementById('signup-username'); if (su) su.value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            showToast("This account was removed or renamed. Please log in again.", "error");
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                refreshAuthEntry();
+            });
+        }
+
+        function detachMyBanListener() {
+            if (myBanListenerUsernameKey && myBanListenerHandler) {
+                db.ref('users/' + myBanListenerUsernameKey + '/ban').off('value', myBanListenerHandler);
+            }
+            myBanListenerUsernameKey = null;
+            myBanListenerHandler = null;
+        }
+
+        function setupBanWatcher(usernameKey) {
+            detachMyBanListener();
+            myBanListenerUsernameKey = usernameKey;
+            myBanListenerHandler = db.ref('users/' + usernameKey + '/ban').on('value', snap => {
+                if (!currentUser) return;
+                const ban = snap.val();
+                if (!ban || !ban.isBanned) return;
+
+                const banExpired = ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
+                if (banExpired) {
+                    db.ref('users/' + usernameKey + '/ban').remove();
+                } else {
+                    forceLogoutBanned(ban);
+                }
+            });
+        }
+
+        async function forceLogoutBanned(ban) {
+            const usernameKey = myBanListenerUsernameKey;
+            detachMyBanListener();
+            detachSessionListener();
+            mySessionId = null;
+
+            if (usernameKey) {
+                await safeSetOffline(usernameKey);
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('username').value = ''; 
+            const su = document.getElementById('signup-username'); if (su) su.value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                refreshAuthEntry();
+                showBanScreen(ban);
+            });
+        }
+
+        let mySessionId = null;
+        let sessionListenerUsernameKey = null;
+        let sessionListenerHandler = null;
+
+        let lastChatMessageTime = 0;
+        const CHAT_MESSAGE_COOLDOWN_MS = 5000;
+
+        function detachSessionListener() {
+            if (sessionListenerUsernameKey && sessionListenerHandler) {
+                db.ref('users/' + sessionListenerUsernameKey + '/activeSession').off('value', sessionListenerHandler);
+            }
+            sessionListenerUsernameKey = null;
+            sessionListenerHandler = null;
+        }
+
+        function setupSessionWatcher(usernameKey) {
+            detachSessionListener();
+            sessionListenerUsernameKey = usernameKey;
+            sessionListenerHandler = db.ref('users/' + usernameKey + '/activeSession').on('value', snap => {
+                if (!currentUser || !mySessionId) return;
+                const sessionVal = snap.val();
+                if (sessionVal === null) { forceLogoutAccountRemoved(); return; }
+                if (sessionVal && sessionVal !== mySessionId) {
+                    forceLogoutOtherDevice();
+                }
+            });
+        }
+
+        async function forceLogoutOtherDevice() {
+            const usernameKey = sessionListenerUsernameKey;
+            detachSessionListener();
+            detachMyBanListener();
+            mySessionId = null;
+
+            if (usernameKey) {
+                await safeSetOffline(usernameKey);
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('username').value = ''; 
+            const su = document.getElementById('signup-username'); if (su) su.value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                refreshAuthEntry();
+                document.getElementById('other-device-screen').classList.remove('hidden');
+            });
+        }
+
+        window.closeOtherDeviceScreen = function() {
+            fadeOutAndHide(document.getElementById('other-device-screen'));
+            document.getElementById('password').value = '';
+        }
+
+        window.addEventListener('offline', () => {
+            showToast("No Internet", "error");
+        });
+
+        window.addEventListener('online', () => {
+            showToast("Internet connection restored");
+        });
+
+        let startupDone = false;
+        db.ref('.info/connected').on('value', (snap) => {
+            isFirebaseConnected = snap.val() === true;
+        });
+
+        // Fast, non-blocking startup check
+        function finishStartup() {
+            if (startupDone) return;
+            startupDone = true;
+            const el = document.getElementById('startup-screen');
+            if (el) {
+                el.style.transition = 'opacity 0.25s ease';
+                el.style.opacity = '0';
+                el.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    el.classList.add('hidden');
+                }, 280);
+            }
+            if (typeof window.refreshAuthEntry === 'function') window.refreshAuthEntry();
+        }
+
+        async function probeServerFast() {
+            if (!navigator.onLine) {
+                finishStartup();
+                return;
+            }
+            try {
+                await Promise.race([
+                    db.ref('settings').once('value'),
+                    new Promise(r => setTimeout(r, 1200))
+                ]);
+            } catch (e) {}
+            finishStartup();
+        }
+
+        // Run non-blocking check with instant failsafe
+        probeServerFast();
+        setTimeout(finishStartup, 1800);
+
+        window.retryStartup = function() {
+            finishStartup();
+        };
+
+        async function ensureServerConnection(maxWaitMs) {
+            if (isFirebaseConnected) return true;
+            if (!navigator.onLine) return false;
+            const t0 = Date.now(), limit = Math.min(maxWaitMs || 2000, 2500);
+            while (!isFirebaseConnected && Date.now() - t0 < limit) {
+                await new Promise(r => setTimeout(r, 200));
+            }
+            return isFirebaseConnected || navigator.onLine;
+        }
+
+        function getAgeInYears(dobStr) {
+            if (!dobStr) return -1;
+            const dob = new Date(dobStr);
+            if (isNaN(dob.getTime())) return -1;
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const m = today.getMonth() - dob.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        function setupPresence(usernameKey) {
+            const userRef = db.ref('users/' + usernameKey);
+            const connectedRef = db.ref('.info/connected');
+
+            if (presenceRef) { connectedRef.off('value', presenceRef); presenceRef = null; }
+
+            presenceRef = connectedRef.on('value', (snap) => {
+                if (snap.val() === true) {
+                    userRef.child('username').once('value').then(us => {
+                        if (!us.exists()) return;
+                        userRef.child('isOnline').onDisconnect().set(false);
+                        const now = Date.now();
+                        userRef.update({
+                            isOnline: true,
+                            lastLogin: now
+                        });
+                        if (currentUser) {
+                            currentUser.isOnline = true;
+                            currentUser.lastLogin = now;
+                        }
+                    }).catch(() => {});
+                }
+            });
+        }
+
+        db.ref('settings').on('value', snap => {
+            if (snap.exists()) {
+                globalSettings = snap.val();
+                if (!globalSettings.maintenance) globalSettings.maintenance = {};
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: '' };
+                const abt = document.getElementById('prelogin-about-text');
+                const thx = document.getElementById('prelogin-thanks-text');
+                if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
+                if (thx && globalSettings.specialThanks) thx.innerHTML = renderSpecialThanksHtml(globalSettings.specialThanks);
+
+                if (currentUser && !currentUser.isAdmin) {
+                    syncShutdownLockdown();
+                }
+            }
+        });
+
+        window.applyColorToTextarea = function(textareaId, color) {
+            const textarea = document.getElementById(textareaId);
+            if (!textarea) return;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const selectedText = textarea.value.substring(start, end);
+            if (!selectedText) {
+                showToast("Highlight text in the box first to apply color", "error");
+                return;
+            }
+            const coloredText = `<span style="color: ${color}">${selectedText}</span>`;
+            textarea.value = textarea.value.substring(0, start) + coloredText + textarea.value.substring(end);
+            showToast("Color applied to selected text!");
+        }
+
+        window.openModal = function(title, desc, inputsHtml, onConfirm) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-desc').innerText = desc;
+            document.getElementById('modal-inputs').innerHTML = inputsHtml;
+            document.getElementById('custom-modal').classList.remove('hidden');
+            
+            const confirmBtn = document.getElementById('modal-btn-confirm');
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            
+            newConfirmBtn.onclick = () => {
+                onConfirm();
+                closeModal();
+            };
+        }
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        // Canvas Particle Background
+        const canvas = document.getElementById('canvas-bg');
+        const ctx = canvas.getContext('2d');
+        const BG_QUALITY = {
+            medium: { scale: 0.5, fps: 30, count: 30,  glow: 0 },
+            high:   { scale: 1,   fps: 60, count: 70,  glow: 0 },
+            ultra:  { scale: Math.min(window.devicePixelRatio || 1, 2), fps: 60, count: 140, glow: 6 }
+        };
+        let particles = [], step = 0;
+        let bgW = window.innerWidth, bgH = window.innerHeight;
+        let bgQ = BG_QUALITY.medium, bgRunning = false, bgLast = 0;
+
+        function makeParticle() {
+            return {
+                x: Math.random() * bgW,
+                y: Math.random() * bgH,
+                length: Math.random() * 20 + 10,
+                speed: Math.random() * 1.5 + 0.5,
+                opacity: Math.random(),
+                fadeSpeed: Math.random() * 0.015 + 0.003
+            };
+        }
+
+        function sizeBackground() {
+            bgQ = BG_QUALITY[gfxMode] || BG_QUALITY.medium;
+            bgW = window.innerWidth; bgH = window.innerHeight;
+            canvas.width = Math.max(1, Math.round(bgW * bgQ.scale));
+            canvas.height = Math.max(1, Math.round(bgH * bgQ.scale));
+            ctx.setTransform(bgQ.scale, 0, 0, bgQ.scale, 0, 0);
+            while (particles.length < bgQ.count) particles.push(makeParticle());
+            particles.length = bgQ.count;
+        }
+
+        function drawBackgroundFrame(k) {
+            step += 0.002 * k;
+            const grad = ctx.createLinearGradient(0, 0, bgW, bgH);
+            const h1 = (Math.sin(step) * 120) + 120;
+            const h2 = (Math.cos(step * 0.7) * 120) + 240;
+
+            grad.addColorStop(0, `hsl(${h1 % 360}, 70%, 12%)`);
+            grad.addColorStop(0.5, `hsl(${(h1 + 60) % 360}, 75%, 10%)`);
+            grad.addColorStop(1, `hsl(${h2 % 360}, 80%, 14%)`);
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, bgW, bgH);
+
+            ctx.lineWidth = 1.5;
+            if (bgQ.glow) { ctx.shadowColor = 'rgba(168, 85, 247, 0.9)'; ctx.shadowBlur = bgQ.glow; }
+            particles.forEach(p => {
+                p.y += p.speed * k;
+                p.opacity += p.fadeSpeed * k;
+                if (p.opacity > 1 || p.opacity < 0.2) p.fadeSpeed *= -1;
+                if (p.y > bgH) { p.y = -20; p.x = Math.random() * bgW; }
+
+                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, Math.max(0, p.opacity))})`;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x, p.y + p.length);
+                ctx.stroke();
+            });
+        }
+
+        function bgFrame(now) {
+            if (!bgRunning) return;
+            requestAnimationFrame(bgFrame);
+            if (document.hidden) { bgLast = now; return; }
+            const gap = now - bgLast;
+            if (gap < 1000 / bgQ.fps - 2) return;
+            bgLast = now;
+            drawBackgroundFrame(Math.min(gap / 16.667, 4));
+        }
+
+        function startBackground() {
+            if (bgRunning || gfxMode === 'low') return;
+            bgRunning = true;
+            bgLast = performance.now();
+            requestAnimationFrame(bgFrame);
+        }
+
+        window.updateBackgroundQuality = function () {
+            if (gfxMode === 'low') { bgRunning = false; return; }
+            sizeBackground();
+            drawBackgroundFrame(0);
+            startBackground();
+        };
+
+        sizeBackground();
+        if (gfxMode !== 'low') {
+            drawBackgroundFrame(0);
+            window.addEventListener('load', () => startBackground(), { once: true });
+        }
+
+        window.showToast = function(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            if (!toast || !icon) return;
+            document.getElementById('toast-msg').innerText = msg;
+            
+            toast.className = `fixed top-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-auto ${type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`;
+            icon.className = `fa ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}`;
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        window.togglePass = function(id) {
+            const input = document.getElementById(id);
+            const icon = document.getElementById(`eye-${id}`);
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+            if (icon) icon.className = input.type === 'password' ? 'fa fa-eye' : 'fa fa-eye-slash';
+        }
+
+        window.toggleMode = function() {
+            isSignupMode = !isSignupMode;
+            document.getElementById('signup-fields').classList.toggle('hidden', !isSignupMode);
+            applyWaveEffect(document.getElementById('auth-title'), 'JB HUB');
+            document.getElementById('auth-subtitle').innerText = isSignupMode ? 'Register with a verified email address' : 'Sign in with your username or email';
+            document.getElementById('auth-btn').innerText = isSignupMode ? 'Sign Up' : 'Login';
+            document.getElementById('toggle-text').innerText = isSignupMode ? 'Already have an account? Login' : 'Create Account';
+            document.getElementById('forgot-link').classList.toggle('hidden', isSignupMode);
+            document.getElementById('identifier-label').innerText = isSignupMode ? 'Email' : 'Username or Email';
+            document.getElementById('google-btn-text').innerText = isSignupMode ? 'Sign up with Google' : 'Continue with Google';
+            document.getElementById('username').placeholder = isSignupMode ? 'Enter your email' : 'Enter username or email';
+            document.getElementById('password').setAttribute('autocomplete', isSignupMode ? 'new-password' : 'current-password');
+            
+            humanTestPassed = false;
+            document.getElementById('human-verify').checked = false;
+            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            checkPasswordStrength('password', 'strength-bar', 'strength-text');
+            updateLoginCaptchaUI();
+        }
+
+        window.showAbout = function() {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('about-view').classList.remove('hidden');
+            initAllWaveLogos();
+        }
+
+        window.showLogin = function() {
+            document.getElementById('about-view').classList.add('hidden');
+            document.getElementById('auth-view').classList.remove('hidden');
+            initAllWaveLogos();
+        }
+
+        window.checkPasswordStrength = function(inputId = 'password', barId = 'strength-bar', textId = 'strength-text') {
+            const input = document.getElementById(inputId);
+            const bar = document.getElementById(barId);
+            const text = document.getElementById(textId);
+            if (!input || !bar || !text) return;
+
+            const pass = input.value;
+            let score = 0;
+            if (pass.length > 5) score++;
+            if (pass.length > 8) score++;
+            if (/[A-Z]/.test(pass)) score++;
+            if (/[0-9!@#$%^&*]/.test(pass)) score++;
+
+            if (pass.length === 0) { bar.style.width = '0%'; bar.className = 'h-full bg-red-500 transition-all duration-300'; text.innerText = 'Too Weak'; }
+            else if (score <= 1) { bar.style.width = '25%'; bar.className = 'h-full bg-red-500 transition-all duration-300'; text.innerText = 'Too Weak'; }
+            else if (score === 2) { bar.style.width = '50%'; bar.className = 'h-full bg-yellow-500 transition-all duration-300'; text.innerText = 'Fair'; }
+            else if (score === 3) { bar.style.width = '75%'; bar.className = 'h-full bg-blue-500 transition-all duration-300'; text.innerText = 'Strong'; }
+            else { bar.style.width = '100%'; bar.className = 'h-full bg-emerald-500 transition-all duration-300'; text.innerText = 'Very Strong'; }
+        }
+
+        window.openHumanTestPrompt = function() {
+            if (humanTestPassed) {
+                showToast("Human verification already completed!");
+                return;
+            }
+            const num1 = Math.floor(Math.random() * 12) + 3;
+            const num2 = Math.floor(Math.random() * 12) + 2;
+            const correctAnswer = num1 + num2;
+
+            const inputsHtml = `
+                <div class="text-center space-y-2">
+                    <p class="text-sm font-bold text-purple-200">Solve this challenge:</p>
+                    <div class="text-xl font-extrabold text-pink-400 bg-black/40 py-2 rounded-xl border border-purple-500/30">
+                        ${num1} + ${num2} = ?
+                    </div>
+                    <input type="number" id="human-answer-input" placeholder="Your answer" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-center">
+                </div>
+            `;
+
+            openModal("Test Human Verification", "Complete the challenge below to verify you are human.", inputsHtml, () => {
+                const userAnswer = parseInt(document.getElementById('human-answer-input').value);
+                if (userAnswer === correctAnswer) {
+                    humanTestPassed = true;
+                    document.getElementById('human-verify').checked = true;
+                    document.getElementById('human-test-btn-text').innerText = 'Verified Human ✓';
+                    showToast("Human verification successful!");
+                } else {
+                    showToast("Incorrect answer! Please try again.", "error");
+                }
+            });
+        }
+
+        // Email lookup
+        async function findUserRecordsByEmail(email) {
+            const out = [];
+            const seen = {};
+            for (const field of ['email', 'authEmail']) {
+                try {
+                    const snap = await db.ref('users').orderByChild(field).equalTo(email).once('value');
+                    snap.forEach(child => {
+                        if (!seen[child.key]) { seen[child.key] = true; out.push({ key: child.key, val: child.val() }); }
+                    });
+                } catch (e) {}
+            }
+            return out;
+        }
+
+        async function findUserRecordByEmail(email) {
+            const all = await findUserRecordsByEmail(email);
+            return all.length ? all[0] : null;
+        }
+
+        async function emailTakenByOther(email, ownKey) {
+            const all = await findUserRecordsByEmail(email);
+            return all.some(m => m.key !== ownKey);
+        }
+
+        function usernameRuleError(username) {
+            const u = String(username || '').trim();
+            if (u.length < 3) return 'Username must be at least 3 characters';
+            if (/[@.#$\[\]\/]/.test(u)) return 'Username cannot contain @ . # $ [ ] or /';
+            return '';
+        }
+
+        // Side menu management
+        function indexMenuItems() {
+            const items = Array.from(document.querySelectorAll('#side-menu .menu-item')).filter(el => {
+                return !el.classList.contains('hidden') && (!el.parentElement || !el.parentElement.classList.contains('hidden'));
+            });
+            items.forEach((el, i) => {
+                el.style.setProperty('--i', i);
+                el.style.setProperty('--n', items.length);
+            });
+        }
+
+        window.openSideMenu = function() {
+            const loggedIn = !!currentUser && !document.getElementById('dashboard-view').classList.contains('hidden');
+            document.getElementById('menu-app-items').classList.toggle('hidden', !loggedIn);
+            indexMenuItems();
+            const btn = document.getElementById('side-menu-toggle');
+            if (btn) {
+                btn.classList.remove('menu-closing');
+                btn.classList.add('menu-open');
+                btn.setAttribute('aria-expanded', 'true');
+            }
+            const sideMenu = document.getElementById('side-menu');
+            if (sideMenu) {
+                sideMenu.classList.add('open');
+                sideMenu.setAttribute('aria-hidden', 'false');
+            }
+            const overlay = document.getElementById('side-menu-overlay');
+            if (overlay) overlay.classList.add('open');
+        };
+
+        window.closeSideMenu = function() {
+            const menu = document.getElementById('side-menu');
+            if (!menu || !menu.classList.contains('open')) return;
+            menu.classList.remove('open');
+            menu.setAttribute('aria-hidden', 'true');
+            const overlay = document.getElementById('side-menu-overlay');
+            if (overlay) overlay.classList.remove('open');
+            const btn = document.getElementById('side-menu-toggle');
+            if (btn) {
+                btn.classList.remove('menu-open');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        };
+
+        window.toggleSideMenu = function() {
+            const menu = document.getElementById('side-menu');
+            if (menu && menu.classList.contains('open')) {
+                closeSideMenu();
+            } else {
+                openSideMenu();
+            }
+        };
+
+        window.menuGoTo = function(tab) {
+            closeSideMenu();
+            if (!currentUser) return;
+            switchTab(tab);
+        };
+
+        window.menuOpenSettings = function() {
+            closeSideMenu();
+            openPerformanceSettingsModal();
+        };
+
+        window.menuOpenAbout = function() {
+            closeSideMenu();
+            showAbout();
+        };
+
+        window.menuLogout = function() {
+            closeSideMenu();
+            logout();
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSideMenu();
+        });
+
+        // Saved Accounts (Local storage)
+        const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
+        const MAX_SAVED_ACCOUNTS = 5;
+        let oneTapUser = null;
+
+        function getSavedAccounts() {
+            try {
+                const list = JSON.parse(localStorage.getItem(SAVED_ACCOUNTS_KEY) || '[]');
+                return Array.isArray(list) ? list.filter(a => a && typeof a.u === 'string' && a.u) : [];
+            } catch (e) { return []; }
+        }
+        function setSavedAccounts(list) {
+            try {
+                if (list.length) localStorage.setItem(SAVED_ACCOUNTS_KEY, JSON.stringify(list.slice(0, MAX_SAVED_ACCOUNTS)));
+                else localStorage.removeItem(SAVED_ACCOUNTS_KEY);
+            } catch (e) {}
+        }
+        function isAccountSaved(username) {
+            const k = String(username || '').toLowerCase();
+            return getSavedAccounts().some(a => a.u.toLowerCase() === k);
+        }
+        function rememberAccountOnThisDevice(user) {
+            if (!user || !user.username) return;
+            const k = user.username.toLowerCase();
+            const all = getSavedAccounts();
+            const prev = all.find(a => a.u.toLowerCase() === k);
+            const rest = all.filter(a => a.u.toLowerCase() !== k);
+            const entry = { u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), t: Date.now() };
+            if (prev && prev.pw) entry.pw = prev.pw;
+            rest.unshift(entry);
+            setSavedAccounts(rest);
+        }
+
+        const CAN_SAVE_PASSWORD = !!(window.crypto && window.crypto.subtle && window.indexedDB);
+
+        function idbRequest(req) {
+            return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+        }
+        function idbOpen() {
+            const open = indexedDB.open('jb_secure', 1);
+            open.onupgradeneeded = () => open.result.createObjectStore('keys');
+            return idbRequest(open);
+        }
+        async function getDeviceKey(createIfMissing) {
+            const idb = await idbOpen();
+            let key = await idbRequest(idb.transaction('keys', 'readonly').objectStore('keys').get('device'));
+            if (!key && createIfMissing) {
+                key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+                await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').put(key, 'device'));
+            }
+            return key || null;
+        }
+        async function deleteDeviceKey() {
+            try { const idb = await idbOpen(); await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').delete('device')); } catch (e) {}
+        }
+        const toB64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+        const fromB64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        const aad = username => new TextEncoder().encode(String(username).toLowerCase());
+
+        async function encryptPassword(username, password) {
+            const key = await getDeviceKey(true);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad(username) }, key, new TextEncoder().encode(password));
+            return { iv: toB64(iv), ct: toB64(ct) };
+        }
+        async function decryptPassword(username, blob) {
+            try {
+                const key = await getDeviceKey(false);
+                if (!key || !blob) return null;
+                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, additionalData: aad(username) }, key, fromB64(blob.ct));
+                return new TextDecoder().decode(plain);
+            } catch (e) { return null; }
+        }
+
+        async function setSavedPassword(username, passwordOrNull) {
+            const k = String(username || '').toLowerCase();
+            let blob = null;
+            if (passwordOrNull) { try { blob = await encryptPassword(username, passwordOrNull); } catch (e) { return false; } }
+            const list = getSavedAccounts();
+            const entry = list.find(a => a.u.toLowerCase() === k);
+            if (!entry) return false;
+            if (blob) entry.pw = blob; else delete entry.pw;
+            setSavedAccounts(list);
+            if (!list.some(a => a.pw)) deleteDeviceKey();
+            return true;
+        }
+
+        function discardStaleSavedPassword(username) {
+            if (!username) return;
+            setSavedPassword(username, null);
+            if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
+        }
+
+        function maskEmail(email) {
+            const m = String(email || '').match(/^([^@]+)@(.+)$/);
+            if (!m) return 'Password sign-in';
+            return m[1].slice(0, 2) + '***@' + m[2];
+        }
+
+        function applySavedAccountsUI() {
+            const has = getSavedAccounts().length > 0;
+            document.body.classList.toggle('jb-has-saved', has);
+            if (!has) document.body.classList.remove('jb-chooser-mode');
+            return has;
+        }
+
+        function updateSavePasswordRow() {
+            const row = document.getElementById('save-password-row');
+            const main = document.getElementById('save-account-checkbox');
+            const pw = document.getElementById('save-password-checkbox');
+            if (!row || !main || !pw) return;
+            row.classList.toggle('hidden', !(CAN_SAVE_PASSWORD && main.checked));
+            if (!main.checked) pw.checked = false;
+        }
+        window.updateSavePasswordRow = updateSavePasswordRow;
+
+        function renderAccountChooser() {
+            const host = document.getElementById('account-chooser-list');
+            if (!host) return;
+            host.innerHTML = getSavedAccounts().map((a, i) => `
+                <div class="flex items-stretch gap-2">
+                    <button type="button" onclick="chooseSavedAccount(${i})" class="flex-1 min-w-0 flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-purple-400/60 transition text-left">
+                        <span class="w-10 h-10 shrink-0 rounded-full bg-purple-500/25 border border-purple-400/40 flex items-center justify-center font-bold text-purple-200">${escapeHtml(a.u.charAt(0).toUpperCase())}</span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-sm font-semibold text-gray-100 truncate">${escapeHtml(a.u)}</span>
+                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${a.pw ? '<i class="fa fa-key mr-1 text-emerald-300"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
+                        </span>
+                        <i class="fa fa-chevron-right text-gray-500 text-xs"></i>
+                    </button>
+                    <button type="button" onclick="removeSavedAccount(${i})" aria-label="Remove ${escapeHtml(a.u)}" title="Remove" class="px-3 rounded-xl border border-white/10 bg-white/5 hover:bg-red-500/20 hover:border-red-400/50 text-gray-400 hover:text-red-300 transition"><i class="fa fa-xmark"></i></button>
+                </div>`).join('');
+        }
+
+        window.refreshAuthEntry = function () {
+            stopLiveNotifications();
+            if (applySavedAccountsUI()) {
+                renderAccountChooser();
+                document.body.classList.add('jb-chooser-mode');
+                const sub = document.getElementById('auth-subtitle');
+                if (sub) sub.textContent = 'Welcome back! Pick an account to continue';
+            } else {
+                document.body.classList.remove('jb-chooser-mode');
+            }
+        };
+
+        function showLoginFormFromChooser() {
+            document.body.classList.remove('jb-chooser-mode');
+            if (isSignupMode) toggleMode();
+            const sub = document.getElementById('auth-subtitle');
+            if (sub) sub.textContent = 'Sign in to your secure server account';
+        }
+
+        window.useAnotherAccount = function () {
+            showLoginFormFromChooser();
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('save-account-checkbox').checked = false;
+            updateSavePasswordRow();
+            document.getElementById('username').focus();
+        };
+
+        window.backToSavedAccounts = function () {
+            if (!applySavedAccountsUI()) return;
+            document.getElementById('password').value = '';
+            window.refreshAuthEntry();
+        };
+
+        window.chooseSavedAccount = async function (i) {
+            const a = getSavedAccounts()[i];
+            if (!a) return;
+            showLoginFormFromChooser();
+            document.getElementById('save-account-checkbox').checked = true;
+            document.getElementById('save-password-checkbox').checked = !!a.pw;
+            updateSavePasswordRow();
+            document.getElementById('username').value = a.u;
+            if (a.g) {
+                handleGoogleAuth(a.e);
+                return;
+            }
+            document.getElementById('password').value = '';
+            if (a.pw) {
+                const saved = await decryptPassword(a.u, a.pw);
+                if (saved) {
+                    document.getElementById('password').value = saved;
+                    oneTapUser = a.u;
+                    handleAuth();
+                    return;
+                }
+                setSavedPassword(a.u, null);
+                renderAccountChooser();
+            }
+            const sub = document.getElementById('auth-subtitle');
+            if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
+            document.getElementById('password').focus();
+        };
+
+        window.removeSavedAccount = function (i) {
+            const list = getSavedAccounts();
+            const a = list[i];
+            if (!a) return;
+            list.splice(i, 1);
+            setSavedAccounts(list);
+            if (!list.some(x => x.pw)) deleteDeviceKey();
+            if (applySavedAccountsUI()) renderAccountChooser();
+            else window.refreshAuthEntry();
+            showToast('Removed ' + a.u + ' from this device');
+        };
+
+        // Login Captcha
+        const LOGIN_FAIL_LIMIT = 3;
+        const LOGIN_FAIL_RESET_MS = 30 * 60 * 1000;
+        let loginCaptchaCode = '';
+        let loginFailsMem = { c: 0, t: 0 };
+
+        function getLoginFails() {
+            let o = loginFailsMem;
+            try {
+                const saved = JSON.parse(localStorage.getItem('jb_login_fails') || 'null');
+                if (saved && typeof saved.c === 'number' && saved.c > o.c) o = saved;
+            } catch (e) {}
+            return (o.c > 0 && Date.now() - o.t <= LOGIN_FAIL_RESET_MS) ? o.c : 0;
+        }
+        function setLoginFails(n) {
+            loginFailsMem = { c: n, t: Date.now() };
+            try {
+                if (n > 0) localStorage.setItem('jb_login_fails', JSON.stringify(loginFailsMem));
+                else localStorage.removeItem('jb_login_fails');
+            } catch (e) {}
+        }
+        function loginCaptchaNeeded() { return getLoginFails() >= LOGIN_FAIL_LIMIT; }
+
+        function makeCaptchaCode(len) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let out = '';
+            for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+            return out;
+        }
+
+        function drawLoginCaptcha() {
+            const cv = document.getElementById('login-captcha-canvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            const W = cv.width, H = cv.height;
+            loginCaptchaCode = makeCaptchaCode(5);
+
+            const bg = g.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#1b1030'); bg.addColorStop(1, '#10203a');
+            g.fillStyle = bg; g.fillRect(0, 0, W, H);
+
+            for (let i = 0; i < 40; i++) {
+                g.fillStyle = 'rgba(255,255,255,0.2)';
+                g.fillRect(Math.random() * W, Math.random() * H, 2, 2);
+            }
+            const step = W / (loginCaptchaCode.length + 1);
+            for (let i = 0; i < loginCaptchaCode.length; i++) {
+                g.save();
+                g.translate(step * (i + 1), H / 2);
+                g.font = `bold 28px Arial, sans-serif`;
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillStyle = '#f472b6';
+                g.fillText(loginCaptchaCode[i], 0, 0);
+                g.restore();
+            }
+        }
+
+        window.refreshLoginCaptcha = function () {
+            drawLoginCaptcha();
+            const input = document.getElementById('login-captcha-input');
+            if (input) { input.value = ''; input.focus(); }
+        };
+
+        function updateLoginCaptchaUI() {
+            const box = document.getElementById('login-captcha-box');
+            if (!box) return;
+            const show = !isSignupMode && loginCaptchaNeeded();
+            box.classList.toggle('hidden', !show);
+            if (show && !loginCaptchaCode) drawLoginCaptcha();
+        }
+
+        function resetLoginCaptcha() {
+            setLoginFails(0);
+            loginCaptchaCode = '';
+            const input = document.getElementById('login-captcha-input');
+            if (input) input.value = '';
+            updateLoginCaptchaUI();
+        }
+
+        function registerLoginFailure() {
+            const n = getLoginFails() + 1;
+            setLoginFails(n);
+            const input = document.getElementById('login-captcha-input');
+            if (input) input.value = '';
+            const box = document.getElementById('login-captcha-box');
+            if (box && !box.classList.contains('hidden')) drawLoginCaptcha();
+            else updateLoginCaptchaUI();
+            return n;
+        }
+
+        function accountAuthEmail(rec) {
+            return String((rec && (rec.authEmail || rec.email)) || '').trim().toLowerCase();
+        }
+
+        async function verifyCurrentUserPassword(typed) {
+            if (!currentUser || !typed) return false;
+            if (!currentUser.authUid) return typed === currentUser.password;
+            try {
+                const cred = await auth.signInWithEmailAndPassword(accountAuthEmail(currentUser), typed);
+                return cred.user.uid === currentUser.authUid;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function scrubSecuredAccountPasswords() {
+            try {
+                const snap = await db.ref('users').once('value');
+                const updates = {};
+                let n = 0;
+                snap.forEach(child => {
+                    const v = child.val();
+                    if (v && v.authUid && typeof v.password === 'string' && v.password !== '') { updates[child.key + '/password'] = null; n++; }
+                });
+                if (n) {
+                    await db.ref('users').update(updates);
+                }
+            } catch (e) {}
+        }
+
+        window.authEnterKey = function (e, fromId) {
+            if (!e || e.key !== 'Enter' || e.isComposing) return;
+            e.preventDefault();
+            if (fromId === 'username') { document.getElementById('password').focus(); return; }
+            if (fromId === 'password' && isSignupMode) {
+                const conf = document.getElementById('conf-password');
+                if (conf && conf.offsetParent !== null) { conf.focus(); return; }
+            }
+            handleAuth();
+        };
+
+        // --- BULLETPROOF LOGIN FUNCTION ---
+        window.handleAuth = async function() {
+            const usedSavedPasswordFor = oneTapUser; 
+            oneTapUser = null;
+
+            if (!navigator.onLine) {
+                showToast("No Internet connection", "error");
+                return;
+            }
+
+            const identifierInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            if (!identifierInput || !passwordInput) return;
+
+            const identifier = identifierInput.value.trim();
+            const password = passwordInput.value;
+
+            if (isSignupMode) {
+                const isHumanChecked = document.getElementById('human-verify')?.checked;
+                if (!isHumanChecked || !humanTestPassed) {
+                    showToast("Please complete the human verification test", "error");
+                    return;
+                }
+            }
+
+            if (!identifier || !password) {
+                showToast("Please fill in all fields", "error");
+                return;
+            }
+
+            if (!isSignupMode && loginCaptchaNeeded()) {
+                const typed = (document.getElementById('login-captcha-input')?.value || '').trim().toUpperCase();
+                if (!typed) {
+                    showToast("Please enter the captcha characters", "error");
+                    return;
+                }
+                if (typed !== loginCaptchaCode) {
+                    showToast("Incorrect captcha. Here is a new one.", "error");
+                    refreshLoginCaptcha();
+                    return;
+                }
+            }
+
+            const btn = document.getElementById('auth-btn');
+            if (btn) btn.disabled = true;
+
+            try {
+                if (isSignupMode) {
+                    await startSignupWithEmailVerification(identifier.toLowerCase(), password);
+                    return;
+                }
+
+                // Helper to timeout RTDB reads so they NEVER hang
+                const withTimeout = (promise, ms = 5000) => {
+                    return Promise.race([
+                        promise,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+                    ]);
+                };
+
+                let usernameKey = null;
+                let userVal = null;
+                let passwordOk = false;
+                let blockMsg = '';
+
+                // Case A: User logged in with an email address
+                if (identifier.includes('@')) {
+                    const loginEmail = identifier.toLowerCase();
+                    
+                    // 1. Try Firebase Authentication directly (fast, secure, rate-limited)
+                    let authSuccess = false;
+                    try {
+                        const cred = await auth.signInWithEmailAndPassword(loginEmail, password);
+                        const au = cred.user;
+                        if (au) {
+                            authSuccess = true;
+                            passwordOk = true;
+                            try {
+                                const matches = await withTimeout(findUserRecordsByEmail(loginEmail), 4000);
+                                const pick = matches.find(m => m.val && m.val.authUid === au.uid) || matches[0];
+                                if (pick) {
+                                    usernameKey = pick.key;
+                                    userVal = pick.val;
+                                }
+                            } catch (e) {}
+                        }
+                    } catch (authErr) {
+                        if (authErr && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(authErr.code)) {
+                            blockMsg = authErrorMessage(authErr);
+                        }
+                    }
+
+                    // 2. Fallback check for older legacy password record
+                    if (!authSuccess && !blockMsg) {
+                        try {
+                            const matches = await withTimeout(findUserRecordsByEmail(loginEmail), 4000);
+                            const legacyMatch = matches.find(m => m.val && !m.val.authUid && m.val.password === password);
+                            if (legacyMatch) {
+                                usernameKey = legacyMatch.key;
+                                userVal = legacyMatch.val;
+                                passwordOk = true;
+                            }
+                        } catch (e) {}
+                    }
+                } else {
+                    // Case B: User logged in with a username
+                    usernameKey = identifier.toLowerCase();
+                    try {
+                        const snap = await withTimeout(db.ref('users/' + usernameKey).once('value'), 5000);
+                        if (snap && snap.exists()) {
+                            userVal = snap.val();
+                        }
+                    } catch (e) {
+                        console.warn("User lookup timed out:", e);
+                    }
+
+                    if (!userVal) {
+                        registerLoginFailure();
+                        showToast("Invalid username or password", "error");
+                        return;
+                    }
+
+                    const acctEmail = accountAuthEmail(userVal);
+
+                    if (userVal.googleAccount === true && !userVal.password) {
+                        showToast("This account uses Google sign-in. Tap 'Continue with Google'.", "error");
+                        return;
+                    }
+
+                    // Verify password:
+                    if (userVal.authUid && acctEmail) {
+                        try {
+                            const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
+                            if (cred.user && cred.user.uid === userVal.authUid) {
+                                passwordOk = true;
+                            } else {
+                                await auth.signOut();
+                            }
+                        } catch (e) {
+                            if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) {
+                                blockMsg = authErrorMessage(e);
+                            }
+                        }
+                    } else {
+                        passwordOk = (userVal.password === password);
+
+                        if (!passwordOk && password.length >= 6 && acctEmail) {
+                            try {
+                                const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
+                                if (cred.user) {
+                                    passwordOk = true;
+                                    const upd = { password: null, authUid: cred.user.uid, authEmail: acctEmail, emailVerified: true };
+                                    await db.ref('users/' + usernameKey).update(upd);
+                                    delete userVal.password;
+                                    Object.assign(userVal, upd);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                }
+
+                if (blockMsg && !passwordOk) {
+                    showToast(blockMsg, "error");
+                    return;
+                }
+
+                if (!userVal || !passwordOk) {
+                    const fails = registerLoginFailure();
+                    if (usedSavedPasswordFor) {
+                        discardStaleSavedPassword(usedSavedPasswordFor);
+                        document.getElementById('password').value = '';
+                        showToast('Your saved password is out of date. Please type your password.', 'error');
+                        document.getElementById('password').focus();
+                        return;
+                    }
+                    showToast(fails === LOGIN_FAIL_LIMIT ? "Wrong details 3 times. Please complete the captcha to continue." : "Invalid username/email or password", "error");
+                    return;
+                }
+
+                // Successful login
+                resetLoginCaptcha();
+                const userRef = db.ref('users/' + usernameKey);
+
+                if (!userVal.id) {
+                    userVal.id = 'u_' + Date.now();
+                    await userRef.update({ id: userVal.id });
+                }
+
+                if (userVal.ban && userVal.ban.isBanned) {
+                    const banExpired = userVal.ban.type === 'temporary' && userVal.ban.unbanAt && Date.now() >= userVal.ban.unbanAt;
+                    if (banExpired) {
+                        await db.ref('users/' + usernameKey + '/ban').remove();
+                        delete userVal.ban;
+                    } else {
+                        showBanScreen(userVal.ban);
+                        return;
+                    }
+                }
+
+                currentUser = userVal;
+                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                await userRef.update({ activeSession: mySessionId });
+                setupPresence(usernameKey);
+                setupBanWatcher(usernameKey);
+                setupSessionWatcher(usernameKey);
+                showToast("Logged in successfully!");
+                if (userVal.isAdmin) setTimeout(scrubSecuredAccountPasswords, 2000);
+                proceedAfterLogin();
+
+            } catch (err) {
+                console.error("Auth error:", err);
+                showToast(authErrorMessage(err), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        window.showBanScreen = function(ban) {
+            document.getElementById('ban-screen-type').innerText = ban.type === 'permanent' ? 'Permanent Ban' : 'Temporary Ban';
+            document.getElementById('ban-screen-reason').innerText = ban.reason || 'No reason provided.';
+
+            const unbanDateEl = document.getElementById('ban-screen-unban-date');
+            if (ban.type === 'temporary' && ban.unbanAt) {
+                unbanDateEl.innerText = `You will automatically regain access on ${new Date(ban.unbanAt).toLocaleDateString()}.`;
+                unbanDateEl.classList.remove('hidden');
+            } else {
+                unbanDateEl.classList.add('hidden');
+            }
+
+            document.getElementById('ban-screen').classList.remove('hidden');
+        }
+
+        window.closeBanScreen = function() {
+            fadeOutAndHide(document.getElementById('ban-screen'));
+            document.getElementById('password').value = '';
+        }
+
+        function getAgeCategory(dobStr) {
+            if (!dobStr) return "Adult (26–39 years)";
+            const age = getAgeInYears(dobStr);
+            if (age < 0) return "Adult (26–39 years)";
+            if (age <= 1) return "Infant (0–1 year)";
+            if (age <= 3) return "Toddler (1–3 years)";
+            if (age <= 5) return "Preschooler (3–5 years)";
+            if (age <= 9) return "Child (6–9 years)";
+            if (age <= 12) return "Pre-Teen (10–12 years)";
+            if (age <= 17) return "Teenager (13–17 years)";
+            if (age <= 25) return "Young Adult (18–25 years)";
+            if (age <= 39) return "Adult (26–39 years)";
+            if (age <= 59) return "Middle-Aged (40–59 years)";
+            return "Senior (60+ years)";
+        }
+
+        function fadeOutAndHide(element, callback) {
+            if (!element) { if (callback) callback(); return; }
+            element.classList.add('screen-fade-out');
+            setTimeout(() => {
+                element.classList.add('hidden');
+                element.classList.remove('screen-fade-out');
+                if (callback) callback();
+            }, 350);
+        }
+
+        function proceedAfterLogin() {
+            try {
+                const saveBox = document.getElementById('save-account-checkbox');
+                if (currentUser && ((saveBox && saveBox.checked) || isAccountSaved(currentUser.username))) {
+                    rememberAccountOnThisDevice(currentUser);
+                    if (saveBox && saveBox.checked) {
+                        const pwBox = document.getElementById('save-password-checkbox');
+                        const typedPw = (document.getElementById('password') || {}).value || '';
+                        if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && currentUser.googleAccount !== true && typedPw) setSavedPassword(currentUser.username, typedPw);
+                        else if (pwBox && !pwBox.checked) setSavedPassword(currentUser.username, null);
+                    }
+                }
+            } catch (e) {}
+
+            if (globalSettings.shutdown && globalSettings.shutdown.enabled && !currentUser.isAdmin) {
+                document.getElementById('auth-view').classList.add('hidden');
+                document.getElementById('about-view').classList.add('hidden');
+                showShutdownScreen();
+                return;
+            }
+            triggerWinWelcome(currentUser.username, currentUser.dob);
+        }
+
+        function triggerWinWelcome(username, dob) {
+            document.getElementById('auth-view').classList.add('hidden');
+            document.getElementById('about-view').classList.add('hidden');
+            
+            const welcomeScreen = document.getElementById('win-welcome-screen');
+            const avatarBox = document.getElementById('win-welcome-avatar');
+            
+            if (avatarBox) {
+                const firstChar = username ? username.charAt(0).toUpperCase() : 'U';
+                avatarBox.innerText = firstChar;
+            }
+
+            document.getElementById('win-welcome-name').innerText = `Welcome, ${username}`;
+            document.getElementById('win-welcome-classification').innerText = `Age Category: ${getAgeCategory(dob)}`;
+            welcomeScreen.classList.remove('hidden');
+
+            setTimeout(() => {
+                fadeOutAndHide(welcomeScreen, enterDashboard);
+            }, 2000);
+        }
+
+        async function enterDashboard() {
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('admin-nav-btn').classList.toggle('hidden', !currentUser.isAdmin);
+            listenForRealtimeUpdates();
+            switchTab('notes');
+        }
+
+        // Live Notifications
+        let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0;
+        let shownLiveNoteId = null;
+        const dismissedLiveNotes = new Set();
+        let adminNoticeDraft = { text: '', seconds: 30 };
+        const serverNow = () => Date.now() + liveNoteOffset;
+
+        function hideLiveNotification() {
+            clearTimeout(liveNoteTimer); liveNoteTimer = null; shownLiveNoteId = null;
+            const box = document.getElementById('live-notification');
+            if (box) box.classList.add('hidden');
+        }
+
+        window.dismissLiveNotification = function () {
+            if (shownLiveNoteId) dismissedLiveNotes.add(shownLiveNoteId);
+            hideLiveNotification();
+        };
+
+        function showLiveNotification(n) {
+            const remaining = n.expiresAt - serverNow();
+            if (remaining <= 0) { hideLiveNotification(); return; }
+            const box = document.getElementById('live-notification');
+            const text = document.getElementById('live-notification-text');
+            const bar = document.getElementById('live-notification-bar');
+            if (!box || !text) return;
+            text.textContent = n.text;
+            if (bar) {
+                const total = Math.max(1, (n.expiresAt - (n.createdAt || (n.expiresAt - remaining))));
+                bar.style.transition = 'none';
+                bar.style.width = Math.max(0, Math.min(100, remaining / total * 100)) + '%';
+                void bar.offsetWidth;
+                bar.style.transition = 'width ' + remaining + 'ms linear';
+                bar.style.width = '0%';
+            }
+            box.classList.remove('hidden');
+            shownLiveNoteId = n.id;
+            clearTimeout(liveNoteTimer);
+            liveNoteTimer = setTimeout(hideLiveNotification, remaining + 50);
+        }
+
+        function handleLiveNotificationSnapshot(snap) {
+            if (!currentUser) { stopLiveNotifications(); return; }
+            const n = snap.val();
+            if (!n || typeof n.text !== 'string' || !n.expiresAt || !n.id) { hideLiveNotification(); return; }
+            if (dismissedLiveNotes.has(n.id) || n.id === shownLiveNoteId) return;
+            if (n.expiresAt <= serverNow()) { hideLiveNotification(); return; }
+            showLiveNotification(n);
+        }
+
+        async function startLiveNotifications() {
+            stopLiveNotifications();
+            const token = ++liveNoteToken;
+            try {
+                const off = await db.ref('.info/serverTimeOffset').once('value');
+                if (token !== liveNoteToken) return;
+                liveNoteOffset = Number(off.val()) || 0;
+                liveNoteRef = db.ref('liveNotification');
+                liveNoteCb = liveNoteRef.on('value', handleLiveNotificationSnapshot);
+            } catch (e) {}
+        }
+
+        function stopLiveNotifications() {
+            liveNoteToken++;
+            try { if (liveNoteRef && liveNoteCb) liveNoteRef.off('value', liveNoteCb); } catch (e) {}
+            liveNoteRef = null; liveNoteCb = null;
+            hideLiveNotification();
+        }
+
+        function listenForRealtimeUpdates() {
+            startLiveNotifications();
+            db.ref('settings').on('value', snap => {
+                if (snap.exists()) globalSettings = snap.val();
+                if (!globalSettings.maintenance) globalSettings.maintenance = {};
+                if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: '' };
+                syncShutdownLockdown();
+                if (currentTab === 'rules') renderRulesTab(document.getElementById('tab-content'));
+                else if (currentTab === 'about') renderAboutTab(document.getElementById('tab-content'));
+                else if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+                else if (MAINTAINABLE_SECTIONS.includes(currentTab)) renderCurrentTabContent();
+            });
+
+            db.ref('leaderboards/snake').on('value', snap => {
+                leaderboardData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => { leaderboardData.push(child.val()); });
+                }
+                if (currentTab === 'leaderboard') renderLeaderboard();
+            });
+
+            db.ref('notes').on('value', snap => {
+                notesData = [];
+                if (snap.exists()) {
+                    snap.forEach(child => {
+                        const note = child.val();
+                        if (currentUser.isAdmin || note.userId === currentUser.id) {
+                            notesData.unshift(note);
+                        }
+                    });
+                }
+                if (currentTab === 'notes') renderNotesList();
+            });
+
+            db.ref('globalChat').on('value', snap => {
+                chatData = [];
+                const cutoff = Date.now() - CHAT_LIFETIME_MS;
+                if (snap.exists()) {
+                    snap.forEach(child => {
+                        const msg = child.val();
+                        if (msg && msg.createdAt && msg.createdAt >= cutoff) {
+                            chatData.push(msg);
+                        }
+                    });
+                    chatData.sort((a, b) => a.createdAt - b.createdAt);
+                }
+                if (currentTab === 'chat') renderChatList();
+            });
+
+            if (currentUser && currentUser.isAdmin) {
+                db.ref('users').on('value', snap => {
+                    usersData = [];
+                    if (snap.exists()) {
+                        snap.forEach(child => {
+                            const v = child.val();
+                            if (v && v.username) { usersData.push(v); }
+                        });
+                    }
+                    if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
+                });
+            }
+        }
+
+        window.logout = async function() {
+            if (currentUser) {
+                const usernameKey = currentUser.username.toLowerCase();
+                await safeSetOffline(usernameKey);
+            }
+            if (presenceRef) {
+                db.ref('.info/connected').off('value', presenceRef);
+                presenceRef = null;
+            }
+            detachMyBanListener();
+            detachSessionListener();
+            mySessionId = null;
+            try { await auth.signOut(); } catch (e) {}
+            currentUser = null;
+            humanTestPassed = false;
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            showToast("Logged out successfully");
+
+            fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                document.getElementById('auth-view').classList.remove('hidden');
+                initAllWaveLogos();
+                refreshAuthEntry();
+            });
+        }
+
+        const TAB_TITLES = { notes: 'Notes', chat: 'Global Chat', arcade: 'Cyber Arcade', bugs: 'Bug & Suggest', leaderboard: 'Leaderboard', tools: 'Tools', rules: 'Admin Message', account: 'Account', about: 'About Us', admin: 'Admin Panel' };
+
+        window.switchTab = function(tab) {
+            currentTab = tab;
+            document.querySelectorAll('#side-menu .menu-item[data-tab]').forEach(b => {
+                b.classList.toggle('menu-item-active', b.dataset.tab === tab);
+            });
+            const titleEl = document.getElementById('current-section-title');
+            if (titleEl) {
+                titleEl.textContent = TAB_TITLES[tab] || tab;
+            }
+            renderCurrentTabContent();
+        }
+
+        function renderCurrentTabContent() {
+            const tab = currentTab;
+            const container = document.getElementById('tab-content');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let maintenanceBanner = '';
+            if (MAINTAINABLE_SECTIONS.includes(tab)) {
+                const maint = getMaintenanceConfig(tab);
+                if (maint.enabled) {
+                    if (!(currentUser && currentUser.isAdmin)) {
+                        renderMaintenanceScreen(container, tab, maint.reason);
+                        setTimeout(initAllWaveLogos, 0);
+                        return;
+                    }
+                    maintenanceBanner = `
+                        <div class="glass p-3 rounded-xl border border-amber-500/40 bg-amber-500/10 mb-4 flex items-start space-x-2">
+                            <i class="fa fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+                            <p class="text-xs text-amber-200"><strong>Admin Notice:</strong> ${escapeHtml(MAINTAINABLE_SECTION_LABELS[tab] || tab)} is under maintenance for regular users.</p>
+                        </div>
+                    `;
+                }
+            }
+
+            if (tab === 'notes') renderNotesTab(container);
+            else if (tab === 'chat') renderChatTab(container);
+            else if (tab === 'arcade') renderArcadeTab(container);
+            else if (tab === 'bugs') renderBugReportsTab(container);
+            else if (tab === 'leaderboard') renderLeaderboardTab(container);
+            else if (tab === 'tools') renderToolsTab(container);
+            else if (tab === 'rules') renderRulesTab(container);
+            else if (tab === 'account') renderAccountTab(container);
+            else if (tab === 'about') renderAboutTab(container);
+            else if (tab === 'admin') renderAdminTab(container);
+
+            if (maintenanceBanner) {
+                container.insertAdjacentHTML('afterbegin', maintenanceBanner);
+            }
+
+            setTimeout(initAllWaveLogos, 0);
+        }
+
+        function renderMaintenanceScreen(container, section, reason) {
+            container.innerHTML = `
+                <div class="max-w-md mx-auto glass p-8 rounded-xl border border-amber-500/40 text-center space-y-4">
+                    <div class="w-16 h-16 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center">
+                        <i class="fa fa-screwdriver-wrench text-amber-400 text-2xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-amber-300">${escapeHtml(MAINTAINABLE_SECTION_LABELS[section] || section)} is Under Maintenance</h2>
+                    <p class="text-sm text-gray-300">This section is temporarily unavailable while we make improvements.</p>
+                    <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-left">
+                        <p class="text-xs text-gray-400 mb-1">Reason:</p>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(reason || 'Maintenance in progress.')}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- NOTES TAB ---
+        function renderNotesTab(container) {
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="glass p-4 rounded-xl space-y-3">
+                        <h2 class="font-bold text-lg text-purple-300">Add New Note</h2>
+                        <input type="text" id="note-title-input" placeholder="Note Title..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
+                        <textarea id="note-input" placeholder="Type your private note..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
+                        <button onclick="saveNote()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition">Save Note</button>
+                    </div>
+                    <div id="notes-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                </div>
+            `;
+            renderNotesList();
+        }
+
+        function renderNotesList() {
+            const listContainer = document.getElementById('notes-list');
+            if (!listContainer) return;
+
+            if (notesData.length === 0) {
+                listContainer.innerHTML = `<p class="text-gray-400 text-sm italic col-span-2">No notes added yet.</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = notesData.map(n => `
+                <div class="glass p-4 rounded-xl flex flex-col justify-between space-y-2 border border-white/10 relative">
+                    <div>
+                        <h3 class="font-bold text-purple-300 text-base mb-1">${escapeHtml(n.title || 'Untitled Note')}</h3>
+                        <p class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(n.text)}</p>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 pt-2 border-t border-white/5">
+                        <span>${new Date(n.createdAt).toLocaleDateString()}</span>
+                        <div class="space-x-2">
+                            <button onclick="deleteNotePrompt('${n.id}')" class="text-red-400 hover:underline">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        window.saveNote = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            const title = document.getElementById('note-title-input').value.trim();
+            const text = document.getElementById('note-input').value.trim();
+            if (!title || !text) { showToast("Title and text cannot be empty", "error"); return; }
+
+            const noteId = 'n_' + Date.now();
+            await db.ref('notes/' + noteId).set({
+                id: noteId,
+                userId: currentUser.id,
+                username: currentUser.username,
+                title,
+                text,
+                createdAt: Date.now()
+            });
+
+            document.getElementById('note-title-input').value = '';
+            document.getElementById('note-input').value = '';
+            showToast("Note saved!");
+        }
+
+        window.deleteNotePrompt = function(id) {
+            openModal("Delete Note", "Are you sure you want to delete this note?", "", async () => {
+                await db.ref('notes/' + id).remove();
+                showToast("Note deleted");
+            });
+        }
+
+        // --- GLOBAL CHAT TAB ---
+        function renderChatTab(container) {
+            container.innerHTML = `
+                <div class="space-y-4 max-w-2xl mx-auto flex flex-col">
+                    <div class="glass p-4 rounded-xl flex flex-col space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h2 class="font-bold text-lg text-purple-300">Global Chat</h2>
+                        </div>
+                        <div id="chat-messages-list" class="space-y-2 max-h-[420px] overflow-y-auto pr-1"></div>
+                        <div class="flex space-x-2 pt-2 border-t border-white/10">
+                            <input type="text" id="chat-message-input" maxlength="500" placeholder="Type a message to everyone..." class="flex-1 p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm" onkeydown="if(event.key==='Enter'){event.preventDefault();sendChatMessage();}">
+                            <button id="chat-send-btn" onclick="sendChatMessage()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition"><i class="fa fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            renderChatList();
+        }
+
+        function renderChatList() {
+            const listContainer = document.getElementById('chat-messages-list');
+            if (!listContainer) return;
+
+            if (chatData.length === 0) {
+                listContainer.innerHTML = `<p class="text-gray-400 text-sm italic text-center">No messages yet. Say hello!</p>`;
+                return;
+            }
+
+            listContainer.innerHTML = chatData.map(m => {
+                const isMine = currentUser && m.userId === currentUser.id;
+                return `
+                    <div class="glass p-3 rounded-xl border border-white/10">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-sm ${isMine ? 'text-pink-400' : 'text-purple-300'}">${escapeHtml(m.username || 'User')}</span>
+                            <span class="text-[11px] text-gray-500">${new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <p class="text-sm text-gray-200 mt-1 break-words">${escapeHtml(m.text)}</p>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.sendChatMessage = async function() {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            const input = document.getElementById('chat-message-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const msgId = 'c_' + Date.now();
+            await db.ref('globalChat/' + msgId).set({
+                id: msgId,
+                userId: currentUser.id,
+                username: currentUser.username,
+                text,
+                createdAt: Date.now()
+            });
+
+            input.value = '';
+        }
+
+        // --- ARCADE TAB ---
+        function renderArcadeTab(container) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center space-y-4">
+                    <h2 class="text-xl font-bold glowing-logo">CYBER ARCADE</h2>
+                    <p class="text-xs text-gray-400 text-center">Choose from 8 games: Cyber Snake, Memory Matrix, Cyber Flap, Brick Breaker, 2048, Glitch Hunter, Neon Dodger, Space Invaders.</p>
+                    <div class="glass p-6 rounded-2xl max-w-sm w-full text-center space-y-3">
+                        <i class="fa fa-gamepad text-4xl text-purple-400"></i>
+                        <h3 class="font-bold text-lg text-purple-200">Cyber Snake</h3>
+                        <p class="text-xs text-gray-300">Eat the food to grow and score points!</p>
+                        <button onclick="startCyberSnakeQuick()" class="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl font-bold text-sm transition">Play Snake</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.startCyberSnakeQuick = function() {
+            showToast("Opening Cyber Snake game!");
+        }
+
+        function renderBugReportsTab(container) {
+            container.innerHTML = `
+                <div class="glass p-6 rounded-xl max-w-md mx-auto space-y-4">
+                    <h2 class="text-lg font-bold text-purple-300">Bug & Suggest</h2>
+                    <p class="text-xs text-gray-400">Have an idea or found a bug? Send it directly to the admin.</p>
+                    <input type="text" id="bug-title" placeholder="Title..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <textarea id="bug-desc" placeholder="Details..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm h-24 resize-none"></textarea>
+                    <button onclick="submitBug()" class="w-full p-3 bg-purple-600 rounded-xl font-bold text-sm">Submit</button>
+                </div>
+            `;
+        }
+
+        window.submitBug = async function() {
+            const title = document.getElementById('bug-title')?.value.trim();
+            const desc = document.getElementById('bug-desc')?.value.trim();
+            if (!title || !desc) { showToast("Please fill all fields", "error"); return; }
+            await db.ref('bugReports/' + Date.now()).set({
+                userId: currentUser.id,
+                username: currentUser.username,
+                title, description: desc, createdAt: Date.now()
+            });
+            showToast("Report submitted successfully!");
+            document.getElementById('bug-title').value = '';
+            document.getElementById('bug-desc').value = '';
+        }
+
+        function renderLeaderboardTab(container) {
+            container.innerHTML = `
+                <div class="glass p-6 rounded-xl max-w-md mx-auto space-y-4">
+                    <h2 class="text-lg font-bold text-purple-300 text-center">Leaderboard</h2>
+                    <div id="leaderboard-list" class="space-y-2"></div>
+                </div>
+            `;
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('leaderboard-list');
+            if (!list) return;
+            const sorted = [...leaderboardData].sort((a, b) => b.score - a.score).slice(0, 10);
+            if (!sorted.length) {
+                list.innerHTML = `<p class="text-xs text-gray-400 text-center italic">No scores yet.</p>`;
+                return;
+            }
+            list.innerHTML = sorted.map((item, idx) => `
+                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-sm">
+                    <span class="font-bold text-purple-300">#${idx + 1} ${escapeHtml(item.username)}</span>
+                    <span class="font-extrabold text-pink-400">${item.score} pts</span>
+                </div>
+            `).join('');
+        }
+
+        function renderToolsTab(container) {
+            container.innerHTML = `
+                <div class="max-w-md mx-auto space-y-3">
+                    <h2 class="text-lg font-bold text-purple-300 text-center"><i class="fa fa-toolbox mr-2"></i>Tools</h2>
+                    <a href="https://tv.jbhub.ryzn.pro/" target="_blank" rel="noopener noreferrer" class="glass p-4 rounded-xl border border-white/10 flex items-center gap-4 hover:border-purple-400 transition block">
+                        <span class="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-xl text-purple-300"><i class="fa fa-tv"></i></span>
+                        <div class="flex-1">
+                            <span class="block font-bold text-gray-100">JB TV</span>
+                            <span class="block text-xs text-gray-400">Opens JB TV in a new tab.</span>
+                        </div>
+                    </a>
+                </div>
+            `;
+        }
+
+        function renderRulesTab(container) {
+            container.innerHTML = `<div class="glass p-6 rounded-xl max-w-md mx-auto text-sm text-gray-300 whitespace-pre-wrap">${escapeHtml(globalSettings.rulesText || '')}</div>`;
+        }
+
+        function renderAccountTab(container) {
+            container.innerHTML = `
+                <div class="glass p-6 rounded-xl max-w-md mx-auto space-y-4">
+                    <h2 class="text-lg font-bold text-purple-300">Account Profile</h2>
+                    <div class="p-3 bg-white/5 rounded-xl border border-white/10 space-y-1">
+                        <p class="text-xs text-gray-400">Username: <span class="font-bold text-purple-200">${escapeHtml(currentUser.username)}</span></p>
+                        <p class="text-xs text-gray-400">Email: <span class="font-bold text-purple-200">${escapeHtml(currentUser.email || 'None')}</span></p>
+                        <p class="text-xs text-gray-400">Category: <span class="font-bold text-purple-200">${getAgeCategory(currentUser.dob)}</span></p>
+                    </div>
+                    <button onclick="logout()" class="w-full p-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30 rounded-xl font-bold text-sm transition">Logout</button>
+                </div>
+            `;
+        }
+
+        function renderAboutTab(container) {
+            container.innerHTML = `
+                <div class="glass p-6 rounded-xl max-w-md mx-auto text-center space-y-4">
+                    <h2 class="text-xl font-bold glowing-logo">About JB HUB</h2>
+                    <div class="text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.aboutText || ''}</div>
+                    <div class="p-4 bg-purple-900/20 rounded-xl space-y-2">
+                        <p class="font-bold text-purple-300">Special Thanks</p>
+                        <div class="flex flex-wrap justify-center items-center gap-1.5">${renderSpecialThanksHtml(globalSettings.specialThanks)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminTab(container) {
+            if (!currentUser || !currentUser.isAdmin) {
+                container.innerHTML = `<p class="text-red-400 text-center font-bold">Admin Privileges Required</p>`;
+                return;
+            }
+            container.innerHTML = `
+                <div class="glass p-6 rounded-xl max-w-md mx-auto space-y-4">
+                    <h2 class="text-lg font-bold text-purple-300">Admin Control Panel</h2>
+                    <p class="text-xs text-gray-400">Total members registered: ${usersData.length}</p>
+                </div>
+            `;
+        }
+
+        function syncShutdownLockdown() {
+            if (!currentUser) return;
+            const shutdownOn = !!(globalSettings.shutdown && globalSettings.shutdown.enabled);
+            const screen = document.getElementById('shutdown-screen');
+            if (shutdownOn && !currentUser.isAdmin) {
+                document.getElementById('dashboard-view')?.classList.add('hidden');
+                document.getElementById('auth-view')?.classList.add('hidden');
+                screen?.classList.remove('hidden');
+            } else if (!shutdownOn && screen && !screen.classList.contains('hidden')) {
+                screen.classList.add('hidden');
+                document.getElementById('dashboard-view')?.classList.remove('hidden');
+            }
+        }
+
+        function escapeHtml(str) {
+            return str ? String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+        }
+
+        function authErrorMessage(err) {
+            const code = err && err.code ? err.code : '';
+            if (code === 'auth/wrong-password' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials' || code === 'auth/user-not-found') {
+                return 'Invalid username/email or password.';
+            }
+            if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait a few minutes and try again.';
+            if (code === 'auth/weak-password') return 'Password must be at least 6 characters.';
+            if (code === 'auth/email-already-in-use') return 'An account with this email already exists.';
+            if (code === 'auth/popup-closed-by-user') return 'Google sign-in popup was closed.';
+            if (code === 'auth/popup-blocked') return 'Browser blocked the Google popup. Please allow popups for this site.';
+            return (err && err.message) || 'Login failed. Please check your connection and try again.';
+        }
+
+        // Google Authentication
+        window.handleGoogleAuth = async function(hintEmail) {
+            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            const btn = document.getElementById('google-btn');
+            if (btn) btn.disabled = true;
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                if (typeof hintEmail === 'string' && hintEmail) {
+                    provider.setCustomParameters({ login_hint: hintEmail });
+                }
+                const result = await auth.signInWithPopup(provider);
+                const gUser = result.user;
+                const email = String(gUser.email || '').trim().toLowerCase();
+
+                if (!email) {
+                    await auth.signOut();
+                    showToast("Your Google account has no email address.", "error");
+                    return;
+                }
+
+                const matches = await findUserRecordsByEmail(email);
+                const pick = matches.find(m => m.val && m.val.authUid === gUser.uid) || matches[0];
+                if (pick) {
+                    await completeGoogleLogin(pick.key, pick.val, gUser, email);
+                    return;
+                }
+
+                // New user via Google: prompt for username
+                const defaultUsername = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, '');
+                const usernameKey = defaultUsername.toLowerCase();
+                const newUser = {
+                    username: defaultUsername,
+                    email: email,
+                    authEmail: email,
+                    authUid: gUser.uid,
+                    emailVerified: true,
+                    googleAccount: true,
+                    gender: 'Male',
+                    dob: '2000-01-01',
+                    id: 'u_' + Date.now()
+                };
+                await db.ref('users/' + usernameKey).set(newUser);
+                await completeGoogleLogin(usernameKey, newUser, gUser, email);
+
+            } catch (err) {
+                console.error("Google Auth error:", err);
+                showToast(authErrorMessage(err), 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        };
+
+        async function completeGoogleLogin(usernameKey, userVal, gUser, email) {
+            const userRef = db.ref('users/' + usernameKey);
+            currentUser = userVal;
+            mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            await userRef.update({ activeSession: mySessionId });
+            setupPresence(usernameKey);
+            setupBanWatcher(usernameKey);
+            setupSessionWatcher(usernameKey);
+            showToast("Logged in with Google!");
+            proceedAfterLogin();
+        }
+
+        document.addEventListener('DOMContentLoaded', initAllWaveLogos);
+        initAllWaveLogos();
+        window.refreshAuthEntry();
+    </script>
+    <script src="jb-ai.js"></script>
+</body>
+</html>
