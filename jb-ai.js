@@ -419,6 +419,8 @@
         '• **Wrong date/time** – turn on automatic date & time\n' +
         '• **Old copy of the site** – reload with Ctrl+Shift+R or clear this site\'s data (reloading signs you out)\n' +
         '• **Server busy or under maintenance** – wait a few minutes and retry; if it continues, email **' + SITE.email + '**\n' +
+        '• **Network blocks the connection method** – JB HUB then switches itself to a slower but more compatible method and remembers it for this device\n' +
+        '• **Opened inside Facebook, Instagram, WhatsApp, Telegram…** – open the link in Chrome or Safari instead\n' +
         'Later, if the connection drops while you are using the site, **Connection lost. Reconnecting…** appears after a few seconds and **Connected to server again** when it is back.'
     },
     {
@@ -485,7 +487,7 @@
       title: 'Admin notifications',
       keys: ['notification', 'notifications', 'admin notification', 'notification from admin', 'send notification', 'temporary notification', 'temporary message', 'live notification', 'broadcast', 'alert from admin', 'popup message', 'pop up message', 'banner', 'bell', 'announcement banner', 'message for everyone', 'message to all members', 'notify members', 'notify all'],
       answer:
-        '**Admin notifications:** an admin can send a short message (up to 200 characters) to **every member who is online – and to anyone looking at the login page**. It appears as a **banner at the top of the screen** with a bell icon and a countdown bar, and it **disappears by itself** after 15 seconds, 30 seconds, 1 minute or 5 minutes – whatever the admin chose.\n' +
+        '**Admin notifications:** an admin can send a short message (up to 200 characters) to **every member who is online – and to anyone looking at the login page**. It appears as a **blue banner at the top of the screen** with a bell icon, a **time-left bar** and a "… s left" label, and it **disappears by itself** after 15 seconds, 30 seconds, 1 minute or 5 minutes – whatever the admin chose.\n' +
         '• You can close it early with the **×** button; it will not come back.\n' +
         '• It is only for people who are on the site when it is sent (or open it before it expires) – it is not saved, so nothing is waiting for you later.\n' +
         '• **Admins:** open the **Admin Panel → Send Notification**, type the message, pick how long it shows and press **Send to online members**. **Clear now** removes it for everyone.\n' +
@@ -509,6 +511,16 @@
         '• if you see **Connecting to server…**, wait for it or press **Retry now**\n' +
         '• logging in with your **username** is a little quicker than with your email\n' +
         'Wrong details three times shows a security check, and Firebase may pause sign-in for a few minutes after many wrong tries.'
+    },
+    {
+      id: 'online_status',
+      title: 'Online / offline status',
+      keys: ['online status', 'offline status', 'shows offline', 'show offline', 'showing offline', 'shows online', 'why offline', 'why online', 'account online', 'am i online', 'last seen', 'status online', 'two devices online', 'logged out other device'],
+      answer:
+        '**Online status:** an account counts as **online** while at least one device is logged in to it. Admins see this in the Admin Panel.\n' +
+        '• JB HUB allows **one active login per account**: logging in on a second device signs the first one out for safety (**Logged Out For Safety**), and the account stays **online** because the new device is online.\n' +
+        '• It goes **offline** only when the last device logs out, closes the page, refreshes or loses its connection.\n' +
+        '• If a status looks wrong, the admin can reload the Admin Panel; a lost connection is cleaned up by the server within about a minute.'
     },
     {
       id: 'err_signup',

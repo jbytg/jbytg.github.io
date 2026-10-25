@@ -54,6 +54,7 @@
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://firebaseappcheck.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://www.google.com" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Firebase SDKs -->
@@ -196,11 +197,49 @@
         #startup-screen.startup-fail .su-orb { background: radial-gradient(circle at 35% 30%, #fff 0%, #fde68a 20%, #f59e0b 60%, #b45309 100%); box-shadow: 0 0 22px rgba(245,158,11,.7); animation-duration: 3.5s; }
         #startup-screen.startup-fail .su-glow { background: radial-gradient(circle, rgba(245,158,11,.4) 0%, transparent 70%); }
         #startup-screen.startup-fail .su-bar span { animation: none; width: 100%; background: rgba(251,191,36,.6); }
+
+        /* ---- connecting animation per graphics mode ---- */
+        .su-lowring, .su-lowbar, .su-ultra, .su-shoot { display: none; }
+        .su-lowring { position: absolute; inset: 34px; }
+        .su-lowring i { position: absolute; left: 28px; top: 28px; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #3b2f66; }
+        .su-lowring i:nth-child(1) { transform: rotate(0deg) translateY(-27px); }
+        .su-lowring i:nth-child(2) { transform: rotate(45deg) translateY(-27px); }
+        .su-lowring i:nth-child(3) { transform: rotate(90deg) translateY(-27px); }
+        .su-lowring i:nth-child(4) { transform: rotate(135deg) translateY(-27px); }
+        .su-lowring i:nth-child(5) { transform: rotate(180deg) translateY(-27px); }
+        .su-lowring i:nth-child(6) { transform: rotate(225deg) translateY(-27px); }
+        .su-lowring i:nth-child(7) { transform: rotate(270deg) translateY(-27px); }
+        .su-lowring i:nth-child(8) { transform: rotate(315deg) translateY(-27px); }
+        .su-lowring i.trail { background: #7c4fd0; }
+        .su-lowring i.on { background: #d8b4fe; }
+        .su-lowbar { gap: 3px; justify-content: center; margin: 4px auto 14px; }
+        .su-lowbar b { width: 14px; height: 6px; border-radius: 2px; background: #2a2150; }
+        .su-lowbar b.on { background: #c084fc; }
+        #startup-screen.startup-ok .su-lowring i, #startup-screen.startup-ok .su-lowbar b { background: #10b981; }
+        #startup-screen.startup-fail .su-lowring i, #startup-screen.startup-fail .su-lowbar b { background: #f59e0b; }
+        /* LOW: no CSS animation at all - a tiny dot ring and block bar are stepped by script a few times per second */
+        body.gfx-low .su-glow, body.gfx-low .su-ring, body.gfx-low .su-orb, body.gfx-low .su-bar, body.gfx-low .su-stars { display: none; }
+        body.gfx-low .su-lowring { display: block; }
+        body.gfx-low .su-lowbar { display: flex; }
+        body.gfx-low .su-logo { background: none; -webkit-text-fill-color: #c084fc; color: #c084fc; }
+        /* MEDIUM: orb + two rings, no halo, no logo movement */
+        body.gfx-medium .su-hi { display: none; }
+        body.gfx-medium .su-logo { animation: none; }
+        body.gfx-medium .su-dot:nth-child(n+10) { display: none; } /* (the first 3 children are the Ultra-only shooting stars) */
+        /* ULTRA: everything + outer dashed ring, spinning colour halo, shimmering logo, twinkling stars, shooting stars */
+        body.gfx-ultra .su-ultra { display: block; }
+        .su-ring4 { inset: -16px; color: #38bdf8; border: 1px dashed rgba(56,189,248,.55); animation: su-spin-rev 10s linear infinite; }
+        .su-ring4 i { display: none; }
+        body.gfx-ultra #startup-spinner::before { content: ''; position: absolute; inset: -28px; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0%, rgba(168,85,247,.55) 18%, transparent 40%, rgba(96,165,250,.45) 62%, transparent 85%); filter: blur(7px); animation: su-spin 4.5s linear infinite; }
+        @keyframes su-shimmer { from { background-position: 0% 0; } to { background-position: 200% 0; } }
+        body.gfx-ultra .su-logo { background-size: 200% 100%; background-image: linear-gradient(100deg, #c084fc 0%, #f472b6 25%, #60a5fa 50%, #f472b6 75%, #c084fc 100%); animation: su-bob 3s ease-in-out infinite, su-shimmer 3s linear infinite; }
+        body.gfx-ultra .su-dot { width: 4px; height: 4px; box-shadow: 0 0 7px #e9d5ff; }
+        @keyframes su-shoot { 0% { transform: translate(0, 0) rotate(28deg); opacity: 0; } 8% { opacity: 1; } 60% { opacity: 0; } 100% { transform: translate(320px, 170px) rotate(28deg); opacity: 0; } }
+        body.gfx-ultra .su-shoot { display: block; position: absolute; top: 6%; width: 90px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #fff); opacity: 0; animation: su-shoot 4.5s ease-in infinite; }
+        .su-shoot:nth-child(1) { left: 6%; animation-delay: .6s !important; } .su-shoot:nth-child(2) { left: 36%; animation-delay: 2.2s !important; } .su-shoot:nth-child(3) { left: 60%; animation-delay: 3.6s !important; }
         /* graphics modes: Medium keeps it light, Low is a still picture, Ultra adds extra glow */
-        body.gfx-medium .su-dot:nth-child(n+8) { display: none; }
         body.gfx-ultra .su-ring { filter: drop-shadow(0 0 5px currentColor); }
         body.perf-disable-animations #startup-screen *, body.perf-disable-animations #startup-screen *::before { animation: none !important; transition: none !important; }
-        body.perf-disable-animations .su-bar span { width: 40%; left: 30%; }
         @media (prefers-reduced-motion: reduce) { #startup-screen *, #startup-screen *::before { animation: none !important; transition: none !important; } }
         #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
         #startup-screen[data-failsafe] #startup-failsafe { display: block; }
@@ -727,19 +766,22 @@
 
     <!-- Startup screen: stays until the server really answers (see "Startup screen" script) -->
     <div id="startup-screen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9800;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px, env(safe-area-inset-top)) 16px 24px;background:radial-gradient(circle at 50% 0%, #2a1650 0%, #0b0818 62%);color:#e5e7eb;">
-        <div class="su-stars" aria-hidden="true"><span class="su-dot" style="left:6%;animation-delay:0.0s;animation-duration:7.2s;"></span><span class="su-dot" style="left:14%;animation-delay:2.1s;animation-duration:8.5s;"></span><span class="su-dot" style="left:23%;animation-delay:4.3s;animation-duration:6.8s;"></span><span class="su-dot" style="left:31%;animation-delay:1.2s;animation-duration:9.0s;"></span><span class="su-dot" style="left:40%;animation-delay:5.5s;animation-duration:7.4s;"></span><span class="su-dot" style="left:48%;animation-delay:3.1s;animation-duration:8.1s;"></span><span class="su-dot" style="left:57%;animation-delay:0.7s;animation-duration:6.6s;"></span><span class="su-dot" style="left:65%;animation-delay:4.8s;animation-duration:9.2s;"></span><span class="su-dot" style="left:73%;animation-delay:2.6s;animation-duration:7.7s;"></span><span class="su-dot" style="left:81%;animation-delay:5.9s;animation-duration:8.3s;"></span><span class="su-dot" style="left:88%;animation-delay:1.8s;animation-duration:6.9s;"></span><span class="su-dot" style="left:94%;animation-delay:3.7s;animation-duration:8.8s;"></span><span class="su-dot" style="left:10%;animation-delay:6.4s;animation-duration:9.5s;"></span><span class="su-dot" style="left:52%;animation-delay:6.9s;animation-duration:7.1s;"></span></div>
+        <div class="su-stars" aria-hidden="true"><span class="su-shoot"></span><span class="su-shoot"></span><span class="su-shoot"></span><span class="su-dot" style="left:6%;animation-delay:0.0s;animation-duration:7.2s;"></span><span class="su-dot" style="left:14%;animation-delay:2.1s;animation-duration:8.5s;"></span><span class="su-dot" style="left:23%;animation-delay:4.3s;animation-duration:6.8s;"></span><span class="su-dot" style="left:31%;animation-delay:1.2s;animation-duration:9.0s;"></span><span class="su-dot" style="left:40%;animation-delay:5.5s;animation-duration:7.4s;"></span><span class="su-dot" style="left:48%;animation-delay:3.1s;animation-duration:8.1s;"></span><span class="su-dot" style="left:57%;animation-delay:0.7s;animation-duration:6.6s;"></span><span class="su-dot" style="left:65%;animation-delay:4.8s;animation-duration:9.2s;"></span><span class="su-dot" style="left:73%;animation-delay:2.6s;animation-duration:7.7s;"></span><span class="su-dot" style="left:81%;animation-delay:5.9s;animation-duration:8.3s;"></span><span class="su-dot" style="left:88%;animation-delay:1.8s;animation-duration:6.9s;"></span><span class="su-dot" style="left:94%;animation-delay:3.7s;animation-duration:8.8s;"></span><span class="su-dot" style="left:10%;animation-delay:6.4s;animation-duration:9.5s;"></span><span class="su-dot" style="left:52%;animation-delay:6.9s;animation-duration:7.1s;"></span></div>
         <div class="startup-main" style="position:relative;width:100%;max-width:440px;margin:auto 0;text-align:center;">
             <div class="su-logo">JB HUB</div>
             <div id="startup-spinner" aria-hidden="true">
-                <span class="su-glow"></span>
+                <span class="su-glow su-hi"></span>
+                <span class="su-ring su-ring4 su-ultra"><i></i></span>
                 <span class="su-ring su-ring1"><i></i></span>
                 <span class="su-ring su-ring2"><i></i></span>
-                <span class="su-ring su-ring3"><i></i></span>
+                <span class="su-ring su-ring3 su-hi"><i></i></span>
                 <span class="su-orb"></span>
+                <span class="su-lowring" id="su-lowring"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
             </div>
             <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Connecting to server…</p>
             <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 12px;">This usually takes just a second.</p>
             <div id="startup-bar" class="su-bar" aria-hidden="true"><span></span></div>
+            <div id="su-lowbar" class="su-lowbar" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div>
             <div id="startup-tip" class="su-tip"><span class="su-tip-label"><i class="fa fa-lightbulb"></i> Did you know?</span><span id="startup-tip-text">Tick “Save this account on this device” when you log in, and next time you can pick your account from a list.</span></div>
             <div id="startup-actions" class="hidden" style="margin:14px 0;">
                 <button type="button" onclick="retryStartup()" style="padding:10px 22px;border-radius:12px;border:1px solid rgba(168,85,247,.6);background:rgba(168,85,247,.25);color:#f5f3ff;font-size:13px;font-weight:700;cursor:pointer;"><i class="fa fa-rotate-right" style="margin-right:6px;"></i>Retry now</button>
@@ -757,16 +799,16 @@
 
     <!-- Temporary admin notification: shown to every member who is online, disappears by itself -->
     <div id="live-notification" role="alert" aria-live="assertive" class="hidden" style="position:fixed;top:0;left:0;right:0;z-index:9500;padding:calc(env(safe-area-inset-top, 0px) + 10px) 12px 0;pointer-events:none;">
-        <div class="mx-auto max-w-md rounded-2xl border border-amber-400/50 shadow-2xl overflow-hidden" style="pointer-events:auto;background:#1a1228;">
+        <div class="mx-auto max-w-md rounded-2xl border border-sky-400/50 shadow-2xl overflow-hidden" style="pointer-events:auto;background:#0f1b33;">
             <div class="flex items-start gap-3 p-3">
-                <span class="w-9 h-9 shrink-0 rounded-full bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300"><i class="fa fa-bell"></i></span>
+                <span class="w-9 h-9 shrink-0 rounded-full bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300"><i class="fa fa-bell"></i></span>
                 <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Notification from admin</p>
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-sky-300">Notification from admin <span id="live-notification-time" class="ml-1 normal-case font-medium text-sky-200/70"></span></p>
                     <p id="live-notification-text" class="text-sm text-gray-100 break-words"></p>
                 </div>
                 <button type="button" onclick="dismissLiveNotification()" aria-label="Close notification" class="text-gray-400 hover:text-white px-1 py-0.5"><i class="fa fa-xmark"></i></button>
             </div>
-            <div class="h-1 bg-white/10"><div id="live-notification-bar" class="h-full bg-amber-400" style="width:100%"></div></div>
+            <div class="h-1.5 bg-white/10"><div id="live-notification-bar" class="h-full" style="width:100%;background:linear-gradient(90deg,#38bdf8,#6366f1);"></div></div>
         </div>
     </div>
 
@@ -1160,6 +1202,14 @@
         }
 
         const db = firebase.database();
+        let compatModeOn = false;
+        try { // a device that needed the compatible connection before skips the failed first try (remembered for 7 days)
+            const nm = JSON.parse(localStorage.getItem('jb_net_mode') || 'null');
+            if (nm && nm.m === 'compat' && Date.now() - nm.t < 7 * 864e5 && firebase.database.INTERNAL && typeof firebase.database.INTERNAL.forceLongPolling === 'function') {
+                firebase.database.INTERNAL.forceLongPolling();
+                compatModeOn = true;
+            }
+        } catch (e) {}
         const auth = firebase.auth();
 
         let currentUser = null;
@@ -1199,6 +1249,23 @@
         let toastTimeout = null;
         let humanTestPassed = false;
         let presenceRef = null;
+        // ===== Online status =====
+        // Every logged-in DEVICE writes its own entry  presence/<username>/<sessionId>  (the server removes it when that device
+        // disconnects). An account counts as online while at least one entry exists. So logging in on a second device, the first
+        // device being logged out for safety, a closed tab, a lost connection... can never make a still-online account look offline.
+        let presenceMap = {};
+        let presenceSession = null, presenceKey = null;
+        function isUserOnline(u) {
+            const m = u && u.username ? presenceMap[String(u.username).toLowerCase()] : null;
+            return !!(m && typeof m === 'object' && Object.keys(m).length);
+        }
+        async function endMyPresence() {
+            const key = presenceKey, sid = presenceSession;
+            presenceKey = null; presenceSession = null;
+            if (!key || !sid) return;
+            try { const r = db.ref('presence/' + key + '/' + sid); await r.onDisconnect().cancel(); await r.remove(); } catch (e) {}
+        }
+
         let isFirebaseConnected = true;
         let myBanListenerUsernameKey = null;
         let myBanListenerHandler = null;
@@ -1220,13 +1287,18 @@
         // ---- Ghost-user protection helpers ----
         // Marks a user offline ONLY if the account still exists, and first cancels
         // the server-side onDisconnect so it can never re-create a deleted/renamed node.
+        // Ends THIS device's online entry. The account is only marked offline when no other device is still logged in.
         async function safeSetOffline(usernameKey) {
-            if (!usernameKey) return;
+            const key = presenceKey || usernameKey;
+            await endMyPresence();
+            if (!key) return;
             try {
-                const ref = db.ref('users/' + usernameKey);
-                await ref.child('isOnline').onDisconnect().cancel();
-                const s = await ref.child('username').once('value');
-                if (s.exists()) await ref.update({ isOnline: false });
+                const others = await db.ref('presence/' + key).once('value');
+                if (!others.exists()) {
+                    const ref = db.ref('users/' + key);
+                    const s = await ref.child('username').once('value');
+                    if (s.exists()) await ref.update({ isOnline: false });
+                }
             } catch (e) {}
         }
 
@@ -1238,7 +1310,7 @@
             detachMyBanListener();
             mySessionId = null;
             if (usernameKey) {
-                try { await db.ref('users/' + usernameKey + '/isOnline').onDisconnect().cancel(); } catch (e) {}
+                await endMyPresence(); db.ref('presence/' + usernameKey).remove().catch(() => {}); // account is gone: no presence either
             }
             if (presenceRef) {
                 db.ref('.info/connected').off('value', presenceRef);
@@ -1340,13 +1412,29 @@
         // fresh session id there; if it ever changes to something other
         // than this tab's own id, another device just logged in, so this
         // session gets force-logged-out for safety.
+        // An empty session value does NOT always mean "account removed" (a write can be delayed or rolled back, e.g. by a
+        // failed security check). Look at the account itself before logging anyone out; if it exists, put the session id back.
+        let removedCheckTimer = null;
+        function verifyAccountStillExists(usernameKey) {
+            clearTimeout(removedCheckTimer);
+            removedCheckTimer = setTimeout(async () => {
+                if (!currentUser || !mySessionId || sessionListenerUsernameKey !== usernameKey) return;
+                try {
+                    const s = await db.ref('users/' + usernameKey + '/username').once('value');
+                    if (!currentUser || !mySessionId) return;
+                    if (!s.exists()) { forceLogoutAccountRemoved(); return; }
+                    db.ref('users/' + usernameKey).update({ activeSession: mySessionId }).catch(() => {});
+                } catch (e) { /* cannot check right now: stay logged in */ }
+            }, 2500);
+        }
+
         function setupSessionWatcher(usernameKey) {
             detachSessionListener();
             sessionListenerUsernameKey = usernameKey;
             sessionListenerHandler = db.ref('users/' + usernameKey + '/activeSession').on('value', snap => {
                 if (!currentUser || !mySessionId) return;
                 const sessionVal = snap.val();
-                if (sessionVal === null) { forceLogoutAccountRemoved(); return; }
+                if (sessionVal === null) { verifyAccountStillExists(usernameKey); return; }
                 if (sessionVal && sessionVal !== mySessionId) {
                     forceLogoutOtherDevice();
                 }
@@ -1400,6 +1488,7 @@
         // Declared EARLY on purpose: the login page code runs while the script loads and already touches these
         // (stopLiveNotifications), and a `let` used before its declaration stops the whole script.
         let liveNoteRef = null, liveNoteCb = null, liveNoteTimer = null, liveNoteOffset = 0, liveNoteToken = 0, liveNoteStarting = false;
+        let liveNoteRaf = null, liveNoteTick = null;
         let shownLiveNoteId = null;
         const dismissedLiveNotes = new Set();
         let adminNoticeDraft = { text: '', seconds: 30 };
@@ -1425,14 +1514,16 @@
         // visitor sees their saved accounts (if any) or the login page. If the server cannot be reached for a long time, the
         // screen explains the likely problems with a solution for each and keeps retrying by itself.
         const STARTUP_SLOW_MS = 8000;         // "taking longer than usual" + Retry button
-        const STARTUP_FAIL_MS = 20000;        // first attempt gives up: show problems + solutions
+        const STARTUP_FAIL_MS = 12000;        // each attempt (normal, then compatibility mode) gives up after this: show problems + solutions
         const STARTUP_AUTO_RETRY_MS = 10000;  // then try again by itself every 10 s
         const OWNER_EMAIL = 'johanbiju15@gmail.com';
+        const IN_APP_BROWSER = /(FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Snapchat|TikTok|Telegram|WhatsApp|Line\/)/i.test((navigator.userAgent || ''));
         let startupRun = 0, startupTicker = null, startupRetryTimer = null, startupDiag = null, startupFailed = false;
         window.__bootAlive = true;            // the page script is running (see the failsafe in the <head> script)
 
         const STARTUP_PROBLEMS = [
             { id: 'offline',  icon: 'fa-wifi',           title: 'Your internet is off or very weak', fix: 'Turn Wi-Fi or mobile data on, move closer to the router, or switch between Wi-Fi and mobile data.' },
+            { id: 'inapp',    icon: 'fa-up-right-from-square', title: 'JB HUB is open inside another app (Facebook, Instagram, WhatsApp, Telegram…)', fix: 'Those built-in browsers often block parts of the site. Tap the ⋮ or Share button and choose “Open in Chrome” or “Open in Safari”.' },
             { id: 'security', icon: 'fa-shield-halved',  title: 'The security check could not verify your browser', fix: 'Wait a few seconds and press Retry. Make sure Google reCAPTCHA is not blocked, update your browser, then try again.' },
             { id: 'blocker',  icon: 'fa-ban',            title: 'An ad-blocker, VPN or privacy tool is blocking the connection', fix: 'Turn it off for this website, or open the site in a private/incognito window or another browser.' },
             { id: 'network',  icon: 'fa-building',       title: 'School, office or public Wi-Fi is blocking it', fix: 'Try mobile data or another network.' },
@@ -1442,10 +1533,26 @@
         ];
 
         function likelyProblemIds(d) {
+            if (d && d.inApp) return ['inapp', 'blocker'];
             if (!d || !d.online) return ['offline'];
             if (d.appCheck === 'failed') return ['security', 'blocker'];
             return ['server', 'blocker', 'network'];
         }
+
+        // Compatibility mode = Firebase long-polling instead of WebSockets (some networks, proxies and phones block WebSockets).
+        function canForceLongPolling() {
+            return !!(firebase.database && firebase.database.INTERNAL && typeof firebase.database.INTERNAL.forceLongPolling === 'function');
+        }
+        function enableCompatMode() {
+            if (compatModeOn || !canForceLongPolling()) return false;
+            try {
+                firebase.database.INTERNAL.forceLongPolling();
+                db.goOffline(); db.goOnline();           // reconnect using only long-polling
+                compatModeOn = true;
+                return true;
+            } catch (e) { return false; }
+        }
+        function rememberCompatMode() { try { localStorage.setItem('jb_net_mode', JSON.stringify({ m: 'compat', t: Date.now() })); } catch (e) {} }
 
         // Resolves {ok:true} when the server is connected AND answers a real read; otherwise {ok:false, reason}
         function probeServer(timeoutMs) {
@@ -1470,7 +1577,7 @@
         }
 
         async function diagnoseStartup() {
-            const d = { online: navigator.onLine, appCheck: appCheckActive ? 'checking' : 'off' };
+            const d = { online: navigator.onLine, appCheck: appCheckActive ? 'checking' : 'off', inApp: IN_APP_BROWSER, mode: compatModeOn ? 'compatibility' : 'standard' };
             if (appCheckActive) {
                 try {
                     const r = await Promise.race([firebase.appCheck().getToken(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 6000))]);
@@ -1493,6 +1600,26 @@
             'After 3 wrong password tries a quick security check appears – it keeps accounts safe.'
         ];
         let startupTipTimer = null, startupTipIdx = Math.floor(Math.random() * STARTUP_TIPS.length);
+        // LOW graphics: a tiny dot ring and a block bar are stepped by script ~8 times a second (no CSS animation, no layers)
+        let lowAnimTimer = null, lowAnimStep = 0;
+        function stopLowAnimation() { clearInterval(lowAnimTimer); lowAnimTimer = null; }
+        function startLowAnimation() {
+            stopLowAnimation();
+            if (!(document.body && document.body.classList.contains('gfx-low')) || !document.querySelectorAll) return;
+            const dots = Array.from(document.querySelectorAll('#su-lowring i'));
+            const blocks = Array.from(document.querySelectorAll('#su-lowbar b'));
+            if (!dots.length) return;
+            lowAnimTimer = setInterval(() => {
+                lowAnimStep++;
+                dots.forEach((d, i) => {
+                    const dist = (lowAnimStep - i + dots.length * 4) % dots.length;
+                    d.classList.toggle('on', dist === 0);
+                    d.classList.toggle('trail', dist === 1 || dist === 2);
+                });
+                const span = blocks.length + 4, head = lowAnimStep % span;
+                blocks.forEach((b, i) => b.classList.toggle('on', i <= head && i > head - 3));
+            }, 125);
+        }
         function stopStartupTips() { clearInterval(startupTipTimer); startupTipTimer = null; }
         function startStartupTips() {
             stopStartupTips();
@@ -1510,8 +1637,8 @@
             const scr = document.getElementById('startup-screen');
             if (scr) { scr.classList.remove('startup-ok', 'startup-fail'); if (state === 'ok') scr.classList.add('startup-ok'); if (state === 'failed') scr.classList.add('startup-fail'); }
             const tip = document.getElementById('startup-tip');
-            if (state === 'connecting') { if (tip) tip.classList.remove('hidden'); startStartupTips(); }
-            else { stopStartupTips(); if (tip && state === 'failed') tip.classList.add('hidden'); }
+            if (state === 'connecting') { if (tip) tip.classList.remove('hidden'); startStartupTips(); startLowAnimation(); }
+            else { stopStartupTips(); stopLowAnimation(); if (tip && state === 'failed') tip.classList.add('hidden'); }
         }
 
         function startupEl(id) { return document.getElementById(id); }
@@ -1550,7 +1677,7 @@
             if (det) {
                 const d = startupDiag || {};
                 det.textContent = 'Internet: ' + (d.online ? 'connected' : 'offline') + ' · Security check: ' + (d.appCheck || 'unknown') +
-                    ' · Reason: ' + (result && result.reason || 'unknown') + ' · Waited ' + Math.round((waitedMs || 0) / 1000) + ' s · Retrying automatically…';
+                    ' · Connection: ' + (d.mode || 'standard') + ' · Reason: ' + (result && result.reason || 'unknown') + ' · Waited ' + Math.round((waitedMs || 0) / 1000) + ' s · Retrying automatically…';
             }
         }
 
@@ -1598,12 +1725,18 @@
             } else {
                 const det = startupEl('startup-details'); if (det) det.textContent = 'Trying again…';
             }
-            let result;
-            if (!navigator.onLine) result = { ok: false, reason: 'offline' };
-            else result = await probeServer(auto ? 8000 : STARTUP_FAIL_MS);
+            // Some devices/in-app browsers wrongly report "offline", so the server is always tried (shorter wait if they say offline)
+            if (!navigator.onLine && !auto) setStartupText('Connecting to server…', 'Your device says it is offline – checking anyway…');
+            let result = await probeServer(auto ? 8000 : (navigator.onLine ? STARTUP_FAIL_MS : 6000));
             if (run !== startupRun) return;
+            // Networks that block WebSockets: switch to the slower but more compatible long-polling connection and try once more
+            if (!result.ok && result.reason !== 'denied' && navigator.onLine && enableCompatMode()) {
+                setStartupText('Still connecting…', 'Trying a more compatible connection method…');
+                result = await probeServer(STARTUP_FAIL_MS);
+                if (run !== startupRun) return;
+            }
             clearInterval(startupTicker);
-            if (result.ok) { finishStartup(); return; }
+            if (result.ok) { if (compatModeOn) rememberCompatMode(); finishStartup(); return; }
             startupDiag = await diagnoseStartup();
             if (run !== startupRun) return;
             showStartupProblem(result, Date.now() - t0);
@@ -1623,6 +1756,7 @@
         }
 
         startStartupTips();
+        startLowAnimation();
         runStartupCheck(false);
 
 
@@ -1646,24 +1780,25 @@
             const connectedRef = db.ref('.info/connected');
 
             if (presenceRef) { connectedRef.off('value', presenceRef); presenceRef = null; }
+            presenceKey = usernameKey;
+            presenceSession = mySessionId;
+            const sid = mySessionId;
 
             presenceRef = connectedRef.on('value', (snap) => {
-                if (snap.val() === true) {
-                    // Never write presence for an account that doesn't exist (prevents ghost nodes)
-                    userRef.child('username').once('value').then(us => {
-                        if (!us.exists()) return;
-                        userRef.child('isOnline').onDisconnect().set(false);
-                        const now = Date.now();
-                        userRef.update({
-                            isOnline: true,
-                            lastLogin: now
-                        });
-                        if (currentUser) {
-                            currentUser.isOnline = true;
-                            currentUser.lastLogin = now;
-                        }
-                    }).catch(() => {});
-                }
+                if (snap.val() !== true || sid !== presenceSession) return;
+                // Never write presence for an account that doesn't exist (prevents ghost nodes)
+                userRef.child('username').once('value').then(us => {
+                    if (!us.exists() || sid !== presenceSession) return;
+                    const mine = db.ref('presence/' + usernameKey + '/' + sid);
+                    mine.onDisconnect().remove();              // the server removes this device's entry when it disconnects
+                    mine.set(firebase.database.ServerValue.TIMESTAMP);
+                    const now = Date.now();
+                    userRef.update({ isOnline: true, lastLogin: now });
+                    if (currentUser) {
+                        currentUser.isOnline = true;
+                        currentUser.lastLogin = now;
+                    }
+                }).catch(() => {});
             });
         }
 
@@ -2130,7 +2265,7 @@
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
+                try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2204,7 +2339,7 @@
         };
 
         window.sendPasswordResetLink = async function() {
-            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!navigator.onLine && !isFirebaseConnected) { showToast("No Internet", "error"); return; }
             if (!(await ensureServerConnection())) { showToast("Cant connect to server", "error"); return; }
 
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
@@ -2321,7 +2456,7 @@
 
             currentUser = userVal;
             mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-            userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once
+            try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
             setupPresence(usernameKey);
             setupBanWatcher(usernameKey);
             setupSessionWatcher(usernameKey);
@@ -2330,7 +2465,7 @@
         }
 
         window.handleGoogleAuth = async function(hintEmail) {
-            if (!navigator.onLine) { showToast("No Internet", "error"); return; }
+            if (!navigator.onLine && !isFirebaseConnected) { showToast("No Internet", "error"); return; }
             if (!(await ensureServerConnection())) { showToast("Cant connect to server", "error"); return; }
 
             const btn = document.getElementById('google-btn');
@@ -2366,6 +2501,17 @@
                 if (btn) btn.disabled = false;
             }
         };
+
+        // one Google sign-in at a time: a second press while the first is running used to start a second session that logged the first one out
+        ;(function () {
+            const core = window.handleGoogleAuth;
+            let busy = false;
+            window.handleGoogleAuth = async function () {
+                if (busy) return;
+                busy = true;
+                try { return await core.apply(this, arguments); } finally { busy = false; }
+            };
+        })();
 
         window.finishGoogleSignup = async function() {
             if (!pendingGoogle) return;
@@ -2412,7 +2558,7 @@
                 await userRef.set(newUser);
                 currentUser = newUser;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
+                try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2845,7 +2991,7 @@
 
         window.handleAuth = async function() {
             const usedSavedPasswordFor = oneTapUser; oneTapUser = null; // set by a one-tap login from the saved-accounts list
-            if (!navigator.onLine) {
+            if (!navigator.onLine && !isFirebaseConnected) {
                 showToast("No Internet", "error");
                 return;
             }
@@ -2996,7 +3142,7 @@
 
                 currentUser = userVal;
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-                userRef.update({ activeSession: mySessionId }).catch(e => console.warn('Could not save the session id:', e)); // applied locally at once, no need to wait for the server
+                try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -3375,7 +3521,33 @@
         // (online) sees it as a banner right away and it disappears by itself. Nobody who comes online after it expired sees it.
         // (state variables for these notifications are declared near the top of the script, before the page first uses them)
 
+        // The bar and the "12 s left" label are updated by script (not by a CSS transition), so they also work in Low graphics
+        // mode, where all CSS animations are switched off, and they start from the right size even right after the banner appears.
+        function stopLiveCountdown() {
+            if (liveNoteRaf) { cancelAnimationFrame(liveNoteRaf); liveNoteRaf = null; }
+            clearInterval(liveNoteTick); liveNoteTick = null;
+        }
+        function runLiveCountdown(n) {
+            stopLiveCountdown();
+            const bar = document.getElementById('live-notification-bar');
+            const label = document.getElementById('live-notification-time');
+            const first = n.expiresAt - serverNow();
+            let total = n.createdAt ? n.expiresAt - n.createdAt : first;
+            if (!(total >= first && total <= 600000)) total = Math.max(first, 1000);
+            const paint = () => {
+                const left = Math.max(0, n.expiresAt - serverNow());
+                if (bar) bar.style.width = Math.max(0, Math.min(100, left / total * 100)) + '%';
+                if (label) label.textContent = left >= 60000 ? '· ' + Math.ceil(left / 60000) + ' min left' : '· ' + Math.ceil(left / 1000) + ' s left';
+                return left;
+            };
+            paint();
+            const low = document.body && document.body.classList.contains('perf-disable-animations');
+            if (low) liveNoteTick = setInterval(paint, 250);
+            else { const loop = () => { if (paint() > 0) liveNoteRaf = requestAnimationFrame(loop); }; liveNoteRaf = requestAnimationFrame(loop); }
+        }
+
         function hideLiveNotification() {
+            stopLiveCountdown();
             clearTimeout(liveNoteTimer); liveNoteTimer = null; shownLiveNoteId = null;
             const box = document.getElementById('live-notification');
             if (box) box.classList.add('hidden');
@@ -3391,18 +3563,10 @@
             if (remaining <= 0) { hideLiveNotification(); return; }
             const box = document.getElementById('live-notification');
             const text = document.getElementById('live-notification-text');
-            const bar = document.getElementById('live-notification-bar');
             if (!box || !text) return;
             text.textContent = n.text;                      // textContent: a message can never inject HTML
-            if (bar) {                                      // countdown bar
-                const total = Math.max(1, (n.expiresAt - (n.createdAt || (n.expiresAt - remaining))));
-                bar.style.transition = 'none';
-                bar.style.width = Math.max(0, Math.min(100, remaining / total * 100)) + '%';
-                void bar.offsetWidth;
-                bar.style.transition = 'width ' + remaining + 'ms linear';
-                bar.style.width = '0%';
-            }
-            box.classList.remove('hidden');
+            box.classList.remove('hidden');                 // show first, so the bar is laid out before it is measured
+            runLiveCountdown(n);
             shownLiveNoteId = n.id;
             clearTimeout(liveNoteTimer);
             liveNoteTimer = setTimeout(hideLiveNotification, remaining + 50);
@@ -3458,7 +3622,7 @@
                     expiresAt: now + seconds * 1000
                 };
                 await db.ref('liveNotification').set(payload);
-                const online = usersData.filter(u => u.isOnline === true).length;
+                const online = usersData.filter(u => isUserOnline(u)).length;
                 showToast('Notification sent to ' + online + ' online member' + (online === 1 ? '' : 's'));
                 adminNoticeDraft.text = '';
                 if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
@@ -3624,6 +3788,11 @@
             }
 
             if (currentUser && currentUser.isAdmin) {
+                db.ref('presence').on('value', snap => {
+                    presenceMap = {};
+                    snap.forEach(child => { presenceMap[child.key.toLowerCase()] = child.val() || {}; });
+                    if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
+                });
                 db.ref('users').on('value', snap => {
                     usersData = [];
                     if (snap.exists()) {
@@ -6431,7 +6600,7 @@
                 }
                 // Cancel the server-side onDisconnect so it can't re-create a
                 // ghost "users/<oldKey>" node when the tab closes later.
-                try { await oldRef.child('isOnline').onDisconnect().cancel(); } catch (e) {}
+                await endMyPresence(); // the old username's online entry is replaced by one for the new name (setupPresence below)
 
                 // Build ONE atomic multi-path update: create new record, delete old
                 // record, move leaderboard entries, refresh the username on notes.
@@ -6552,7 +6721,7 @@
                     }
                 });
 
-                try { await db.ref('users/' + usernameKey + '/isOnline').onDisconnect().cancel(); } catch (e) {}
+                await endMyPresence(); db.ref('presence/' + usernameKey).remove().catch(() => {}); // account is gone: no presence either
                 if (presenceRef) { db.ref('.info/connected').off('value', presenceRef); presenceRef = null; }
                 detachSessionListener();
                 detachMyBanListener();
@@ -6703,7 +6872,7 @@
                 if (f.gender !== 'all') {
                     if (f.gender === 'unset' ? !!u.gender : u.gender !== f.gender) return false;
                 }
-                if (f.status !== 'all' && (f.status === 'online') !== (u.isOnline === true)) return false;
+                if (f.status !== 'all' && (f.status === 'online') !== isUserOnline(u)) return false;
 
                 if (f.ban !== 'all') {
                     const bs = adminUserBanState(u);
@@ -6797,7 +6966,7 @@
         }
 
         function adminUserCardHtml(u) {
-                                const isOnline = u.isOnline === true;
+                                const isOnline = isUserOnline(u);
                                 const lastLoginFormatted = u.lastLogin 
                                     ? `${new Date(u.lastLogin).toLocaleDateString()} ${new Date(u.lastLogin).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` 
                                     : 'Never';
@@ -6882,19 +7051,19 @@
             container.innerHTML = `
                 <div class="space-y-6 max-w-2xl mx-auto">
                     <!-- Send a temporary notification to every online member -->
-                    <div class="glass p-6 rounded-xl space-y-3 border border-amber-500/30">
-                        <h2 class="text-lg font-bold text-amber-300 border-b border-white/10 pb-2"><i class="fa fa-bell mr-1"></i>Send Notification</h2>
+                    <div class="glass p-6 rounded-xl space-y-3 border border-sky-500/30">
+                        <h2 class="text-lg font-bold text-sky-300 border-b border-white/10 pb-2"><i class="fa fa-bell mr-1"></i>Send Notification</h2>
                         <p class="text-xs text-gray-400">Shows a temporary banner to every member who is online right now, and to visitors on the login page. It disappears by itself and is not kept.</p>
-                        <textarea id="admin-notice-text" rows="2" maxlength="200" placeholder="Write your message..." oninput="adminNoticeDraft.text = this.value; document.getElementById('admin-notice-count').textContent = this.value.length + '/200';" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-amber-400 transition text-sm resize-none">${escapeHtml(adminNoticeDraft.text)}</textarea>
+                        <textarea id="admin-notice-text" rows="2" maxlength="200" placeholder="Write your message..." oninput="adminNoticeDraft.text = this.value; document.getElementById('admin-notice-count').textContent = this.value.length + '/200';" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-sky-400 transition text-sm resize-none">${escapeHtml(adminNoticeDraft.text)}</textarea>
                         <div class="flex items-center justify-between text-[11px] text-gray-500">
                             <span id="admin-notice-count">${adminNoticeDraft.text.length}/200</span>
-                            <span><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>${usersData.filter(u => u.isOnline === true).length} online now (including you)</span>
+                            <span><span class="inline-block w-2 h-2 rounded-full bg-emerald-400 mr-1"></span>${usersData.filter(u => isUserOnline(u)).length} online now (including you)</span>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-2">
                             <select id="admin-notice-seconds" onchange="adminNoticeDraft.seconds = Number(this.value)" class="p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
                                 ${[[15, 'Shows for 15 seconds'], [30, 'Shows for 30 seconds'], [60, 'Shows for 1 minute'], [300, 'Shows for 5 minutes']].map(o => `<option value="${o[0]}" ${Number(adminNoticeDraft.seconds) === o[0] ? 'selected' : ''} class="bg-gray-900">${o[1]}</option>`).join('')}
                             </select>
-                            <button type="button" id="admin-notice-send" onclick="adminSendNotification()" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold transition disabled:opacity-60"><i class="fa fa-paper-plane mr-1"></i>Send to online members</button>
+                            <button type="button" id="admin-notice-send" onclick="adminSendNotification()" class="flex-1 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold transition disabled:opacity-60"><i class="fa fa-paper-plane mr-1"></i>Send to online members</button>
                             <button type="button" onclick="adminClearNotification()" class="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition">Clear now</button>
                         </div>
                     </div>
@@ -7570,6 +7739,7 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 await db.ref(`users/${usernameKey}`).remove();
+                db.ref(`presence/${usernameKey}`).remove().catch(() => {});
                 await db.ref(`leaderboards/snake/${usernameKey}`).remove();
                 await db.ref(`leaderboards/memory/${usernameKey}`).remove();
                 await db.ref(`leaderboards/flappy/${usernameKey}`).remove();
