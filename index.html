@@ -854,7 +854,7 @@
                 <p class="text-sm text-gray-200 text-center font-semibold">Choose an account</p>
                 <div id="account-chooser-list" class="space-y-2 max-h-72 overflow-y-auto"></div>
                 <button type="button" onclick="useAnotherAccount()" class="w-full p-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm font-semibold transition"><i class="fa fa-user-plus mr-2"></i>Use another account</button>
-                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. A saved password is encrypted and never leaves this device. Tap × to delete an account and its password.</p>
+                <p class="text-[11px] text-gray-500 text-center">These accounts are saved on this device only. A saved password is encrypted and never leaves this device. Tap × to delete an account and its saved login.</p>
             </div>
 
             <form id="auth-form" class="space-y-4" onsubmit="event.preventDefault();">
@@ -933,7 +933,7 @@
                 </label>
                 <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
                     <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Also save my password on this device<span class="block text-[11px] text-gray-500">Stored encrypted on this device only, so one tap signs you in. Use it only on your own device.</span></span>
+                    <span>Also save my login on this device<span class="block text-[11px] text-gray-500">Passwords are stored encrypted on this device only; Google accounts simply stay signed in. Then one tap signs you in. Use it only on your own device.</span></span>
                 </label>
 
                 <!-- Login captcha: appears after more than 3 wrong login attempts -->
@@ -2464,13 +2464,48 @@
             proceedAfterLogin();
         }
 
-        window.handleGoogleAuth = async function(hintEmail) {
+        // ---- one-tap Google login ----
+        // Firebase keeps a Google sign-in on the device until it is signed out. For a saved Google account that asked to stay
+        // signed in, tapping it uses that session (the server re-checks it) instead of opening the Google pop-up.
+        let authReadyPromise = null;
+        function waitForAuthReady() {
+            if (!authReadyPromise) authReadyPromise = new Promise(resolve => {
+                let done = false;
+                const finish = (u) => { if (!done) { done = true; resolve(u || null); } };
+                try { const unsub = auth.onAuthStateChanged(u => { try { unsub(); } catch (e) {} finish(u); }); } catch (e) { finish(null); }
+                setTimeout(() => finish(auth.currentUser), 4000);
+            });
+            return authReadyPromise;
+        }
+        async function tryGoogleOneTap(entry) {
+            let found = null;
+            try {
+                await waitForAuthReady();
+                const u = auth.currentUser;
+                const email = String(entry.e || '').toLowerCase();
+                if (!u || !email || String(u.email || '').toLowerCase() !== email) return false;
+                if (!(u.providerData || []).some(p => p && p.providerId === 'google.com')) return false;
+                await u.getIdToken(true);                       // Firebase's server confirms the session is still valid (not revoked or disabled)
+                if (!u.emailVerified) return false;
+                const key = String(entry.u).toLowerCase();
+                const snap = await db.ref('users/' + key).once('value');
+                if (!snap.exists()) return false;
+                const val = snap.val();
+                if (val.authUid && val.authUid !== u.uid) return false;
+                found = { key: key, val: val, user: u, email: email };
+            } catch (e) { return false; }                       // anything unexpected: use the normal Google pop-up instead
+            await completeGoogleLogin(found.key, found.val, found.user, found.email);
+            return true;
+        }
+
+        window.handleGoogleAuth = async function(hintEmail, oneTapEntry) {
             if (!navigator.onLine && !isFirebaseConnected) { showToast("No Internet", "error"); return; }
             if (!(await ensureServerConnection())) { showToast("Cant connect to server", "error"); return; }
 
             const btn = document.getElementById('google-btn');
             if (btn) btn.disabled = true;
             try {
+                if (oneTapEntry && await tryGoogleOneTap(oneTapEntry)) return;   // saved Google sign-in still valid: no pop-up needed
                 const provider = new firebase.auth.GoogleAuthProvider();
                 provider.setCustomParameters(typeof hintEmail === 'string' && hintEmail ? { login_hint: hintEmail } : { prompt: 'select_account' });
                 const result = await auth.signInWithPopup(provider);
@@ -2608,6 +2643,7 @@
             const rest = all.filter(a => a.u.toLowerCase() !== k);
             const entry = { u: user.username, g: user.googleAccount === true, e: String(user.authEmail || user.email || '').toLowerCase(), t: Date.now() };
             if (prev && prev.pw) entry.pw = prev.pw;      // keep an already saved (encrypted) password
+            if (prev && prev.gs) entry.gs = true;         // keep "stay signed in with Google"
             rest.unshift(entry);
             setSavedAccounts(rest);
         }
@@ -2665,6 +2701,22 @@
             if (!list.some(a => a.pw)) deleteDeviceKey();   // no encrypted passwords left: drop the key too
             return true;
         }
+        // Google accounts have no password. "Also save my login" for them means: the Firebase sign-in of this Google account
+        // stays on this device (we do not sign it out when logging out), so a tap on the account signs in without the Google pop-up.
+        function setGoogleStay(username, on) {
+            const k = String(username || '').toLowerCase();
+            const list = getSavedAccounts();
+            const entry = list.find(a => a.u.toLowerCase() === k);
+            if (!entry) return false;
+            if (on) entry.gs = true; else delete entry.gs;
+            setSavedAccounts(list);
+            return true;
+        }
+        function shouldKeepGoogleSession(user) {
+            if (!user || user.googleAccount !== true || !user.username) return false;
+            const k = user.username.toLowerCase();
+            return getSavedAccounts().some(a => a.u.toLowerCase() === k && a.gs === true);
+        }
         // called when a login made with a saved password was rejected: the saved password is out of date
         function discardStaleSavedPassword(username) {
             if (!username) return;
@@ -2689,7 +2741,7 @@
             const main = document.getElementById('save-account-checkbox');
             const pw = document.getElementById('save-password-checkbox');
             if (!row || !main || !pw) return;
-            row.classList.toggle('hidden', !(CAN_SAVE_PASSWORD && main.checked));
+            row.classList.toggle('hidden', !main.checked);
             if (!main.checked) pw.checked = false;
         }
         window.updateSavePasswordRow = updateSavePasswordRow;
@@ -2703,7 +2755,7 @@
                         <span class="w-10 h-10 shrink-0 rounded-full bg-purple-500/25 border border-purple-400/40 flex items-center justify-center font-bold text-purple-200">${escapeHtml(a.u.charAt(0).toUpperCase())}</span>
                         <span class="min-w-0 flex-1">
                             <span class="block text-sm font-semibold text-gray-100 truncate">${escapeHtml(a.u)}</span>
-                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${a.pw ? '<i class="fa fa-key mr-1 text-emerald-300" title="Password saved on this device (encrypted): one tap signs you in"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
+                            <span class="block text-[11px] text-gray-400 truncate">${a.g ? '<i class="fa-brands fa-google mr-1"></i>Google · ' : ''}${(a.pw || a.gs) ? '<i class="fa fa-key mr-1 text-emerald-300" title="' + (a.gs ? 'Signed in with Google on this device: one tap' : 'Password saved on this device (encrypted): one tap signs you in') + '"></i>' : ''}${escapeHtml(maskEmail(a.e))}</span>
                         </span>
                         <i class="fa fa-chevron-right text-gray-500 text-xs"></i>
                     </button>
@@ -2752,11 +2804,13 @@
             if (!a) return;
             showLoginFormFromChooser();
             document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
-            document.getElementById('save-password-checkbox').checked = !!a.pw;
+            document.getElementById('save-password-checkbox').checked = !!(a.pw || a.gs);
             updateSavePasswordRow();
             document.getElementById('username').value = a.u;
             if (a.g) {
-                handleGoogleAuth(a.e);                                          // Google account: continue with Google
+                // Google account: with "stay signed in" it logs in at once, otherwise (or if that session is gone) Google opens
+                if (a.gs) showToast('Signing in with Google…');
+                handleGoogleAuth(a.e, a.gs ? a : undefined);
                 return;
             }
             document.getElementById('password').value = '';
@@ -2785,7 +2839,10 @@
             if (!list.some(x => x.pw)) deleteDeviceKey();
             if (applySavedAccountsUI()) renderAccountChooser();
             else window.refreshAuthEntry();
-            showToast('Removed ' + a.u + (a.pw ? ' and its saved password' : '') + ' from this device');
+            if (a.gs) {
+                try { const cu = auth.currentUser; if (cu && String(cu.email || '').toLowerCase() === String(a.e || '').toLowerCase()) auth.signOut(); } catch (e) {}
+            }
+            showToast('Removed ' + a.u + (a.pw ? ' and its saved password' : (a.gs ? ' and its saved Google sign-in' : '')) + ' from this device');
         };
 
         // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
@@ -3244,7 +3301,8 @@
                     if (saveBox && saveBox.checked) {
                         const pwBox = document.getElementById('save-password-checkbox');
                         const typedPw = (document.getElementById('password') || {}).value || '';
-                        if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && currentUser.googleAccount !== true && typedPw) setSavedPassword(currentUser.username, typedPw);
+                        if (currentUser.googleAccount === true) setGoogleStay(currentUser.username, !!(pwBox && pwBox.checked)); // Google: stay signed in on this device
+                        else if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && typedPw) setSavedPassword(currentUser.username, typedPw);
                         else if (pwBox && !pwBox.checked) setSavedPassword(currentUser.username, null);
                     }
                 }
@@ -3822,7 +3880,7 @@
             detachMyBanListener();
             detachSessionListener();
             mySessionId = null;
-            try { await auth.signOut(); } catch (e) { console.warn('Firebase Auth sign-out issue:', e); }
+            if (!shouldKeepGoogleSession(currentUser)) { try { await auth.signOut(); } catch (e) { console.warn('Firebase Auth sign-out issue:', e); } } // a saved Google account stays signed in on this device
             currentUser = null;
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }

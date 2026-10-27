@@ -473,12 +473,13 @@
     {
       id: 'save_password',
       title: 'Save password',
-      keys: ['save password', 'save my password', 'also save my password', 'remember password', 'saved password', 'one tap login', 'one tap', 'tap to login', 'click account to login', 'auto login', 'login automatically', 'key icon', 'forget saved password', 'remove saved password', 'delete saved password', 'password not saving', 'password not saved', 'saved password not working', 'out of date'],
+      keys: ['save password', 'save my password', 'also save my password', 'also save my login', 'save my login', 'remember password', 'saved password', 'one tap login', 'one tap', 'tap to login', 'click account to login', 'auto login', 'login automatically', 'key icon', 'forget saved password', 'remove saved password', 'delete saved password', 'password not saving', 'password not saved', 'saved password not working', 'out of date', 'google password', 'google not saving', 'google one tap', 'stay signed in', 'google account password', 'google login not saving'],
       answer:
-        '**Save password (one-tap login):** on the login form tick **Save this account on this device**, then **Also save my password on this device**, and log in. Next time, tap that account in **Choose an account** and JB HUB logs you in straight away. Accounts with a saved password show a **key icon**.\n' +
-        '• The password is **encrypted** and kept **on this device only** – it is used just to sign you in.\n' +
-        '• If the saved password stops working (for example you changed it), JB HUB deletes it and asks you to type the new one.\n' +
-        '• Tap **×** to remove an account together with its saved password. Unticking **Also save my password** at your next login also deletes it.\n' +
+        '**Save my login (one-tap):** on the login form tick **Save this account on this device**, then **Also save my login on this device**, and log in. Next time, tap that account in **Choose an account** and JB HUB logs you in straight away. Accounts set up this way show a **key icon**.\n' +
+        '• **Password accounts:** the password is **encrypted** and kept **on this device only**. If it stops working (for example you changed it) it is deleted and you are asked to type the new one.\n' +
+        '• **Google accounts** have no password, so JB HUB keeps your **Google sign-in** on this device instead: a tap signs you in with no Google pop-up. If that sign-in has expired or was removed, the normal Google window opens.\n' +
+        '• A device keeps **one** Google sign-in at a time, so with two saved Google accounts only the one you used last is instant; the other opens Google with its e-mail pre-selected.\n' +
+        '• Tap **×** to remove an account together with its saved login. Unticking **Also save my login** at your next login also removes it.\n' +
         '• If the security check (captcha) is active, you still have to solve it.\n' +
         '• Be careful: anyone who can use this browser can tap the account and get in. Use this only on your own phone or computer, never on a shared one.'
     },
