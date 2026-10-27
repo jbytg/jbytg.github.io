@@ -977,7 +977,7 @@
                 <div class="text-center">
                     <p class="text-xs text-gray-400">Signed in with Google as</p>
                     <p id="google-signup-email" class="text-sm font-bold text-purple-200 break-all"></p>
-                    <p class="text-xs text-gray-400 mt-1">Choose a username to finish creating your account.</p>
+                    <p class="text-xs text-gray-400 mt-1">Choose a username, date of birth, gender and password to finish creating your account.</p>
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
@@ -994,6 +994,20 @@
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                     </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Create Password</label>
+                    <div class="relative">
+                        <input type="password" id="gs-password" autocomplete="new-password" placeholder="At least 6 characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm pr-10">
+                        <button type="button" onclick="togglePass('gs-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-gs-password"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Confirm Password</label>
+                    <div class="relative">
+                        <input type="password" id="gs-confirm-password" autocomplete="new-password" placeholder="Re-enter password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm pr-10">
+                        <button type="button" onclick="togglePass('gs-confirm-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-gs-confirm-password"></i></button>
+                    </div>
                 </div>
                 <button type="button" id="gs-create-btn" onclick="finishGoogleSignup()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Create Account</button>
                 <button type="button" onclick="cancelGoogleSignup()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
@@ -2409,6 +2423,7 @@
             document.getElementById('google-signup-email').textContent = pendingGoogle.email;
             const suggested = String(pendingGoogle.name || '').replace(/[@.#$\[\]\/\s]+/g, '').slice(0, 20);
             document.getElementById('gs-username').value = suggested.length >= 3 ? suggested : '';
+            { const gp = document.getElementById('gs-password'), gc = document.getElementById('gs-confirm-password'); if (gp) gp.value = ''; if (gc) gc.value = ''; }
             document.getElementById('auth-subtitle').innerText = 'Finish creating your account';
             document.getElementById('google-signup-panel').classList.remove('hidden');
         }
@@ -2561,6 +2576,8 @@
             const username = document.getElementById('gs-username').value.trim();
             const dob = document.getElementById('gs-dob').value;
             const gender = document.getElementById('gs-gender').value;
+            const gsPassword = document.getElementById('gs-password').value;
+            const gsConfirm = document.getElementById('gs-confirm-password').value;
 
             const usernameErr = usernameRuleError(username);
             if (usernameErr) { showToast(usernameErr, "error"); return; }
@@ -2570,6 +2587,8 @@
                 showToast("Account Protection: Age must be greater than 1 year to create an account", "error");
                 return;
             }
+            if (gsPassword.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+            if (gsPassword !== gsConfirm) { showToast("Passwords do not match.", "error"); return; }
 
             const btn = document.getElementById('gs-create-btn');
             if (btn) btn.disabled = true;
@@ -2580,6 +2599,23 @@
                 if (await emailTakenByOther(pendingGoogle.email, usernameKey)) {
                     showToast("An account with this email already exists. Please log in.", "error");
                     return;
+                }
+
+                // Add an email+password sign-in to this Google identity (stored hashed by Firebase, never in the database).
+                // The user can then log in with username/email + this password, or with Google.
+                try {
+                    const pwCred = firebase.auth.EmailAuthProvider.credential(pendingGoogle.email, gsPassword);
+                    await auth.currentUser.linkWithCredential(pwCred);
+                } catch (linkErr) {
+                    if (linkErr && (linkErr.code === 'auth/provider-already-linked' || linkErr.code === 'auth/credential-already-in-use' || linkErr.code === 'auth/email-already-in-use')) {
+                        // Already has a password sign-in: set the chosen password instead
+                        await auth.currentUser.updatePassword(gsPassword);
+                    } else if (linkErr && linkErr.code === 'auth/weak-password') {
+                        showToast("Password is too weak. Use at least 6 characters.", "error");
+                        return;
+                    } else {
+                        throw linkErr;
+                    }
                 }
 
                 // New accounts are NEVER admins. Admin rights are given only by an existing admin (Admin Panel) or by the owner in the Firebase console.
@@ -6753,7 +6789,8 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const enteredPass = document.getElementById('delete-confirm-pass').value;
-                const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password;
+                const hasPasswordLogin = !!(auth.currentUser && (auth.currentUser.providerData || []).some(pd => pd && pd.providerId === 'password'));
+                const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password && !hasPasswordLogin;
                 if (!isGoogleAcct) {
                     if (!enteredPass) {
                         showToast("Password confirmation required!", "error");
@@ -6766,7 +6803,38 @@
                 }
 
                 const usernameKey = currentUser.username.toLowerCase();
-                
+
+                // ---- Delete the Firebase Authentication user FIRST ----
+                try {
+                    let authUser = auth.currentUser;
+
+                    // Email/password accounts were just re-authenticated by verifyCurrentUserPassword.
+                    // Google accounts (no password) must re-authenticate with a popup.
+                    if (isGoogleAcct || !authUser) {
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        const result = await auth.signInWithPopup(provider);
+                        authUser = result.user;
+                    }
+
+                    if (currentUser.authUid && authUser.uid !== currentUser.authUid) {
+                        showToast("Signed in with a different account. Deletion canceled.", "error");
+                        return;
+                    }
+
+                    await authUser.delete();
+                } catch (e) {
+                    console.error('Auth delete failed:', e);
+                    if (e.code === 'auth/requires-recent-login') {
+                        showToast("Please log out, log in again, then retry deleting.", "error");
+                    } else if (e.code === 'auth/popup-closed-by-user') {
+                        showToast("Deletion canceled.", "error");
+                    } else {
+                        showToast("Could not delete login: " + (e.message || e.code), "error");
+                    }
+                    return; // stop so database and Authentication don't get out of sync
+                }
+                // ---- then the existing database cleanup ----
+
                 notesData.forEach(async (note) => {
                     if (note.userId === currentUser.id) {
                         await db.ref('notes/' + note.id).remove();
