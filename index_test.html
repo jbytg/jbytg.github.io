@@ -2245,10 +2245,6 @@
             if (!pendingSignup || signupFinishing) return;
             signupFinishing = true;
             try {
-                // IMPORTANT: user.reload() updates emailVerified locally, but the login token sent to the
-                // database still says email_verified=false until it is refreshed. Without this refresh the
-                // database rules reject the save with "permission denied".
-                try { await authUser.getIdToken(true); } catch (tokErr) { console.warn('Token refresh failed:', tokErr); }
                 const p = pendingSignup;
                 const usernameKey = p.username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
@@ -2304,9 +2300,7 @@
                 setSignupVerifyStatus('Verified ✓', 'text-xs font-semibold text-green-400');
                 await finishSignupAfterVerification(fresh);
             } catch (err) {
-                console.error('Signup verification/save error:', err);
-                const denied = err && (err.code === 'PERMISSION_DENIED' || /permission[_ ]denied/i.test(err.message || ''));
-                if (auto !== true) showToast(denied ? 'Your email is verified, but the database refused to save the account (Realtime Database rules). Please contact the admin.' : authErrorMessage(err), 'error');
+                if (auto !== true) showToast(authErrorMessage(err), 'error');
             }
         };
 
@@ -6772,7 +6766,38 @@
                 }
 
                 const usernameKey = currentUser.username.toLowerCase();
-                
+
+                // ---- Delete the Firebase Authentication user FIRST ----
+                try {
+                    let authUser = auth.currentUser;
+
+                    // Email/password accounts were just re-authenticated by verifyCurrentUserPassword.
+                    // Google accounts (no password) must re-authenticate with a popup.
+                    if (isGoogleAcct || !authUser) {
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        const result = await auth.signInWithPopup(provider);
+                        authUser = result.user;
+                    }
+
+                    if (currentUser.authUid && authUser.uid !== currentUser.authUid) {
+                        showToast("Signed in with a different account. Deletion canceled.", "error");
+                        return;
+                    }
+
+                    await authUser.delete();
+                } catch (e) {
+                    console.error('Auth delete failed:', e);
+                    if (e.code === 'auth/requires-recent-login') {
+                        showToast("Please log out, log in again, then retry deleting.", "error");
+                    } else if (e.code === 'auth/popup-closed-by-user') {
+                        showToast("Deletion canceled.", "error");
+                    } else {
+                        showToast("Could not delete login: " + (e.message || e.code), "error");
+                    }
+                    return; // stop so database and Authentication don't get out of sync
+                }
+                // ---- then the existing database cleanup ----
+
                 notesData.forEach(async (note) => {
                     if (note.userId === currentUser.id) {
                         await db.ref('notes/' + note.id).remove();
