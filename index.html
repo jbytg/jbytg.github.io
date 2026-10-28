@@ -68,6 +68,7 @@
         .glass { background: rgba(15, 15, 25, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .active-tab { border-bottom: 3px solid #a855f7; color: #a855f7; font-weight: bold; }
         .hidden { display: none !important; }
+        body.deleting-account #toast { z-index: 9100 !important; }
         /* Keep native dropdown options readable on dark/glass UI. Some browsers
            inherit a white option background with white text, making the labels
            appear only after hovering. */
@@ -714,7 +715,13 @@
     </nav>
 
     <!-- Notification Toast -->
-    <div id="toast" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
+    <!-- Shown while an account is being deleted: blocks every click until it finishes -->
+    <div id="deleting-overlay" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-black/85 text-center px-6" style="z-index:9000;" role="alert" aria-live="assertive">
+        <div class="w-14 h-14 rounded-full border-4 border-red-500/30 border-t-red-500 animate-spin mb-5"></div>
+        <p class="text-lg font-bold text-red-300">Your account is being deleted</p>
+        <p class="text-sm text-gray-300 mt-1">Please wait… Do not close or refresh this page.</p>
+    </div>
+    <div id="toast" style="z-index:9500;" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
         <i id="toast-icon" class="fa"></i>
         <span id="toast-msg"></span>
     </div>
@@ -907,23 +914,15 @@
                         </div>
                     </div>
 
-                    <!-- Account "I am human" Verification & Test Feature -->
-                    <div class="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2">
-                        <div class="flex items-center space-x-3 cursor-pointer select-none">
-                            <input type="checkbox" id="human-verify" class="w-4 h-4 accent-purple-600 rounded cursor-pointer" pointer-events-none>
-                            <label for="human-verify" class="text-xs text-gray-300 cursor-pointer flex items-center space-x-2">
-                                <i class="fa-solid fa-user-check text-purple-400"></i>
-                                <span>Verify as human</span>
-                            </label>
+                    <!-- Sign-up captcha -->
+                    <div id="signup-captcha-box" class="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                        <p class="text-xs text-purple-200 font-semibold"><i class="fa-solid fa-user-check text-purple-400 mr-1"></i>Captcha verification</p>
+                        <p class="text-[11px] text-gray-400">Type the characters you see to prove you are human.</p>
+                        <div class="flex items-center gap-2">
+                            <canvas id="signup-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                            <button type="button" onclick="refreshSignupCaptcha(true)" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
                         </div>
-                        
-                        <!-- Test Human Interactive Feature -->
-                        <div id="human-test-box" class="pt-2 border-t border-white/10">
-                            <button type="button" onclick="openHumanTestPrompt()" class="w-full py-2 px-3 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 rounded-lg text-xs text-purple-200 font-semibold transition flex items-center justify-center space-x-2">
-                                <i class="fa fa-robot text-pink-400"></i>
-                                <span id="human-test-btn-text">Test Human Verification</span>
-                            </button>
-                        </div>
+                        <input type="text" id="signup-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
                     </div>
                 </div>
 
@@ -935,6 +934,12 @@
                     <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
                     <span>Also save my login on this device<span class="block text-[11px] text-gray-500">Passwords are stored encrypted on this device only; Google accounts simply stay signed in. Then one tap signs you in. Use it only on your own device.</span></span>
                 </label>
+
+                <!-- Device suspended notice: after 10 wrong passwords in a row -->
+                <div id="login-suspend-box" class="hidden p-3 bg-red-500/10 border border-red-500/40 rounded-xl space-y-1">
+                    <p class="text-xs text-red-300 font-semibold"><i class="fa fa-ban mr-1"></i>This device is suspended</p>
+                    <p id="login-suspend-text" class="text-[11px] text-gray-300"></p>
+                </div>
 
                 <!-- Login captcha: appears after more than 3 wrong login attempts -->
                 <div id="login-captcha-box" class="hidden p-3 bg-white/5 border border-amber-500/30 rounded-xl space-y-2">
@@ -1008,6 +1013,15 @@
                         <input type="password" id="gs-confirm-password" autocomplete="new-password" placeholder="Re-enter password" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm pr-10">
                         <button type="button" onclick="togglePass('gs-confirm-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-gs-confirm-password"></i></button>
                     </div>
+                </div>
+                <div id="gs-cap-box" class="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                    <p class="text-xs text-purple-200 font-semibold"><i class="fa-solid fa-user-check text-purple-400 mr-1"></i>Captcha verification</p>
+                    <p class="text-[11px] text-gray-400">Type the characters you see to prove you are human.</p>
+                    <div class="flex items-center gap-2">
+                        <canvas id="gs-cap-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                        <button type="button" onclick="refreshAccountCaptcha('gs-cap')" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
+                    </div>
+                    <input type="text" id="gs-cap-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
                 </div>
                 <button type="button" id="gs-create-btn" onclick="finishGoogleSignup()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Create Account</button>
                 <button type="button" onclick="cancelGoogleSignup()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
@@ -1262,6 +1276,21 @@
         let currentTab = 'notes';
         let toastTimeout = null;
         let humanTestPassed = false;
+        let signupCaptchaCode = '';
+        let accountDeleting = false;
+        function showDeletingOverlay() {
+            const o = document.getElementById('deleting-overlay');
+            if (o) o.classList.remove('hidden');
+            document.body.classList.add('deleting-account');
+        }
+        function hideDeletingOverlay() {
+            const o = document.getElementById('deleting-overlay');
+            if (o) o.classList.add('hidden');
+            document.body.classList.remove('deleting-account');
+        }
+        // while deleting: no keyboard actions, and the browser warns before leaving the page
+        document.addEventListener('keydown', function (e) { if (accountDeleting) { e.preventDefault(); e.stopPropagation(); } }, true);
+        window.addEventListener('beforeunload', function (e) { if (accountDeleting) { e.preventDefault(); e.returnValue = ''; } });
         let presenceRef = null;
         // ===== Online status =====
         // Every logged-in DEVICE writes its own entry  presence/<username>/<sessionId>  (the server removes it when that device
@@ -1334,8 +1363,7 @@
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
-            document.getElementById('human-verify').checked = false;
-            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            resetSignupCaptcha();
             showToast("This account was removed or renamed. Please log in again.", "error");
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -1394,8 +1422,7 @@
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
-            document.getElementById('human-verify').checked = false;
-            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            resetSignupCaptcha();
 
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -1473,8 +1500,7 @@
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
-            document.getElementById('human-verify').checked = false;
-            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            resetSignupCaptcha();
 
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -2030,11 +2056,11 @@
             document.getElementById('password').setAttribute('autocomplete', isSignupMode ? 'new-password' : 'current-password');
             
             humanTestPassed = false;
-            document.getElementById('human-verify').checked = false;
-            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            resetSignupCaptcha();
             
             checkPasswordStrength('password', 'strength-bar', 'strength-text');
             updateLoginCaptchaUI();
+            updateLoginSuspendUI();
         }
 
         window.showAbout = function() {
@@ -2067,39 +2093,6 @@
             else if (score === 2) { bar.style.width = '50%'; bar.className = 'h-full bg-yellow-500 transition-all duration-300'; text.innerText = 'Fair'; }
             else if (score === 3) { bar.style.width = '75%'; bar.className = 'h-full bg-blue-500 transition-all duration-300'; text.innerText = 'Strong'; }
             else { bar.style.width = '100%'; bar.className = 'h-full bg-emerald-500 transition-all duration-300'; text.innerText = 'Very Strong'; }
-        }
-
-        window.openHumanTestPrompt = function() {
-            if (humanTestPassed) {
-                showToast("Human verification already completed!");
-                return;
-            }
-
-            const num1 = Math.floor(Math.random() * 12) + 3;
-            const num2 = Math.floor(Math.random() * 12) + 2;
-            const correctAnswer = num1 + num2;
-
-            const inputsHtml = `
-                <div class="text-center space-y-2">
-                    <p class="text-sm font-bold text-purple-200">Solve this arithmetic challenge:</p>
-                    <div class="text-xl font-extrabold text-pink-400 bg-black/40 py-2 rounded-xl border border-purple-500/30">
-                        ${num1} + ${num2} = ?
-                    </div>
-                    <input type="number" id="human-answer-input" placeholder="Your answer" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-center">
-                </div>
-            `;
-
-            openModal("Test Human Verification", "Complete the challenge below to verify you are human.", inputsHtml, () => {
-                const userAnswer = parseInt(document.getElementById('human-answer-input').value);
-                if (userAnswer === correctAnswer) {
-                    humanTestPassed = true;
-                    document.getElementById('human-verify').checked = true;
-                    document.getElementById('human-test-btn-text').innerText = 'Verified Human ✓';
-                    showToast("Human verification successful!");
-                } else {
-                    showToast("Incorrect answer! Please try again.", "error");
-                }
-            });
         }
 
         // ================= EMAIL-VERIFIED SIGN UP + EMAIL LOGIN =================
@@ -2426,6 +2419,7 @@
             { const gp = document.getElementById('gs-password'), gc = document.getElementById('gs-confirm-password'); if (gp) gp.value = ''; if (gc) gc.value = ''; }
             document.getElementById('auth-subtitle').innerText = 'Finish creating your account';
             document.getElementById('google-signup-panel').classList.remove('hidden');
+            drawAccountCaptcha('gs-cap');
         }
 
         function hideGoogleSignupPanel() {
@@ -2590,6 +2584,14 @@
             if (gsPassword.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
             if (gsPassword !== gsConfirm) { showToast("Passwords do not match.", "error"); return; }
 
+            const gsCapTyped = ((document.getElementById('gs-cap-input') || {}).value || '').trim().toUpperCase();
+            if (!gsCapTyped) { showToast("Please enter the captcha characters", "error"); return; }
+            if (gsCapTyped !== accountCaptchaCodes['gs-cap']) {
+                showToast("Incorrect captcha. Here is a new one.", "error");
+                drawAccountCaptcha('gs-cap');
+                return;
+            }
+
             const btn = document.getElementById('gs-create-btn');
             if (btn) btn.disabled = true;
             try {
@@ -2642,6 +2644,7 @@
                 showToast(googleErrorMessage(err), 'error');
             } finally {
                 if (btn) btn.disabled = false;
+                if (pendingGoogle) drawAccountCaptcha('gs-cap');   // a captcha can only be used once
             }
         };
 
@@ -2900,6 +2903,53 @@
             } catch (e) { /* offline or no permission: keep the list as it is */ }
         }
 
+        // ===== Device suspension: 10 wrong passwords in a row = login blocked on this device for 1 day =====
+        const LOGIN_SUSPEND_AFTER = 10;                       // wrong attempts in a row (counted until a correct login)
+        const LOGIN_SUSPEND_MS = 24 * 60 * 60 * 1000;         // 1 day
+        let totalFailsMem = 0, suspendedUntilMem = 0;         // fallback if localStorage is unavailable
+
+        function getTotalLoginFails() {
+            let n = totalFailsMem;
+            try { const v = parseInt(localStorage.getItem('jb_login_fails_total') || '0', 10); if (v > n) n = v; } catch (e) {}
+            return n;
+        }
+        function setTotalLoginFails(n) {
+            totalFailsMem = n;
+            try { if (n > 0) localStorage.setItem('jb_login_fails_total', String(n)); else localStorage.removeItem('jb_login_fails_total'); } catch (e) {}
+        }
+        function getSuspendedUntil() {
+            let t = suspendedUntilMem;
+            try { const v = parseInt(localStorage.getItem('jb_device_suspended_until') || '0', 10); if (v > t) t = v; } catch (e) {}
+            if (t && Date.now() >= t) {                        // suspension is over
+                suspendedUntilMem = 0;
+                try { localStorage.removeItem('jb_device_suspended_until'); } catch (e) {}
+                return 0;
+            }
+            return t;
+        }
+        function isDeviceSuspended() { return getSuspendedUntil() > Date.now(); }
+        function suspendLeftText() {
+            const mins = Math.max(1, Math.ceil((getSuspendedUntil() - Date.now()) / 60000));
+            const h = Math.floor(mins / 60), m = mins % 60;
+            return h > 0 ? (h + 'h ' + m + 'm') : (m + 'm');
+        }
+        function suspendDevice() {
+            suspendedUntilMem = Date.now() + LOGIN_SUSPEND_MS;
+            try { localStorage.setItem('jb_device_suspended_until', String(suspendedUntilMem)); } catch (e) {}
+            setTotalLoginFails(0);
+            setLoginFails(0);
+        }
+        function updateLoginSuspendUI() {
+            const box = document.getElementById('login-suspend-box');
+            if (!box) return;
+            const show = !isSignupMode && isDeviceSuspended();
+            box.classList.toggle('hidden', !show);
+            if (show) {
+                const t = document.getElementById('login-suspend-text');
+                if (t) t.textContent = 'Too many wrong passwords. Login is blocked on this device for 1 day. Try again in ' + suspendLeftText() + '.';
+            }
+        }
+
         // ===== Login captcha: required after more than 3 wrong login attempts =====
         const LOGIN_FAIL_LIMIT = 3;                    // after this many wrong attempts the captcha appears
         const LOGIN_FAIL_RESET_MS = 30 * 60 * 1000;    // old failures are forgotten after 30 minutes
@@ -2933,13 +2983,13 @@
             return out;
         }
 
-        function drawLoginCaptcha() {
-            const cv = document.getElementById('login-captcha-canvas');
-            if (!cv) return;
+        // Draws a distorted captcha on the given canvas and returns the characters shown
+        function drawCaptchaOn(cv) {
+            if (!cv) return '';
             const g = cv.getContext('2d');
             const W = cv.width, H = cv.height;
             const rnd = (a, b) => a + Math.random() * (b - a);
-            loginCaptchaCode = makeCaptchaCode(5);
+            const code = makeCaptchaCode(5);
 
             const bg = g.createLinearGradient(0, 0, W, H);
             bg.addColorStop(0, '#1b1030'); bg.addColorStop(1, '#10203a');
@@ -2949,15 +2999,15 @@
                 g.fillStyle = `rgba(${rnd(120, 255) | 0}, ${rnd(120, 255) | 0}, ${rnd(120, 255) | 0}, ${rnd(0.2, 0.6)})`;
                 g.fillRect(rnd(0, W), rnd(0, H), 2, 2);
             }
-            const step = W / (loginCaptchaCode.length + 1);
-            for (let i = 0; i < loginCaptchaCode.length; i++) { // wobbly, rotated characters
+            const step = W / (code.length + 1);
+            for (let i = 0; i < code.length; i++) { // wobbly, rotated characters
                 g.save();
                 g.translate(step * (i + 1), H / 2 + rnd(-6, 6));
                 g.rotate(rnd(-0.45, 0.45));
                 g.font = `bold ${rnd(26, 34) | 0}px Arial, sans-serif`;
                 g.textAlign = 'center'; g.textBaseline = 'middle';
                 g.fillStyle = `hsl(${rnd(0, 360) | 0}, 85%, 75%)`;
-                g.fillText(loginCaptchaCode[i], 0, 0);
+                g.fillText(code[i], 0, 0);
                 g.restore();
             }
             for (let i = 0; i < 4; i++) {                       // lines drawn over the text
@@ -2968,6 +3018,26 @@
                 g.bezierCurveTo(rnd(0, W), rnd(0, H), rnd(0, W), rnd(0, H), rnd(W * 0.7, W), rnd(0, H));
                 g.stroke();
             }
+            return code;
+        }
+
+        function drawLoginCaptcha() {
+            loginCaptchaCode = drawCaptchaOn(document.getElementById('login-captcha-canvas')) || loginCaptchaCode;
+        }
+
+        function drawSignupCaptcha() {
+            signupCaptchaCode = drawCaptchaOn(document.getElementById('signup-captcha-canvas')) || signupCaptchaCode;
+        }
+        window.refreshSignupCaptcha = function (focus) {
+            drawSignupCaptcha();
+            const input = document.getElementById('signup-captcha-input');
+            if (input) { input.value = ''; if (focus) input.focus(); }
+        };
+        function resetSignupCaptcha() {
+            signupCaptchaCode = '';
+            const input = document.getElementById('signup-captcha-input');
+            if (input) input.value = '';
+            if (isSignupMode) drawSignupCaptcha();
         }
 
         window.refreshLoginCaptcha = function () {
@@ -2988,6 +3058,7 @@
 
         function resetLoginCaptcha() {
             setLoginFails(0);
+            setTotalLoginFails(0);
             loginCaptchaCode = '';
             const input = document.getElementById('login-captcha-input');
             if (input) input.value = '';
@@ -2998,6 +3069,9 @@
         function registerLoginFailure() {
             const n = getLoginFails() + 1;
             setLoginFails(n);
+            const total = getTotalLoginFails() + 1;
+            setTotalLoginFails(total);
+            if (total >= LOGIN_SUSPEND_AFTER) suspendDevice();   // 10 wrong passwords in a row: 1-day suspension
             const input = document.getElementById('login-captcha-input');
             if (input) input.value = '';
             const box = document.getElementById('login-captcha-box');
@@ -3005,7 +3079,79 @@
             else updateLoginCaptchaUI();
             return n;
         }
+
+        // ===== Same protection inside the app: Google account creation, Account tab, Delete account =====
+        // Uses the same counters as the login page: captcha after 3 wrong passwords, 1-day device suspension after 10.
+        const accountCaptchaCodes = {};
+        function accountCaptchaHtml(prefix) {
+            return `<div id="${prefix}-box" class="hidden p-3 bg-white/5 border border-amber-500/30 rounded-xl space-y-2 text-left">
+                <p class="text-xs text-amber-300 font-semibold"><i class="fa-solid fa-shield-halved mr-1"></i>Captcha verification</p>
+                <p class="text-[11px] text-gray-400">Too many wrong passwords. Type the characters you see to continue.</p>
+                <div class="flex items-center gap-2">
+                    <canvas id="${prefix}-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                    <button type="button" onclick="refreshAccountCaptcha('${prefix}')" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
+                </div>
+                <input type="text" id="${prefix}-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+            </div>`;
+        }
+        function drawAccountCaptcha(prefix) {
+            accountCaptchaCodes[prefix] = drawCaptchaOn(document.getElementById(prefix + '-canvas')) || '';
+            const i = document.getElementById(prefix + '-input');
+            if (i) i.value = '';
+        }
+        window.refreshAccountCaptcha = function (prefix) {
+            drawAccountCaptcha(prefix);
+            const i = document.getElementById(prefix + '-input');
+            if (i) i.focus();
+        };
+        // shows the captcha box only while the device has 3+ wrong passwords in a row
+        function syncAccountCaptcha(prefix) {
+            const box = document.getElementById(prefix + '-box');
+            if (!box) return;
+            const need = loginCaptchaNeeded();
+            const wasHidden = box.classList.contains('hidden');
+            box.classList.toggle('hidden', !need);
+            if (need && (wasHidden || !accountCaptchaCodes[prefix])) drawAccountCaptcha(prefix);
+        }
+        function leaveSuspendedSession() {
+            showToast("Too many wrong passwords. This device is suspended for 1 day.", "error");
+            try { logout(); } catch (e) {}
+            setTimeout(() => { try { updateLoginSuspendUI(); } catch (e) {} }, 400);
+        }
+        // call BEFORE checking a typed password; returns false when the action must stop
+        function passwordGate(prefix) {
+            if (isDeviceSuspended()) { leaveSuspendedSession(); return false; }
+            if (loginCaptchaNeeded()) {
+                const typed = ((document.getElementById(prefix + '-input') || {}).value || '').trim().toUpperCase();
+                if (!typed) { showToast("Please enter the captcha characters", "error"); return false; }
+                if (typed !== accountCaptchaCodes[prefix]) {
+                    showToast("Incorrect captcha. Here is a new one.", "error");
+                    drawAccountCaptcha(prefix);
+                    return false;
+                }
+            }
+            return true;
+        }
+        // call after a WRONG password
+        function passwordFailed(prefix, message) {
+            registerLoginFailure();
+            if (isDeviceSuspended()) { leaveSuspendedSession(); return; }
+            syncAccountCaptcha(prefix);
+            showToast(loginCaptchaNeeded() ? "Wrong password. Please complete the captcha to continue." : (message || "Incorrect current password!"), "error");
+        }
+        // call after a CORRECT password
+        function passwordOkReset(prefix) {
+            resetLoginCaptcha();
+            syncAccountCaptcha(prefix);
+        }
+        function accountHasPasswordLogin() {
+            return !!(auth.currentUser && (auth.currentUser.providerData || []).some(pd => pd && pd.providerId === 'password'));
+        }
+        function isGoogleOnlyAccount() {
+            return !!currentUser && currentUser.googleAccount === true && !currentUser.password && !accountHasPasswordLogin();
+        }
         updateLoginCaptchaUI(); // a visitor who already failed 3 times (then reloaded) still sees it
+        updateLoginSuspendUI(); setInterval(updateLoginSuspendUI, 30000); // suspended devices keep seeing the notice (and the countdown)
         window.refreshAuthEntry(); // saved accounts on this device -> show them first, otherwise the normal login page
 
         // ===== Passwords are verified by Firebase Authentication (server side) =====
@@ -3084,6 +3230,11 @@
 
         window.handleAuth = async function() {
             const usedSavedPasswordFor = oneTapUser; oneTapUser = null; // set by a one-tap login from the saved-accounts list
+            if (!isSignupMode && isDeviceSuspended()) {
+                updateLoginSuspendUI();
+                showToast("This device is suspended from logging in for " + suspendLeftText() + " (too many wrong passwords).", "error");
+                return;
+            }
             if (!navigator.onLine && !isFirebaseConnected) {
                 showToast("No Internet", "error");
                 return;
@@ -3097,9 +3248,11 @@
             const password = document.getElementById('password').value;
 
             if (isSignupMode) {
-                const isHumanChecked = document.getElementById('human-verify').checked;
-                if (!isHumanChecked || !humanTestPassed) {
-                    showToast("Please complete the human verification test", "error");
+                const typedCap = (document.getElementById('signup-captcha-input').value || '').trim().toUpperCase();
+                if (!typedCap) { showToast("Please enter the captcha characters", "error"); return; }
+                if (typedCap !== signupCaptchaCode) {
+                    showToast("Incorrect captcha. Here is a new one.", "error");
+                    refreshSignupCaptcha(true);
                     return;
                 }
             }
@@ -3121,7 +3274,8 @@
             if (btn) btn.disabled = true;
             try {
                 if (isSignupMode) {
-                    await startSignupWithEmailVerification(identifier.toLowerCase(), password);
+                    try { await startSignupWithEmailVerification(identifier.toLowerCase(), password); }
+                    finally { refreshSignupCaptcha(false); }   // a captcha can only be used once
                     return;
                 }
 
@@ -3195,12 +3349,13 @@
                     return;
                 }
 
-                if (userVal && !passwordOk && userVal.googleAccount === true && !userVal.password) {
-                    showToast("This account uses Google sign-in. Tap \"Continue with Google\".", "error");
-                    return;
-                }
                 if (!userVal || !passwordOk) {
                     const fails = registerLoginFailure();
+                    if (isDeviceSuspended()) {            // that was the 10th wrong password in a row
+                        updateLoginSuspendUI();
+                        showToast("Too many wrong passwords. This device is suspended from logging in for 1 day.", "error");
+                        return;
+                    }
                     if (usedSavedPasswordFor) { // the saved password no longer works (changed elsewhere): delete it and ask for the new one
                         discardStaleSavedPassword(usedSavedPasswordFor);
                         document.getElementById('password').value = '';
@@ -3922,8 +4077,7 @@
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             { const sb = document.getElementById('save-account-checkbox'); if (sb) sb.checked = false; updateSavePasswordRow(); }
-            document.getElementById('human-verify').checked = false;
-            document.getElementById('human-test-btn-text').innerText = 'Test Human Verification';
+            resetSignupCaptcha();
             showToast("Logged out successfully");
 
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
@@ -6353,6 +6507,7 @@
                                 <button type="button" onclick="togglePass('acc-old-pass')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-acc-old-pass"></i></button>
                             </div>
                         </div>
+                        ${accountCaptchaHtml('acc-cap')}
 
                         <p class="text-xs text-gray-400 text-center">Account updates left today: <span class="font-bold text-purple-300">${Math.max(0, MAX_ACCOUNT_UPDATES_PER_DAY - getAccountEditsUsedToday(currentUser))}</span> of ${MAX_ACCOUNT_UPDATES_PER_DAY}</p>
                         <button onclick="updateAccountProfile()" class="w-full p-3 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">
@@ -6369,6 +6524,7 @@
                     </div>
                 </div>
             `;
+            syncAccountCaptcha('acc-cap');
         }
 
         let accountEmailVerifiedFor = '';
@@ -6442,7 +6598,7 @@
                 const email = (document.getElementById('account-email-input')?.value || '').trim().toLowerCase();
                 const password = document.getElementById('acc-old-pass')?.value || '';
                 if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Enter a valid email address first', 'error'); return; }
-                if (currentUser && currentUser.googleAccount === true && !currentUser.password) {
+                if (currentUser && isGoogleOnlyAccount()) {
                     if (email === String(currentUser.email || '').toLowerCase()) {
                         accountEmailVerifiedFor = email;
                         const gs = document.getElementById('email-verification-status');
@@ -6454,6 +6610,7 @@
                     return;
                 }
                 if (!password) { showToast('Enter your current JB HUB password first', 'error'); return; }
+                if (!passwordGate('acc-cap')) return;
                 if (!currentUser || !mySessionId) { showToast('Please log in again before verifying email', 'error'); return; }
                 if (button) { button.disabled = true; button.textContent = 'Preparing link...'; }
 
@@ -6510,7 +6667,8 @@
                 if (status) { status.textContent = 'Link sent — check inbox'; status.className = 'text-xs font-semibold text-sky-300'; }
                 showToast('Verification link sent to ' + email + '. Check your inbox and spam folder.', 'success');
             } catch (err) {
-                showToast(authErrorMessage(err), 'error');
+                if (err && ['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(err.code)) { passwordFailed('acc-cap', authErrorMessage(err)); }
+                else showToast(authErrorMessage(err), 'error');
             } finally {
                 if (button) { button.disabled = false; button.textContent = 'Send Verification Link'; }
             }
@@ -6585,13 +6743,15 @@
                 return;
             }
 
-            const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password;
+            const isGoogleAcct = isGoogleOnlyAccount();
             if (isGoogleAcct) {
                 if (newPassword) { showToast("Google accounts have no password here. Use Forgot password on the login page to set one.", "error"); return; }
                 if (newEmail !== (currentUser.email || '').toLowerCase()) { showToast("Your email is linked to your Google account and can't be changed.", "error"); return; }
             } else {
                 if (!oldPassword) { showToast("Please enter your current password to save changes", "error"); return; }
-                if (!(await verifyCurrentUserPassword(oldPassword))) { showToast("Incorrect current password!", "error"); return; }
+                if (!passwordGate('acc-cap')) return;
+                if (!(await verifyCurrentUserPassword(oldPassword))) { passwordFailed('acc-cap'); return; }
+                passwordOkReset('acc-cap');
             }
             if (!newUsername) { showToast("Username cannot be empty", "error"); return; }
             if (!newEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { showToast("Please enter a valid email address", "error"); return; }
@@ -6782,29 +6942,36 @@
                         <button type="button" onclick="togglePass('delete-confirm-pass')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-delete-confirm-pass"></i></button>
                     </div>
                 </div>
+                ${accountCaptchaHtml('del-cap')}
             `;
 
             openModal("Delete Account Confirmation", `Are you sure you want to permanently delete account (${currentUser.username})? This action is irreversible.`, inputsHtml, async () => {
+                if (accountDeleting) return;          // already running: ignore extra clicks
+                accountDeleting = true;
+                showDeletingOverlay();                // "Your account is being deleted, please wait"
+                try {
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const enteredPass = document.getElementById('delete-confirm-pass').value;
-                const hasPasswordLogin = !!(auth.currentUser && (auth.currentUser.providerData || []).some(pd => pd && pd.providerId === 'password'));
-                const isGoogleAcct = currentUser.googleAccount === true && !currentUser.password && !hasPasswordLogin;
+                const isGoogleAcct = isGoogleOnlyAccount();
                 if (!isGoogleAcct) {
                     if (!enteredPass) {
                         showToast("Password confirmation required!", "error");
                         return;
                     }
+                    if (!passwordGate('del-cap')) return;
                     if (!(await verifyCurrentUserPassword(enteredPass))) {
-                        showToast("Incorrect current password! Account deletion canceled.", "error");
+                        passwordFailed('del-cap', "Incorrect current password! Account deletion canceled.");
                         return;
                     }
+                    passwordOkReset('del-cap');
                 }
 
                 const usernameKey = currentUser.username.toLowerCase();
 
-                // ---- Delete the Firebase Authentication user FIRST ----
+                // ---- Re-authenticate first; the Authentication user itself is deleted LAST (after the database cleanup) ----
+                let authUserToDelete = null;
                 try {
                     let authUser = auth.currentUser;
 
@@ -6821,7 +6988,7 @@
                         return;
                     }
 
-                    await authUser.delete();
+                    authUserToDelete = authUser;
                 } catch (e) {
                     console.error('Auth delete failed:', e);
                     if (e.code === 'auth/requires-recent-login') {
@@ -6835,17 +7002,8 @@
                 }
                 // ---- then the existing database cleanup ----
 
-                notesData.forEach(async (note) => {
-                    if (note.userId === currentUser.id) {
-                        await db.ref('notes/' + note.id).remove();
-                    }
-                });
-
-                bugReportsData.forEach(async (report) => {
-                    if (report.userId === currentUser.id) {
-                        await db.ref('bugReports/' + report.id).remove();
-                    }
-                });
+                await Promise.all(notesData.filter(n => n.userId === currentUser.id).map(n => db.ref('notes/' + n.id).remove().catch(() => {})));
+                await Promise.all(bugReportsData.filter(r => r.userId === currentUser.id).map(r => db.ref('bugReports/' + r.id).remove().catch(() => {})));
 
                 await endMyPresence(); db.ref('presence/' + usernameKey).remove().catch(() => {}); // account is gone: no presence either
                 if (presenceRef) { db.ref('.info/connected').off('value', presenceRef); presenceRef = null; }
@@ -6861,9 +7019,23 @@
                 await db.ref('leaderboards/neonDodger/' + usernameKey).remove();
                 await db.ref('leaderboards/spaceInvaders/' + usernameKey).remove();
 
+                // Last step: remove the login from Firebase Authentication
+                if (authUserToDelete) {
+                    try { await authUserToDelete.delete(); }
+                    catch (e) { console.error('Auth delete failed:', e); showToast("Your data was deleted, but the login could not be removed: " + (e.message || e.code), "error"); }
+                }
+
                 showToast("Account deleted successfully.");
                 logout();
+                } catch (err) {
+                    console.error('Account deletion failed:', err);
+                    showToast("Something went wrong while deleting. Please try again.", "error");
+                } finally {
+                    accountDeleting = false;
+                    hideDeletingOverlay();
+                }
             });
+            syncAccountCaptcha('del-cap');
         }
 
         function renderAboutTab(container) {
