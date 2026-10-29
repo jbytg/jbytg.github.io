@@ -974,6 +974,15 @@
                     <label class="text-xs text-gray-400 mb-1 block">Email</label>
                     <input type="text" id="forgot-email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="Email on your account" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
+                <!-- Forgot-password captcha -->
+                <div id="forgot-captcha-box" class="p-3 bg-white/5 border border-white/10 rounded-xl space-y-2">
+                    <p class="text-xs text-purple-200 font-semibold"><i class="fa-solid fa-user-check text-purple-400 mr-1"></i>Captcha verification</p>
+                    <div class="flex items-center gap-2">
+                        <canvas id="forgot-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
+                        <button type="button" onclick="refreshForgotCaptcha(true)" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
+                    </div>
+                    <input type="text" id="forgot-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest uppercase">
+                </div>
                 <button type="button" id="forgot-send-btn" onclick="sendPasswordResetLink()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Send Reset Link</button>
                 <p id="forgot-status" class="text-xs text-center text-sky-300 hidden"></p>
                 <button type="button" onclick="hideForgotPassword()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Back to Login</button>
@@ -2338,11 +2347,19 @@
         };
 
         // ================= FORGOT PASSWORD (username + email) =================
+        let forgotCaptchaCode = '';
+        window.refreshForgotCaptcha = function (focus) {
+            forgotCaptchaCode = drawCaptchaOn(document.getElementById('forgot-captcha-canvas')) || forgotCaptchaCode;
+            const input = document.getElementById('forgot-captcha-input');
+            if (input) { input.value = ''; if (focus) input.focus(); }
+        };
+
         window.showForgotPassword = function() {
             document.getElementById('auth-form').classList.add('hidden');
             document.getElementById('forgot-panel').classList.remove('hidden');
             document.getElementById('auth-subtitle').innerText = 'Reset your password';
             document.getElementById('forgot-status').classList.add('hidden');
+            refreshForgotCaptcha(false);
             const typed = document.getElementById('username').value.trim();
             if (typed.includes('@')) document.getElementById('forgot-email').value = typed;
         };
@@ -2360,6 +2377,9 @@
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
             if (!email) { showToast("Enter your email", "error"); return; }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) { showToast("Please enter a valid email address", "error"); return; }
+            const forgotTyped = (document.getElementById('forgot-captcha-input').value || '').trim().toUpperCase();
+            if (!forgotTyped) { showToast("Please enter the captcha characters", "error"); return; }
+            if (forgotTyped !== forgotCaptchaCode) { showToast("Incorrect captcha. Here is a new one.", "error"); refreshForgotCaptcha(true); return; }
             if (!jbThrottle('reset', 60000, 'Please wait a minute before requesting another reset link.')) return;
 
             const btn = document.getElementById('forgot-send-btn');
@@ -2407,6 +2427,7 @@
                 showToast(authErrorMessage(err), 'error');
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
+                refreshForgotCaptcha(false);   // a captcha can only be used once
             }
         };
 
