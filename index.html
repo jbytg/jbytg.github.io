@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- SEO & Search Engine Optimization for JB Hub -->
     <title>JB Hub - Digital and Cloud Platform</title>
@@ -868,7 +870,7 @@
                 <button type="button" id="back-to-accounts" onclick="backToSavedAccounts()" class="items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition"><i class="fa fa-arrow-left"></i>Saved accounts</button>
                 <div>
                     <label id="identifier-label" class="text-xs text-gray-400 mb-1 block">Username or Email</label>
-                    <input type="text" id="username" onblur="prefetchLoginRecord()" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <input type="text" id="username" maxlength="120" onblur="prefetchLoginRecord()" onkeydown="authEnterKey(event, 'username')" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Enter username or email" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 
                 <div>
@@ -986,7 +988,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Username (shown on leaderboards)</label>
-                    <input type="text" id="gs-username" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
+                    <input type="text" id="gs-username" maxlength="20" autocapitalize="none" spellcheck="false" placeholder="Choose a username" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Date of Birth</label>
@@ -1196,6 +1198,11 @@
             e.returnValue = message;
             return message;
         });
+
+        // ===== Production logging guard: no debug output on the live site =====
+        const JB_IS_DEV = ['localhost', '127.0.0.1'].includes(location.hostname);
+        if (!JB_IS_DEV) { ['log', 'info', 'debug'].forEach(k => { console[k] = function () {}; }); }
+        function jbLogErr(tag, e) { try { console.error(tag, JB_IS_DEV ? e : (e && e.code ? e.code : 'error')); } catch (x) {} }
 
         const firebaseConfig = {
             apiKey: "AIzaSyDz9tvaSzzsp0mMUY0-oIaBR0hSPObPDdQ",
@@ -1850,7 +1857,7 @@
                 if (!globalSettings.shutdown) globalSettings.shutdown = { enabled: false, mediaType: 'none', mediaUrl: '', customHtml: '', websiteUrl: '', message: '' };
                 const abt = document.getElementById('prelogin-about-text');
                 const thx = document.getElementById('prelogin-thanks-text');
-                if (abt && globalSettings.aboutText) abt.innerHTML = globalSettings.aboutText;
+                if (abt && globalSettings.aboutText) abt.innerHTML = sanitizeRichHtml(globalSettings.aboutText);
                 if (thx && globalSettings.specialThanks) thx.innerHTML = renderSpecialThanksHtml(globalSettings.specialThanks);
 
                 // Keep already-authenticated users on the shutdown lock screen
@@ -2133,7 +2140,8 @@
         function usernameRuleError(username) {
             const u = String(username || '').trim();
             if (u.length < 3) return 'Username must be at least 3 characters';
-            if (/[@.#$\[\]\/]/.test(u)) return 'Username cannot contain @ . # $ [ ] or /';
+            if (u.length > 20) return 'Username can be at most 20 characters';
+            if (!/^[A-Za-z0-9_ -]+$/.test(u)) return 'Username can only contain letters, numbers, spaces, _ and -';
             return '';
         }
 
@@ -2351,14 +2359,18 @@
 
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
             if (!email) { showToast("Enter your email", "error"); return; }
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("Please enter a valid email address", "error"); return; }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) { showToast("Please enter a valid email address", "error"); return; }
+            if (!jbThrottle('reset', 60000, 'Please wait a minute before requesting another reset link.')) return;
 
             const btn = document.getElementById('forgot-send-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
             try {
                 const matches = await findUserRecordsByEmail(email);
-                if (!matches.length) {
-                    showToast("No account found with this email", "error");
+                const genericResetMsg = 'If an account exists for ' + email + ', a reset link has been sent. Open it, set a new password, then log in here with your username or email and the new password.';
+                if (!matches.length) {   // same answer as success, so this form cannot be used to find out which emails are registered
+                    const st0 = document.getElementById('forgot-status');
+                    st0.textContent = genericResetMsg; st0.classList.remove('hidden');
+                    showToast('If that email has an account, a reset link was sent.', 'success');
                     return;
                 }
 
@@ -2387,11 +2399,11 @@
                 }
 
                 const st = document.getElementById('forgot-status');
-                st.textContent = 'Reset link sent to ' + email + '. Open it, set a new password, then log in here with your username or email and the new password.';
+                st.textContent = genericResetMsg;
                 st.classList.remove('hidden');
                 showToast('Password reset link sent. Check your inbox and spam folder.', 'success');
             } catch (err) {
-                console.error(err);
+                jbLogErr('JB HUB', err);
                 showToast(authErrorMessage(err), 'error');
             } finally {
                 if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
@@ -2539,7 +2551,7 @@
                 showGoogleSignupPanel();
                 showToast("Google verified your email. Choose a username to finish.", "success");
             } catch (err) {
-                console.error(err);
+                jbLogErr('JB HUB', err);
                 showToast(googleErrorMessage(err), 'error');
             } finally {
                 if (btn) btn.disabled = false;
@@ -2640,7 +2652,7 @@
                 showToast("Account created with Google!");
                 proceedAfterLogin();
             } catch (err) {
-                console.error(err);
+                jbLogErr('JB HUB', err);
                 showToast(googleErrorMessage(err), 'error');
             } finally {
                 if (btn) btn.disabled = false;
@@ -3191,7 +3203,7 @@
                     await db.ref('users').update(updates);
                     showToast('Security: removed stored passwords from ' + n + ' protected account' + (n === 1 ? '' : 's') + '.');
                 }
-            } catch (e) { console.warn('Password clean-up skipped:', e); }
+            } catch (e) { jbLogErr('Password clean-up skipped', e); }
         }
 
         // ===== Faster login =====
@@ -3398,7 +3410,7 @@
                 if (userVal.isAdmin) setTimeout(scrubSecuredAccountPasswords, 2000);
                 proceedAfterLogin();
             } catch (err) {
-                console.error(err);
+                jbLogErr('JB HUB', err);
                 showToast(authErrorMessage(err), 'error');
             } finally {
                 if (btn) btn.disabled = false;
@@ -3552,9 +3564,9 @@
             if (msgBox) msgBox.classList.toggle('hidden', cfg.mediaType === 'html' || cfg.mediaType === 'website');
 
             if (cfg.mediaType === 'image' && cfg.mediaUrl) {
-                container.innerHTML = `<img src="${escapeHtml(cfg.mediaUrl)}" alt="" draggable="false" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover">`;
+                container.innerHTML = `<img src="${escapeHtml(safeUrl(cfg.mediaUrl))}" alt="" draggable="false" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover">`;
             } else if (cfg.mediaType === 'video' && cfg.mediaUrl) {
-                container.innerHTML = `<video id="shutdown-video" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover"></video>`;
+                container.innerHTML = `<video id="shutdown-video" src="${escapeHtml(safeUrl(cfg.mediaUrl))}" autoplay loop playsinline disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;" class="absolute inset-0 w-full h-full object-cover"></video>`;
                 const vid = document.getElementById('shutdown-video');
                 if (vid) {
                     vid.addEventListener('pause', () => {
@@ -3563,7 +3575,7 @@
                     vid.play().catch(() => {});
                 }
             } else if (cfg.mediaType === 'audio' && cfg.mediaUrl) {
-                container.innerHTML = `<audio id="shutdown-audio" src="${escapeHtml(cfg.mediaUrl)}" autoplay loop tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;"></audio>`;
+                container.innerHTML = `<audio id="shutdown-audio" src="${escapeHtml(safeUrl(cfg.mediaUrl))}" autoplay loop tabindex="-1" oncontextmenu="return false;" style="pointer-events:none;"></audio>`;
                 const aud = document.getElementById('shutdown-audio');
                 if (aud) {
                     aud.addEventListener('pause', () => {
@@ -3576,7 +3588,7 @@
                 const frame = document.getElementById('shutdown-iframe');
                 if (frame) frame.srcdoc = cfg.customHtml;
             } else if (cfg.mediaType === 'website' && cfg.websiteUrl) {
-                container.innerHTML = `<iframe id="shutdown-website-iframe" src="${escapeHtml(cfg.websiteUrl)}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full border-0" title="Shutdown screen external site"></iframe>`;
+                container.innerHTML = `<iframe id="shutdown-website-iframe" src="${escapeHtml(safeUrl(cfg.websiteUrl))}" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" class="absolute inset-0 w-full h-full border-0" title="Shutdown screen external site"></iframe>`;
             }
         }
 
@@ -3896,6 +3908,22 @@
             catch (e) { showToast('Could not clear notification', 'error'); }
         };
 
+        // Loads a collection the person owns. Admins read everything; everyone else only asks the server for their own
+        // records (by Firebase uid, plus the older userId field so existing data keeps showing).
+        function listenOwned(path, onData) {
+            const toList = snapObj => Object.keys(snapObj).sort().map(k => snapObj[k]).reverse();
+            if (currentUser && currentUser.isAdmin) {
+                db.ref(path).on('value', snap => { const o = {}; snap.forEach(c => { o[c.key] = c.val(); }); onData(toList(o)); }, () => { onData([]); });
+                return;
+            }
+            const parts = { uid: {}, legacy: {} };
+            const emit = () => onData(toList(Object.assign({}, parts.legacy, parts.uid)));
+            const grab = (bucket) => snap => { const o = {}; snap.forEach(c => { o[c.key] = c.val(); }); parts[bucket] = o; emit(); };
+            const au = auth.currentUser;
+            if (au) db.ref(path).orderByChild('ownerUid').equalTo(au.uid).on('value', grab('uid'), () => {});
+            if (currentUser && currentUser.id) db.ref(path).orderByChild('userId').equalTo(currentUser.id).on('value', grab('legacy'), () => {});
+        }
+
         function listenForRealtimeUpdates() {
             startLiveNotifications();
             db.ref('settings').on('value', snap => {
@@ -3943,7 +3971,7 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { console.error('glitchLeaderboard read error:', err); showToast('Glitch leaderboard blocked: ' + err.message, 'error'); });
+            }, err => { jbLogErr('glitchLeaderboard read error:', err); showToast('Glitch leaderboard blocked', 'error'); });
 
             db.ref('leaderboards/breakout').on('value', snap => {
                 breakoutLeaderboardData = [];
@@ -3952,7 +3980,7 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { console.error('breakoutLeaderboard read error:', err); showToast('Breakout leaderboard blocked: ' + err.message, 'error'); });
+            }, err => { jbLogErr('breakoutLeaderboard read error:', err); showToast('Breakout leaderboard blocked', 'error'); });
 
             db.ref('leaderboards/2048').on('value', snap => {
                 game2048LeaderboardData = [];
@@ -3961,46 +3989,30 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { console.error('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked: ' + err.message, 'error'); });
+            }, err => { jbLogErr('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked', 'error'); });
 
             db.ref('leaderboards/neonDodger').on('value', snap => {
                 neonDodgerLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { neonDodgerLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { console.error('neonDodgerLeaderboard read error:', err); showToast('Neon Dodger leaderboard blocked: ' + err.message, 'error'); });
+            }, err => { jbLogErr('neonDodgerLeaderboard read error:', err); showToast('Neon Dodger leaderboard blocked', 'error'); });
 
             db.ref('leaderboards/spaceInvaders').on('value', snap => {
                 spaceInvadersLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { spaceInvadersLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { console.error('spaceInvadersLeaderboard read error:', err); showToast('Space Invaders leaderboard blocked: ' + err.message, 'error'); });
+            }, err => { jbLogErr('spaceInvadersLeaderboard read error:', err); showToast('Space Invaders leaderboard blocked', 'error'); });
 
-            db.ref('notes').on('value', snap => {
-                notesData = [];
-                if (snap.exists()) {
-                    snap.forEach(child => {
-                        const note = child.val();
-                        if (currentUser.isAdmin || note.userId === currentUser.id) {
-                            notesData.unshift(note);
-                        }
-                    });
-                }
+            listenOwned('notes', list => {
+                notesData = list;
                 if (currentTab === 'notes') renderNotesList();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
 
-            db.ref('bugReports').on('value', snap => {
-                bugReportsData = [];
-                if (snap.exists()) {
-                    snap.forEach(child => {
-                        const report = child.val();
-                        if (currentUser.isAdmin || report.userId === currentUser.id) {
-                            bugReportsData.unshift(report);
-                        }
-                    });
-                }
+            listenOwned('bugReports', list => {
+                bugReportsData = list;
                 if (currentTab === 'bugs') renderBugReportsList();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
             });
@@ -4228,8 +4240,8 @@
                 <div class="space-y-4">
                     <div class="glass p-4 rounded-xl space-y-3">
                         <h2 class="font-bold text-lg text-purple-300">Add New Note</h2>
-                        <input type="text" id="note-title-input" placeholder="Note Title..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
-                        <textarea id="note-input" placeholder="Type your private note..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
+                        <input type="text" id="note-title-input" maxlength="100" placeholder="Note Title..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
+                        <textarea id="note-input" maxlength="5000" placeholder="Type your private note..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
                         <button onclick="saveNote()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition">Save Note</button>
                     </div>
                     <div id="notes-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
@@ -4259,8 +4271,8 @@
                         <div class="flex justify-between items-center">
                             <span>Created: ${new Date(n.createdAt).toLocaleDateString()} ${new Date(n.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             <div class="space-x-2">
-                                <button onclick="editNotePrompt('${n.id}')" class="text-purple-400 hover:underline">Edit</button>
-                                <button onclick="deleteNotePrompt('${n.id}')" class="text-red-400 hover:underline">Delete</button>
+                                <button onclick="editNotePrompt('${jsArg(n.id)}')" class="text-purple-400 hover:underline">Edit</button>
+                                <button onclick="deleteNotePrompt('${jsArg(n.id)}')" class="text-red-400 hover:underline">Delete</button>
                             </div>
                         </div>
                         ${n.updatedAt ? `<span class="text-xs text-purple-300/80">Edited: ${new Date(n.updatedAt).toLocaleDateString()} ${new Date(n.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>` : ''}
@@ -4273,13 +4285,15 @@
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-            const title = document.getElementById('note-title-input').value.trim();
-            const text = document.getElementById('note-input').value.trim();
+            const title = cleanText(document.getElementById('note-title-input').value, 100);
+            const text = cleanText(document.getElementById('note-input').value, 5000);
             if (!title || !text) { showToast("Title and text cannot be empty", "error"); return; }
+            if (!jbThrottle('note', 3000, 'Please wait a moment before saving another note.')) return;
 
-            const noteId = 'n_' + Date.now();
+            const noteId = 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
             await db.ref('notes/' + noteId).set({
                 id: noteId,
+                ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
                 username: currentUser.username,
                 title,
@@ -4311,8 +4325,8 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                const newTitle = document.getElementById('edit-note-title').value.trim();
-                const newText = document.getElementById('edit-note-text').value.trim();
+                const newTitle = cleanText(document.getElementById('edit-note-title').value, 100);
+                const newText = cleanText(document.getElementById('edit-note-text').value, 5000);
                 if (!newTitle || !newText) { showToast("Title and text cannot be empty", "error"); return; }
 
                 await db.ref('notes/' + id).update({
@@ -4340,8 +4354,8 @@
                 <div class="space-y-4 max-w-2xl mx-auto">
                     <div class="glass p-4 rounded-xl space-y-3">
                         <h2 class="font-bold text-lg text-purple-300">Have an idea or found a bug? Tell us here.</h2>
-                        <input type="text" id="bug-title-input" placeholder="Issue Title or Summary..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
-                        <textarea id="bug-desc-input" placeholder="Describe the bug or issue in detail..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
+                        <input type="text" id="bug-title-input" maxlength="120" placeholder="Issue Title or Summary..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm">
+                        <textarea id="bug-desc-input" maxlength="3000" placeholder="Describe the bug or issue in detail..." class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 h-24 resize-none text-sm"></textarea>
                         <button onclick="submitBugReport()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-xl text-sm font-bold transition">Submit</button>
                     </div>
                     <div id="bug-reports-list" class="space-y-3"></div>
@@ -4368,10 +4382,10 @@
                             <div class="flex items-center space-x-2">
                                 <h3 class="font-bold text-purple-300 text-base">${escapeHtml(b.title)}</h3>
                                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${isSolved ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                                    ${b.status || 'Pending'}
+                                    ${escapeHtml(b.status || 'Pending')}
                                 </span>
                             </div>
-                            <button onclick="deleteBugReport('${b.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-500/10 rounded-lg transition">Delete</button>
+                            <button onclick="deleteBugReport('${jsArg(b.id)}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-500/10 rounded-lg transition">Delete</button>
                         </div>
                         <p class="text-sm text-gray-200 whitespace-pre-wrap">${escapeHtml(b.description)}</p>
                         
@@ -4398,13 +4412,15 @@
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-            const title = document.getElementById('bug-title-input').value.trim();
-            const description = document.getElementById('bug-desc-input').value.trim();
+            const title = cleanText(document.getElementById('bug-title-input').value, 120);
+            const description = cleanText(document.getElementById('bug-desc-input').value, 3000);
             if (!title || !description) { showToast("Title and description cannot be empty", "error"); return; }
+            if (!jbThrottle('bug', 30000, 'Please wait 30 seconds before sending another report.')) return;
 
-            const bugId = 'b_' + Date.now();
+            const bugId = 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
             await db.ref('bugReports/' + bugId).set({
                 id: bugId,
+                ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
                 username: currentUser.username,
                 title,
@@ -4477,7 +4493,7 @@
                                 ${m.isAdmin ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">ADMIN</span>' : ''}
                                 <span class="text-[11px] text-gray-500">${new Date(m.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                             </div>
-                            ${canDelete ? `<button onclick="deleteChatMessage('${m.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-0.5 bg-red-500/10 rounded-lg transition" title="Delete message"><i class="fa fa-trash"></i></button>` : ''}
+                            ${canDelete ? `<button onclick="deleteChatMessage('${jsArg(m.id)}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-0.5 bg-red-500/10 rounded-lg transition" title="Delete message"><i class="fa fa-trash"></i></button>` : ''}
                         </div>
                         <p class="text-sm text-gray-200 whitespace-pre-wrap mt-1 break-words">${escapeHtml(m.text)}</p>
                     </div>
@@ -4500,12 +4516,13 @@
             }
 
             const input = document.getElementById('chat-message-input');
-            const text = input.value.trim();
+            const text = cleanText(input.value, 500);
             if (!text) { showToast("Message cannot be empty", "error"); return; }
 
             const msgId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
             await db.ref('globalChat/' + msgId).set({
                 id: msgId,
+                ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
                 username: currentUser.username,
                 isAdmin: !!currentUser.isAdmin,
@@ -5622,7 +5639,7 @@
                         await userLbRef.set({ username: currentUser.username, score: breakoutGame.score });
                     }
                 } catch (err) {
-                    console.error('breakoutLeaderboard write error:', err);
+                    jbLogErr('breakoutLeaderboard write error:', err);
                     showToast('Could not save score: ' + err.message, 'error');
                 }
             }
@@ -5752,7 +5769,7 @@
         async function endNeonDodger() {
             neonDodgerGame.running=false; neonDodgerGame.gameOver=true; cancelAnimationFrame(neonDodgerGame.rafId);
             if (neonDodgerGame.score > neonDodgerGame.best) { neonDodgerGame.best=neonDodgerGame.score; localStorage.setItem('neon_dodger_best', neonDodgerGame.best); const el=document.getElementById('nd-best'); if(el) el.innerText=neonDodgerGame.best; }
-            if (neonDodgerGame.score > 0 && navigator.onLine && isFirebaseConnected) { try { const ref=db.ref('leaderboards/neonDodger/'+currentUser.username.toLowerCase()); const snap=await ref.once('value'); if(!snap.exists() || snap.val().score < neonDodgerGame.score) await ref.set({username:currentUser.username,score:neonDodgerGame.score}); } catch(err){ console.error(err); } }
+            if (neonDodgerGame.score > 0 && navigator.onLine && isFirebaseConnected) { try { const ref=db.ref('leaderboards/neonDodger/'+currentUser.username.toLowerCase()); const snap=await ref.once('value'); if(!snap.exists() || snap.val().score < neonDodgerGame.score) await ref.set({username:currentUser.username,score:neonDodgerGame.score}); } catch(err){ jbLogErr('JB HUB', err); } }
             const title=document.getElementById('nd-overlay-title'), btn=document.getElementById('nd-overlay-btn'), ov=document.getElementById('nd-overlay'); if(title) applyWaveEffect(title,'GAME OVER'); if(btn) btn.innerText='Play Again'; if(ov) ov.classList.remove('hidden');
         }
 
@@ -5811,7 +5828,7 @@
             drawSpaceInvaders();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);
         }
         function drawSpaceInvaders(){if(!siCtx)return;siCtx.clearRect(0,0,SI_W,SI_H);siCtx.fillStyle='#050511';siCtx.fillRect(0,0,SI_W,SI_H);siCtx.fillStyle='rgba(255,255,255,.45)';for(let i=0;i<45;i++){const x=(i*73)%SI_W,y=(i*97)%SI_H;siCtx.fillRect(x,y,1,1);}siCtx.shadowBlur=12;siCtx.shadowColor='#22d3ee';siCtx.fillStyle='#22d3ee';siCtx.fillRect(spaceInvadersGame.playerX,SI_H-24,spaceInvadersGame.playerW,12);siCtx.shadowColor='#f472b6';siCtx.fillStyle='#f472b6';spaceInvadersGame.enemies.forEach(e=>{siCtx.fillRect(e.x,e.y,e.w,e.h);siCtx.fillRect(e.x+4,e.y-4,e.w-8,4);});siCtx.shadowColor='#fff';siCtx.fillStyle='#fff';spaceInvadersGame.bullets.forEach(b=>siCtx.fillRect(b.x-1,b.y,2,9));siCtx.shadowBlur=0;}
-        async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('leaderboards/spaceInvaders/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){console.error(err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
+        async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('leaderboards/spaceInvaders/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){jbLogErr('JB HUB', err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
         window.addEventListener('keydown',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(e.key==='Enter'&&!spaceInvadersGame.running){e.preventDefault();startSpaceInvaders();return;}if(['ArrowLeft','a','A'].includes(e.key)||e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();spaceInvadersGame.moveDir=-1;}if(['ArrowRight','d','D'].includes(e.key)||e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();spaceInvadersGame.moveDir=1;}if(e.code==='Space'){e.preventDefault();spaceInvadersShoot();}});
         window.addEventListener('keyup',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(['ArrowLeft','a','A','ArrowRight','d','D'].includes(e.key)||['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))spaceInvadersGame.moveDir=0;});
 
@@ -6011,7 +6028,7 @@
                         await userLbRef.set({ username: currentUser.username, score: game2048.score });
                     }
                 } catch (err) {
-                    console.error('game2048Leaderboard write error:', err);
+                    jbLogErr('game2048Leaderboard write error:', err);
                     showToast('Could not save score: ' + err.message, 'error');
                 }
             }
@@ -6145,7 +6162,7 @@
                         await userLbRef.set({ username: currentUser.username, score: glitchGame.score });
                     }
                 } catch (err) {
-                    console.error('glitchLeaderboard write error:', err);
+                    jbLogErr('glitchLeaderboard write error:', err);
                     showToast('Could not save score: ' + err.message, 'error');
                 }
             }
@@ -6390,13 +6407,13 @@
             list.innerHTML = sorted.map((item, idx) => `
                 <div class="glass p-3 rounded-xl flex justify-between items-center text-sm border border-white/10">
                     <span class="font-bold text-purple-400">#${idx + 1} ${escapeHtml(item.username)}</span>
-                    <span class="font-extrabold text-pink-400">${item.score} pts</span>
+                    <span class="font-extrabold text-pink-400">${safeNum(item.score)} pts</span>
                 </div>
             `).join('');
         }
 
         function renderRulesTab(container) {
-            container.innerHTML = `<div class="glass p-6 rounded-xl max-w-md mx-auto text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.rulesText}</div>`;
+            container.innerHTML = `<div class="glass p-6 rounded-xl max-w-md mx-auto text-sm text-gray-300 whitespace-pre-wrap">${sanitizeRichHtml(globalSettings.rulesText)}</div>`;
         }
 
         // --- TOOLS TAB ---
@@ -6469,7 +6486,7 @@
 
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
-                            <input type="date" id="account-dob-input" value="${currentUser.dob || ''}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
+                            <input type="date" id="account-dob-input" value="${escapeHtml(currentUser.dob || '')}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm text-gray-200">
                         </div>
 
                         <div>
@@ -6539,7 +6556,9 @@
             if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait a few minutes and try again.';
             if (code === 'auth/invalid-email') return 'That email address is not valid.';
             if (code === 'auth/requires-recent-login') return 'Please sign in again, then retry this action.';
-            return (err && err.message) || 'Firebase email verification failed. Please try again.';
+            // Messages written by this app (new Error('...')) are shown; raw Firebase / database errors are not.
+            if (err && ((err.code && /^(auth\/|app-check|appCheck|database\/|PERMISSION)/i.test(err.code)) || /permission_denied|firebase|googleapis|https?:\/\//i.test(String(err.message || '')))) return 'Something went wrong. Please try again.';
+            return (err && err.message) || 'Something went wrong. Please try again.';
         }
 
         async function ensureFirebaseAuthForCurrentAccount(password) {
@@ -6577,7 +6596,7 @@
             }
 
             // Never silently attach one Firebase identity to two JB HUB usernames.
-            const usersSnap = await db.ref('users').once('value');
+            const usersSnap = await db.ref('users').orderByChild('authUid').equalTo(authUser.uid).once('value');
             let linkedToAnotherUsername = false;
             usersSnap.forEach(child => {
                 if (child.key !== usernameKey && child.val() && child.val().authUid === authUser.uid) linkedToAnotherUsername = true;
@@ -6922,7 +6941,7 @@
                 try {
                     await authUserForPasswordChange.updatePassword(newPassword);
                 } catch (authPasswordErr) {
-                    console.error('Firebase Auth password sync failed:', authPasswordErr);
+                    jbLogErr('Firebase Auth password sync failed:', authPasswordErr);
                     showToast('Profile saved, but Firebase Authentication password sync failed. Please contact the site administrator before changing email again.', 'error');
                 }
             }
@@ -6990,7 +7009,7 @@
 
                     authUserToDelete = authUser;
                 } catch (e) {
-                    console.error('Auth delete failed:', e);
+                    jbLogErr('Auth delete failed:', e);
                     if (e.code === 'auth/requires-recent-login') {
                         showToast("Please log out, log in again, then retry deleting.", "error");
                     } else if (e.code === 'auth/popup-closed-by-user') {
@@ -7022,13 +7041,13 @@
                 // Last step: remove the login from Firebase Authentication
                 if (authUserToDelete) {
                     try { await authUserToDelete.delete(); }
-                    catch (e) { console.error('Auth delete failed:', e); showToast("Your data was deleted, but the login could not be removed: " + (e.message || e.code), "error"); }
+                    catch (e) { jbLogErr('Auth delete failed:', e); showToast("Your data was deleted, but the login could not be removed: " + (e.message || e.code), "error"); }
                 }
 
                 showToast("Account deleted successfully.");
                 logout();
                 } catch (err) {
-                    console.error('Account deletion failed:', err);
+                    jbLogErr('Account deletion failed:', err);
                     showToast("Something went wrong while deleting. Please try again.", "error");
                 } finally {
                     accountDeleting = false;
@@ -7042,7 +7061,7 @@
             container.innerHTML = `
                 <div class="glass p-6 rounded-xl max-w-md mx-auto text-center space-y-4">
                     <h2 class="text-xl font-bold glowing-logo">About JB HUB</h2>
-                    <div class="text-sm text-gray-300 whitespace-pre-wrap">${globalSettings.aboutText}</div>
+                    <div class="text-sm text-gray-300 whitespace-pre-wrap">${sanitizeRichHtml(globalSettings.aboutText)}</div>
                     <div class="p-4 bg-purple-900/20 rounded-xl space-y-2">
                         <p class="font-bold text-purple-300">Special Thanks</p>
                         <div class="flex flex-wrap justify-center items-center gap-1.5">${renderSpecialThanksHtml(globalSettings.specialThanks)}</div>
@@ -7288,24 +7307,24 @@
                                                     </span>` : ''}
                                                 </div>
                                                 <p class="text-xs text-gray-300 mt-1">Password: <span class="text-pink-300 font-semibold">${u.authUid ? 'Protected by Firebase Authentication' : (u.googleAccount === true ? 'Google sign-in' : 'Legacy (not yet protected)')}</span></p>
-                                                <p class="text-xs text-gray-400">DOB: ${u.dob || 'N/A'} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
+                                                <p class="text-xs text-gray-400">DOB: ${escapeHtml(u.dob || 'N/A')} <span class="text-purple-300 font-medium">(${getAgeCategory(u.dob)})</span></p>
                                                 <p class="text-xs text-gray-400">Gender: <span class="text-purple-300 font-medium">${escapeHtml(u.gender || 'N/A')}</span></p>
                                                 <p class="text-xs text-purple-300/80 mt-1"><i class="fa fa-clock text-pink-400 mr-1"></i>Last Login: <span class="font-medium text-gray-200">${lastLoginFormatted}</span></p>
                                                 ${ban && !banExpired ? `<p class="text-xs text-red-300 mt-1"><i class="fa fa-ban mr-1"></i>Reason: ${escapeHtml(ban.reason || 'No reason provided')}${ban.type === 'temporary' && ban.unbanAt ? ` &middot; Unban Date: ${new Date(ban.unbanAt).toLocaleDateString()}` : ''}</p>` : ''}
                                             </div>
                                             <div class="flex flex-wrap gap-2 justify-end">
-                                                <button onclick="adminEditUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
+                                                <button onclick="adminEditUserPrompt('${jsArg(usernameKeyLower)}')" class="px-3 py-1.5 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition font-medium">
                                                     Edit Credentials
                                                 </button>
-                                                <button onclick="adminToggleRole('${usernameKeyLower}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
+                                                <button onclick="adminToggleRole('${jsArg(usernameKeyLower)}', ${!u.isAdmin})" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">
                                                     ${u.isAdmin ? 'Demote' : 'Promote Admin'}
                                                 </button>
                                                 ${ban
-                                                    ? `<button onclick="adminUnbanUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>
-                                                       <button onclick="adminEditBanReasonPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
-                                                    : `<button onclick="adminBanUserPrompt('${usernameKeyLower}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
+                                                    ? `<button onclick="adminUnbanUser('${jsArg(usernameKeyLower)}')" class="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 text-xs rounded-lg transition font-medium">Unban User</button>
+                                                       <button onclick="adminEditBanReasonPrompt('${jsArg(usernameKeyLower)}')" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs rounded-lg transition">Edit Reason</button>`
+                                                    : `<button onclick="adminBanUserPrompt('${jsArg(usernameKeyLower)}')" class="px-3 py-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 text-xs rounded-lg transition font-medium">Ban User</button>`
                                                 }
-                                                <button onclick="adminDeleteUser('${usernameKeyLower}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
+                                                <button onclick="adminDeleteUser('${jsArg(usernameKeyLower)}')" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">
                                                     Delete User
                                                 </button>
                                             </div>
@@ -7506,7 +7525,7 @@
                                                 <div class="flex items-center space-x-2">
                                                     <p class="font-bold text-sm text-purple-200">${escapeHtml(b.title)}</p>
                                                     <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isSolved ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
-                                                        ${b.status || 'Pending'}
+                                                        ${escapeHtml(b.status || 'Pending')}
                                                     </span>
                                                 </div>
                                                 <p class="text-xs text-gray-300 mt-1">${escapeHtml(b.description)}</p>
@@ -7514,8 +7533,8 @@
                                                 <p class="text-[11px] text-gray-400 mt-1">Reporter: ${escapeHtml(reporter)}</p>
                                             </div>
                                             <div class="flex space-x-2 shrink-0">
-                                                <button onclick="adminReplyBugPrompt('${b.id}', '${escapeHtml(b.reply || '')}', '${b.status || 'Pending'}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
-                                                <button onclick="deleteBugReport('${b.id}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                                <button onclick="adminReplyBugPrompt('${jsArg(b.id)}', '${escapeHtml(b.reply || '')}', '${b.status || 'Pending'}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
+                                                <button onclick="deleteBugReport('${jsArg(b.id)}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                             </div>
                                         </div>
                                     </div>
@@ -7541,11 +7560,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7560,11 +7579,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditMemoryLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteMemoryLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditMemoryLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteMemoryLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7579,11 +7598,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditFlappyLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteFlappyLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditFlappyLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteFlappyLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7598,11 +7617,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditGlitchLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteGlitchLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditGlitchLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteGlitchLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7617,11 +7636,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditBreakoutLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteBreakoutLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditBreakoutLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteBreakoutLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7636,11 +7655,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditGame2048LeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteGame2048Leaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditGame2048LeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteGame2048Leaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7655,11 +7674,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditNeonDodgerLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteNeonDodgerLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditNeonDodgerLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteNeonDodgerLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7674,11 +7693,11 @@
                                 <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
                                     <div>
                                         <span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span>
-                                        <span class="ml-2 font-extrabold text-pink-400">${lb.score} pts</span>
+                                        <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditSpaceInvadersLeaderboardPrompt('${lb.username.toLowerCase()}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
-                                        <button onclick="adminDeleteSpaceInvadersLeaderboard('${lb.username.toLowerCase()}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                        <button onclick="adminEditSpaceInvadersLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteSpaceInvadersLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
@@ -7703,8 +7722,8 @@
                                             <p class="text-xs text-gray-300 mt-1">${escapeHtml(n.text)}</p>
                                         </div>
                                         <div class="flex space-x-2 shrink-0">
-                                            <button onclick="editNotePrompt('${n.id}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit</button>
-                                            <button onclick="deleteNotePrompt('${n.id}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                            <button onclick="editNotePrompt('${jsArg(n.id)}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit</button>
+                                            <button onclick="deleteNotePrompt('${jsArg(n.id)}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                         </div>
                                     </div>
                                 `;
@@ -7918,13 +7937,13 @@
                         <input type="hidden" id="admin-edit-password" value="">
                         <div class="p-2.5 rounded-xl border border-white/10 bg-white/5 text-xs text-gray-300 space-y-2">
                             <p><i class="fa fa-shield-halved text-emerald-400 mr-1"></i>Protected by Firebase Authentication. Passwords are not stored or visible here.</p>
-                            <button type="button" onclick="adminSendPasswordReset('${escapeHtml(user.authEmail || user.email || '')}')" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition"><i class="fa fa-envelope mr-1"></i>Send password reset email</button>
+                            <button type="button" onclick="adminSendPasswordReset('${jsArg(jsArg(user.authEmail || user.email || ''))}')" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition"><i class="fa fa-envelope mr-1"></i>Send password reset email</button>
                         </div>` : `
                         <input type="text" id="admin-edit-password" value="" placeholder="${user.googleAccount === true ? 'Google account (no password)' : 'Leave empty to keep the current password'}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">`}
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Date of Birth (Must be > 1 year old)</label>
-                    <input type="date" id="admin-edit-dob" value="${user.dob || ''}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
+                    <input type="date" id="admin-edit-dob" value="${escapeHtml(user.dob || '')}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-gray-200">
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Gender</label>
@@ -8027,7 +8046,10 @@
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-            await db.ref(`users/${usernameKey}`).update({ isAdmin: newAdminStatus });
+            const upd = {};
+            upd[`users/${usernameKey}/isAdmin`] = !!newAdminStatus;
+            try { const a = (await db.ref(`users/${usernameKey}/authUid`).once('value')).val(); if (a) upd[`admins/${a}`] = newAdminStatus ? true : null; } catch (e) {}
+            await db.ref().update(upd);
             showToast("User role updated");
         }
 
@@ -8147,7 +8169,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-lb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-lb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8188,7 +8210,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-mlb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-mlb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8229,7 +8251,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-flb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-flb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8270,7 +8292,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-glb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-glb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8311,7 +8333,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-brlb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-brlb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8352,7 +8374,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input type="number" id="admin-g2klb-score" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input type="number" id="admin-g2klb-score" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
 
@@ -8393,7 +8415,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input id="admin-ndlb-score" type="number" min="0" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input id="admin-ndlb-score" type="number" min="0" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
             openModal("Edit Neon Dodger Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
@@ -8426,7 +8448,7 @@
                 </div>
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Score</label>
-                    <input id="admin-silb-score" type="number" min="0" value="${currentScore}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
+                    <input id="admin-silb-score" type="number" min="0" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm">
                 </div>
             `;
             openModal("Edit Space Invaders Leaderboard Entry", "Modify score or leaderboard username", inputsHtml, async () => {
@@ -8451,8 +8473,63 @@
             });
         }
 
+        // ===== Security helpers =====
+        // Escapes text for HTML text and attribute contexts (also ' and `), and accepts numbers / null safely.
         function escapeHtml(str) {
-            return str ? str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;") : '';
+            return String(str == null ? '' : str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/`/g, "&#96;");
+        }
+        // For a value placed inside a single-quoted JS string inside an inline handler: onclick="fn('${jsArg(jsArg(x))}')"
+        function jsArg(v) {
+            return escapeHtml(String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/[\r\n\u2028\u2029]/g, ' '));
+        }
+        // Forces a number (DB values can be tampered with, so never print them raw)
+        function safeNum(v) { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+        // Trims, removes control characters and caps the length of user text before it is written to the database
+        function cleanText(v, max) {
+            return String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, max);
+        }
+        // Only http(s) links may be used for media / iframe sources
+        function safeUrl(u) {
+            try { const x = new URL(String(u || ''), location.href); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; } catch (e) { return ''; }
+        }
+        // Small allow-list sanitizer for admin-written rich text (About / Rules): keeps simple formatting and colours only
+        function sanitizeRichHtml(html) {
+            const ALLOWED = { B:1, STRONG:1, I:1, EM:1, U:1, S:1, BR:1, P:1, DIV:1, SPAN:1, UL:1, OL:1, LI:1, H1:1, H2:1, H3:1, H4:1, SMALL:1, HR:1, A:1 };
+            const doc = new DOMParser().parseFromString('<body>' + String(html == null ? '' : html) + '</body>', 'text/html');
+            (function walk(node) {
+                Array.from(node.childNodes).forEach(ch => {
+                    if (ch.nodeType === 3) return;
+                    if (ch.nodeType !== 1) { node.removeChild(ch); return; }
+                    if (!ALLOWED[ch.tagName]) {
+                        if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|NOSCRIPT|TEMPLATE|SVG|MATH)$/.test(ch.tagName)) { node.removeChild(ch); return; }
+                        walk(ch);
+                        while (ch.firstChild) node.insertBefore(ch.firstChild, ch);
+                        node.removeChild(ch);
+                        return;
+                    }
+                    Array.from(ch.attributes).forEach(a => {
+                        const n = a.name.toLowerCase();
+                        if (n === 'style') {
+                            const keep = String(a.value).split(';').map(x => x.trim()).filter(x => /^(color|background-color)\s*:\s*[#a-z0-9(),.% -]+$/i.test(x) && !/url|expression|javascript/i.test(x));
+                            if (keep.length) ch.setAttribute('style', keep.join('; ')); else ch.removeAttribute('style');
+                        } else if (n === 'href' && ch.tagName === 'A' && /^(https?:|mailto:)/i.test(a.value.trim())) {
+                            ch.setAttribute('target', '_blank'); ch.setAttribute('rel', 'noopener noreferrer');
+                        } else if (n !== 'target' && n !== 'rel') {
+                            ch.removeAttribute(a.name);
+                        }
+                    });
+                    if (ch.tagName === 'A' && !ch.getAttribute('href')) { ch.removeAttribute('target'); }
+                    walk(ch);
+                });
+            })(doc.body);
+            return doc.body.innerHTML;
+        }
+        // Client-side throttle for costly actions (the server-side limit still belongs in the database rules)
+        const _jbThrottle = {};
+        function jbThrottle(key, ms, msg) {
+            const now = Date.now();
+            if (_jbThrottle[key] && now - _jbThrottle[key] < ms) { showToast(msg || 'Please slow down a little.', 'error'); return false; }
+            _jbThrottle[key] = now; return true;
         }
 
         // Setup Enter key navigation for form inputs across all views
