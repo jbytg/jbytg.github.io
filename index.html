@@ -8492,33 +8492,39 @@
         function safeUrl(u) {
             try { const x = new URL(String(u || ''), location.href); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; } catch (e) { return ''; }
         }
-        // Small allow-list sanitizer for admin-written rich text (About / Rules): keeps simple formatting and colours only
+        // Sanitizer for admin-written About / Rules content. Keeps normal formatting, CSS classes, inline styles,
+        // images, links and buttons working; removes scripts, frames, forms, event handlers and javascript: links.
         function sanitizeRichHtml(html) {
-            const ALLOWED = { B:1, STRONG:1, I:1, EM:1, U:1, S:1, BR:1, P:1, DIV:1, SPAN:1, UL:1, OL:1, LI:1, H1:1, H2:1, H3:1, H4:1, SMALL:1, HR:1, A:1 };
+            const TAGS = 'B STRONG I EM U S DEL INS MARK SMALL SUB SUP BR HR P DIV SPAN UL OL LI DL DT DD H1 H2 H3 H4 H5 H6 A BUTTON IMG FONT CENTER PRE CODE BLOCKQUOTE TABLE THEAD TBODY TFOOT TR TD TH SECTION ARTICLE HEADER FOOTER FIGURE FIGCAPTION LABEL';
+            const ALLOWED = {}; TAGS.split(' ').forEach(t => { ALLOWED[t] = 1; });
+            const ATTRS = { class:1, style:1, title:1, width:1, height:1, align:1, colspan:1, rowspan:1, alt:1, color:1, size:1, face:1 };
+            // buttons may only run a few harmless, known actions
+            const SAFE_CLICK = /^\s*(window\.open\(\s*'https?:\/\/[^'"<>\s]*'(\s*,\s*'_blank')?\s*\)|(window\.)?location\.href\s*=\s*'https?:\/\/[^'"<>\s]*'|switchTab\(\s*'[A-Za-z0-9_-]{1,30}'\s*\))\s*;?\s*$/;
             const doc = new DOMParser().parseFromString('<body>' + String(html == null ? '' : html) + '</body>', 'text/html');
+            const cleanStyle = v => String(v).split(';').map(x => x.trim()).filter(x => x && !/url\s*\(|expression|javascript|behavior|@import|binding|position\s*:\s*(fixed|sticky)/i.test(x)).join('; ');
             (function walk(node) {
                 Array.from(node.childNodes).forEach(ch => {
                     if (ch.nodeType === 3) return;
                     if (ch.nodeType !== 1) { node.removeChild(ch); return; }
                     if (!ALLOWED[ch.tagName]) {
-                        if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED|NOSCRIPT|TEMPLATE|SVG|MATH)$/.test(ch.tagName)) { node.removeChild(ch); return; }
+                        if (/^(SCRIPT|STYLE|IFRAME|FRAME|OBJECT|EMBED|NOSCRIPT|TEMPLATE|SVG|MATH|FORM|INPUT|TEXTAREA|SELECT|LINK|META|BASE)$/.test(ch.tagName)) { node.removeChild(ch); return; }
                         walk(ch);
                         while (ch.firstChild) node.insertBefore(ch.firstChild, ch);
                         node.removeChild(ch);
                         return;
                     }
                     Array.from(ch.attributes).forEach(a => {
-                        const n = a.name.toLowerCase();
-                        if (n === 'style') {
-                            const keep = String(a.value).split(';').map(x => x.trim()).filter(x => /^(color|background-color)\s*:\s*[#a-z0-9(),.% -]+$/i.test(x) && !/url|expression|javascript/i.test(x));
-                            if (keep.length) ch.setAttribute('style', keep.join('; ')); else ch.removeAttribute('style');
-                        } else if (n === 'href' && ch.tagName === 'A' && /^(https?:|mailto:)/i.test(a.value.trim())) {
-                            ch.setAttribute('target', '_blank'); ch.setAttribute('rel', 'noopener noreferrer');
-                        } else if (n !== 'target' && n !== 'rel') {
-                            ch.removeAttribute(a.name);
-                        }
+                        const n = a.name.toLowerCase(), v = String(a.value);
+                        if (n === 'style') { const c = cleanStyle(v); if (c) ch.setAttribute('style', c); else ch.removeAttribute('style'); }
+                        else if (n === 'href' && ch.tagName === 'A') { if (!/^\s*(https?:|mailto:|tel:|#)/i.test(v)) ch.removeAttribute('href'); }
+                        else if (n === 'src' && ch.tagName === 'IMG') { if (!/^\s*(https?:\/\/|data:image\/(png|jpe?g|gif|webp);)/i.test(v)) ch.removeAttribute('src'); }
+                        else if (n === 'onclick' && ch.tagName === 'BUTTON') { if (!SAFE_CLICK.test(v)) ch.removeAttribute('onclick'); }
+                        else if (n === 'target' || n === 'rel') { /* set below for links */ }
+                        else if (!ATTRS[n]) ch.removeAttribute(a.name);
                     });
-                    if (ch.tagName === 'A' && !ch.getAttribute('href')) { ch.removeAttribute('target'); }
+                    if (ch.tagName === 'A' && ch.getAttribute('href') && !/^\s*#/.test(ch.getAttribute('href'))) { ch.setAttribute('target', '_blank'); ch.setAttribute('rel', 'noopener noreferrer'); }
+                    else { ch.removeAttribute('target'); ch.removeAttribute('rel'); }
+                    if (ch.tagName === 'BUTTON') ch.setAttribute('type', 'button');
                     walk(ch);
                 });
             })(doc.body);
