@@ -8652,22 +8652,71 @@
         function safeUrl(u) {
             try { const x = new URL(String(u || ''), location.href); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.href : ''; } catch (e) { return ''; }
         }
+        // Makes an admin's <style> block safe: every rule is limited to the .jb-rich wrapper (so it cannot restyle the rest of the app),
+        // downloads (url(), @import, fonts) and fixed-position overlays are dropped, and @keyframes names get a prefix.
+        let _jbRichSeq = 0;
+        function scopeRichCss(css, scopeClass) {
+            const SCOPE = '.' + scopeClass, BAD = /url\s*\(|expression|javascript:|behavior|binding|@import|image-set/i;
+            let sheet = null;
+            try { sheet = new CSSStyleSheet(); sheet.replaceSync(String(css)); }
+            catch (e) {
+                try { const d = document.implementation.createHTMLDocument(''); const st = d.createElement('style'); st.textContent = String(css); d.head.appendChild(st); sheet = st.sheet; } catch (e2) { sheet = null; }
+            }
+            if (!sheet) return '';
+            const splitTop = sel => { const out = []; let depth = 0, cur = ''; for (const ch of sel) { if (ch === '(') depth++; if (ch === ')') depth--; if (ch === ',' && depth === 0) { out.push(cur); cur = ''; } else cur += ch; } out.push(cur); return out; };
+            const scopeSel = sel => splitTop(sel).map(x => x.trim()).filter(Boolean).map(x => { x = x.replace(/^(html|body|:root)\b/i, SCOPE); return x.indexOf(SCOPE) === 0 ? x : SCOPE + ' ' + x; }).join(', ');
+            const decls = st => {
+                const a = [];
+                for (let i = 0; i < st.length; i++) {
+                    const prop = st[i]; let val = st.getPropertyValue(prop);
+                    if (BAD.test(val)) continue;
+                    if (prop === 'position' && /fixed|sticky/i.test(val)) continue;
+                    if (prop === 'animation-name') val = val.split(',').map(n => { n = n.trim(); return (n === 'none' || !n) ? n : 'jbr-' + n.replace(/[^A-Za-z0-9_-]/g, ''); }).join(', ');
+                    a.push(prop + ': ' + val + (st.getPropertyPriority(prop) ? ' !important' : ''));
+                }
+                return a.join('; ');
+            };
+            const walkRules = (rules, depth) => {
+                let t = '';
+                for (const r of Array.from(rules)) {
+                    if (r.type === 1) { const d = decls(r.style); if (d) t += scopeSel(r.selectorText) + '{' + d + '}\n'; }
+                    else if (r.type === 7) {
+                        let kf = ''; for (const k of Array.from(r.cssRules)) { const d = decls(k.style); if (d) kf += k.keyText + '{' + d + '}'; }
+                        if (kf) t += '@keyframes jbr-' + String(r.name).replace(/[^A-Za-z0-9_-]/g, '') + '{' + kf + '}\n';
+                    }
+                    else if (r.type === 4 && depth < 2) { const inner = walkRules(r.cssRules, depth + 1); if (inner) t += '@media ' + r.media.mediaText + '{' + inner + '}\n'; }
+                }
+                return t;
+            };
+            try { return walkRules(sheet.cssRules, 0); } catch (e) { return ''; }
+        }
+
         // Sanitizer for admin-written About / Rules content. Keeps normal formatting, CSS classes, inline styles,
-        // images, links and buttons working; removes scripts, frames, forms, event handlers and javascript: links.
+        // <style> blocks (scoped, see above), images, links and buttons; removes scripts, frames, forms, event handlers and javascript: links.
         function sanitizeRichHtml(html) {
             const TAGS = 'B STRONG I EM U S DEL INS MARK SMALL SUB SUP BR HR P DIV SPAN UL OL LI DL DT DD H1 H2 H3 H4 H5 H6 A BUTTON IMG FONT CENTER PRE CODE BLOCKQUOTE TABLE THEAD TBODY TFOOT TR TD TH SECTION ARTICLE HEADER FOOTER FIGURE FIGCAPTION LABEL';
             const ALLOWED = {}; TAGS.split(' ').forEach(t => { ALLOWED[t] = 1; });
             const ATTRS = { class:1, style:1, title:1, width:1, height:1, align:1, colspan:1, rowspan:1, alt:1, color:1, size:1, face:1 };
             // buttons may only run a few harmless, known actions
             const SAFE_CLICK = /^\s*(window\.open\(\s*'https?:\/\/[^'"<>\s]*'(\s*,\s*'_blank')?\s*\)|(window\.)?location\.href\s*=\s*'https?:\/\/[^'"<>\s]*'|switchTab\(\s*'[A-Za-z0-9_-]{1,30}'\s*\))\s*;?\s*$/;
+            const scopeClass = 'jb-rich-' + (++_jbRichSeq);   // every rendered block gets its own scope, so one text can never restyle another
             const doc = new DOMParser().parseFromString('<body>' + String(html == null ? '' : html) + '</body>', 'text/html');
             const cleanStyle = v => String(v).split(';').map(x => x.trim()).filter(x => x && !/url\s*\(|expression|javascript|behavior|@import|binding|position\s*:\s*(fixed|sticky)/i.test(x)).join('; ');
             (function walk(node) {
                 Array.from(node.childNodes).forEach(ch => {
-                    if (ch.nodeType === 3) return;
+                    if (ch.nodeType === 3) {
+                        // spaces/newlines between tags would show up as blank lines in the pre-wrap boxes
+                        if (!ch.nodeValue.trim() && /\n/.test(ch.nodeValue)) node.removeChild(ch);
+                        return;
+                    }
                     if (ch.nodeType !== 1) { node.removeChild(ch); return; }
+                    if (ch.tagName === 'STYLE') {
+                        const css = scopeRichCss(ch.textContent, scopeClass);
+                        if (css) { const st = doc.createElement('style'); st.textContent = css; node.replaceChild(st, ch); } else node.removeChild(ch);
+                        return;
+                    }
                     if (!ALLOWED[ch.tagName]) {
-                        if (/^(SCRIPT|STYLE|IFRAME|FRAME|OBJECT|EMBED|NOSCRIPT|TEMPLATE|SVG|MATH|FORM|INPUT|TEXTAREA|SELECT|LINK|META|BASE)$/.test(ch.tagName)) { node.removeChild(ch); return; }
+                        if (/^(SCRIPT|IFRAME|FRAME|OBJECT|EMBED|NOSCRIPT|TEMPLATE|SVG|MATH|FORM|INPUT|TEXTAREA|SELECT|LINK|META|BASE)$/.test(ch.tagName)) { node.removeChild(ch); return; }
                         walk(ch);
                         while (ch.firstChild) node.insertBefore(ch.firstChild, ch);
                         node.removeChild(ch);
@@ -8688,7 +8737,7 @@
                     walk(ch);
                 });
             })(doc.body);
-            return doc.body.innerHTML;
+            return '<div class="jb-rich ' + scopeClass + '">' + doc.body.innerHTML + '</div>';
         }
         // Client-side throttle for costly actions (the server-side limit still belongs in the database rules)
         const _jbThrottle = {};
