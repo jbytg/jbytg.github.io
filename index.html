@@ -1079,12 +1079,17 @@
     </div>
 
     <script>
+        // ===== Device hints (used to size the animated background so phones stay smooth) =====
+        const BG_IS_MOBILE = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) || window.innerWidth < 768 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+        const BG_LOW_END = BG_IS_MOBILE && ((navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));
+        const BG_REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
         // ===== Graphics modes: low | medium (default for everyone) | high | ultra =====
         const GFX_MODES = {
             low:    { label: 'Low',    icon: 'fa-leaf',        tag: 'Fastest',  desc: 'Static background, no blur, no animations. Best for slow phones.' },
             medium: { label: 'Medium', icon: 'fa-gauge-high',  tag: 'Default',  desc: 'Light animated background. Smooth and battery friendly.' },
             high:   { label: 'High',   icon: 'fa-wand-magic-sparkles', tag: 'Pretty', desc: 'Glass blur, glowing text and buttons.' },
-            ultra:  { label: 'Ultra',  icon: 'fa-fire',        tag: 'Max',      desc: 'Sharper, denser background and extra glow. Needs a strong device.' }
+            ultra:  { label: 'Ultra',  icon: 'fa-fire',        tag: 'Max',      desc: BG_IS_MOBILE ? 'Sharper background with extra glow. On phones the particle count is tuned to your screen so it stays smooth.' : 'Sharper, denser background and extra glow. Needs a strong device.' }
         };
         const GFX_DEFAULT = 'medium';
 
@@ -1900,6 +1905,7 @@
             document.getElementById('modal-desc').innerText = desc;
             document.getElementById('modal-inputs').innerHTML = inputsHtml;
             document.getElementById('custom-modal').classList.remove('hidden');
+            if (window.bgSetWarp) window.bgSetWarp(true);   // dots stretch into lines while a menu is open
             
             const confirmBtn = document.getElementById('modal-btn-confirm');
             const newConfirmBtn = confirmBtn.cloneNode(true);
@@ -1913,6 +1919,7 @@
 
         window.closeModal = function() {
             document.getElementById('custom-modal').classList.add('hidden');
+            if (window.bgSetWarp) window.bgSetWarp(false);
 
             if (settingsModalOpen) {
                 settingsModalOpen = false;
@@ -1929,23 +1936,38 @@
         const canvas = document.getElementById('canvas-bg');
         const ctx = canvas.getContext('2d');
         const BG_QUALITY = {
-            // scale = canvas resolution vs the screen, fps = frame cap, count = rain streaks, glow = streak glow
-            medium: { scale: 0.5, fps: 30, count: 30,  glow: 0 },
-            high:   { scale: 1,   fps: 60, count: 70,  glow: 0 },
-            ultra:  { scale: Math.min(window.devicePixelRatio || 1, 2), fps: 60, count: 140, glow: 6 }
+            // scale = canvas resolution vs the screen, fps = frame cap, density = particles per 10,000 px of screen,
+            // max / maxMobile = hard caps, glow = glow blur. Phones get lower caps so "Ultra" never floods a small screen.
+            medium: { scale: 0.5, fps: 30, density: 0.22, max: 40,  maxMobile: 22, glow: 0 },
+            high:   { scale: BG_IS_MOBILE ? 0.75 : 1, fps: BG_IS_MOBILE ? 45 : 60, density: 0.40, max: 80,  maxMobile: 40, glow: 0 },
+            ultra:  { scale: Math.min(window.devicePixelRatio || 1, BG_IS_MOBILE ? 1.25 : 2), fps: BG_IS_MOBILE ? 45 : 60, density: 0.70, max: 150, maxMobile: 55, glow: BG_IS_MOBILE ? 3 : 6 }
         };
         let particles = [], step = 0;
         let bgW = window.innerWidth, bgH = window.innerHeight;
         let bgQ = BG_QUALITY.medium, bgRunning = false, bgLast = 0;
+        let bgLoad = 1;                       // 1 = full quality; the auto-tuner lowers it if the device cannot keep up
+        let bgWarp = 0, bgWarpTarget = 0, bgPulseTimer = null;
+        const bgPtr = { x: -9999, y: -9999, t: 0 };
 
-        function makeParticle() {
+        function bgTargetCount() {
+            const cap = (BG_IS_MOBILE ? bgQ.maxMobile : bgQ.max) * (BG_LOW_END ? 0.6 : 1);
+            const byArea = (bgW * bgH) / 10000 * bgQ.density * bgLoad;
+            return Math.max(10, Math.min(Math.round(cap * bgLoad), Math.round(byArea)));
+        }
+
+        // A particle is a glowing dot with a depth (far = small and slow, near = bigger and faster).
+        function makeParticle(anywhere) {
+            const z = Math.random();
             return {
                 x: Math.random() * bgW,
-                y: Math.random() * bgH,
-                length: Math.random() * 20 + 10,
-                speed: Math.random() * 1.5 + 0.5,
-                opacity: Math.random(),
-                fadeSpeed: Math.random() * 0.015 + 0.003
+                y: anywhere ? Math.random() * bgH : -12,
+                z: z,
+                r: 0.7 + z * 1.7,
+                bx: (Math.random() - 0.5) * 0.25,        // resting drift
+                by: 0.30 + z * 1.0,
+                vx: 0, vy: 0,
+                op: 0.30 + Math.random() * 0.55,
+                tw: Math.random() * 6.28, tws: 0.012 + Math.random() * 0.02
             };
         }
 
@@ -1955,8 +1977,9 @@
             canvas.width = Math.max(1, Math.round(bgW * bgQ.scale));
             canvas.height = Math.max(1, Math.round(bgH * bgQ.scale));
             ctx.setTransform(bgQ.scale, 0, 0, bgQ.scale, 0, 0); // draw in screen pixels, the canvas just stores fewer/more
-            while (particles.length < bgQ.count) particles.push(makeParticle());
-            particles.length = bgQ.count;
+            const n = bgTargetCount();
+            while (particles.length < n) { const q = makeParticle(true); q.vx = q.bx; q.vy = q.by; particles.push(q); }
+            particles.length = n;
         }
 
         function drawBackgroundFrame(k) {
@@ -1973,22 +1996,66 @@
             ctx.fillStyle = grad;
             ctx.fillRect(0, 0, bgW, bgH);
 
-            ctx.lineWidth = 1.5;
-            if (bgQ.glow) { ctx.shadowColor = 'rgba(168, 85, 247, 0.9)'; ctx.shadowBlur = bgQ.glow; }
-            particles.forEach(p => {
-                p.y += p.speed * k;
-                p.opacity += p.fadeSpeed * k;
-                if (p.opacity > 1 || p.opacity < 0.2) p.fadeSpeed *= -1;
-                if (p.y > bgH) { p.y = -20; p.x = Math.random() * bgW; }
+            // menu open (or a pulse) -> bgWarpTarget = 1: dots stretch into speed lines, then ease back into dots
+            bgWarp += (bgWarpTarget - bgWarp) * Math.min(1, 0.09 * k);
+            if (Math.abs(bgWarp - bgWarpTarget) < 0.003) bgWarp = bgWarpTarget;
+            const warp = BG_REDUCED ? bgWarp * 0.25 : bgWarp;
+            const speedMul = (BG_REDUCED ? 0.4 : 1) * (1 + warp * 4.5);
 
-                ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, Math.max(0, p.opacity))})`;
+            const touching = !BG_REDUCED && (performance.now() - bgPtr.t) < 140;   // finger / mouse is moving over the page
+            const R = BG_IS_MOBILE ? 75 : 110, R2 = R * R;
+
+            ctx.lineCap = 'round';
+            if (bgQ.glow) { ctx.shadowColor = 'rgba(168, 85, 247, 0.9)'; ctx.shadowBlur = bgQ.glow; }
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+
+                // push away from the pointer / finger
+                if (touching) {
+                    const dx = p.x - bgPtr.x, dy = p.y - bgPtr.y, d2 = dx * dx + dy * dy;
+                    if (d2 < R2 && d2 > 0.01) {
+                        const d = Math.sqrt(d2), f = (1 - d / R) * 1.1 * (0.5 + p.z);
+                        p.vx += (dx / d) * f * k; p.vy += (dy / d) * f * k;
+                    }
+                }
+                // spring back to the resting drift (gives the soft, bouncy feel)
+                p.vx += (p.bx - p.vx) * 0.045 * k;
+                p.vy += (p.by - p.vy) * 0.045 * k;
+
+                p.x += p.vx * k * speedMul;
+                p.y += p.vy * k * speedMul;
+                if (p.y > bgH + 30) { p.y = -30; p.x = Math.random() * bgW; p.vx = p.bx; p.vy = p.by; }
+                if (p.x < -30) p.x = bgW + 30; else if (p.x > bgW + 30) p.x = -30;
+
+                p.tw += p.tws * k;
+                const alpha = Math.min(1, Math.max(0.05, p.op * (0.72 + 0.28 * Math.sin(p.tw))));
+
+                // direction of travel; length grows with warp and with how hard the pointer pushed it
+                const vxs = p.vx * speedMul, vys = p.vy * speedMul;
+                const sp = Math.sqrt(vxs * vxs + vys * vys) || 1;
+                const push = Math.hypot(p.vx - p.bx, p.vy - p.by);
+                const len = warp * (14 + p.z * 46) + Math.min(24, push * 7) + 0.2;   // 0.2 = a plain dot
+                ctx.strokeStyle = `rgba(${p.z > 0.6 ? '233, 213, 255' : '255, 255, 255'}, ${alpha})`;
+                ctx.lineWidth = p.r * 1.6;
                 ctx.beginPath();
                 ctx.moveTo(p.x, p.y);
-                ctx.lineTo(p.x, p.y + p.length);
+                ctx.lineTo(p.x - (vxs / sp) * len, p.y - (vys / sp) * len);
                 ctx.stroke();
-            });
+            }
         }
 
+        // menu open / close -> dots become lines, then settle back
+        window.bgSetWarp = function (on) { bgWarpTarget = on ? 1 : 0; };
+        // short burst (used when switching tabs)
+        window.bgPulse = function (ms) {
+            bgWarpTarget = 1;
+            clearTimeout(bgPulseTimer);
+            bgPulseTimer = setTimeout(() => { bgWarpTarget = 0; }, ms || 600);
+        };
+        window.addEventListener('pointermove', e => { bgPtr.x = e.clientX; bgPtr.y = e.clientY; bgPtr.t = performance.now(); }, { passive: true });
+        window.addEventListener('pointerdown', e => { bgPtr.x = e.clientX; bgPtr.y = e.clientY; bgPtr.t = performance.now(); }, { passive: true });
+
+        let bgSlow = 0, bgSamples = 0, bgNoTuneUntil = 0;
         function bgFrame(now) {
             if (!bgRunning) return;
             requestAnimationFrame(bgFrame);
@@ -1997,6 +2064,15 @@
             if (gap < 1000 / bgQ.fps - 2) return;                 // frame-rate cap
             bgLast = now;
             drawBackgroundFrame(Math.min(gap / 16.667, 4));       // same speed at 30 or 60 fps
+
+            // auto-tuner: if frames keep arriving much slower than the cap, quietly use fewer particles
+            if (now > bgNoTuneUntil) {
+                bgSamples++; if (gap > (1000 / bgQ.fps) * 1.7) bgSlow++;
+                if (bgSamples >= 60) {
+                    if (bgSlow > 24 && bgLoad > 0.4) { bgLoad = Math.max(0.4, bgLoad * 0.75); sizeBackground(); bgNoTuneUntil = now + 4000; }
+                    bgSamples = 0; bgSlow = 0;
+                }
+            }
         }
 
         function startBackground() {
@@ -2009,6 +2085,7 @@
         // called whenever the Graphics mode changes
         window.updateBackgroundQuality = function () {
             if (gfxMode === 'low') { bgRunning = false; return; } // Low: canvas hidden by CSS, no loop at all
+            bgLoad = 1; bgSlow = 0; bgSamples = 0;
             sizeBackground();
             drawBackgroundFrame(0);
             startBackground();
@@ -2032,6 +2109,15 @@
                 if (window.innerWidth !== bgW || Math.abs(window.innerHeight - bgH) > 150) sizeBackground();
             }, 200);
         });
+
+        // quick streak burst whenever the person changes tab
+        setTimeout(() => {
+            const origSwitch = window.switchTab;
+            if (typeof origSwitch === 'function' && !origSwitch.__bgWrapped) {
+                window.switchTab = function () { try { window.bgPulse(550); } catch (e) {} return origSwitch.apply(this, arguments); };
+                window.switchTab.__bgWrapped = true;
+            }
+        }, 0);
 
         window.showToast = function(msg, type = 'success') {
             const toast = document.getElementById('toast');
