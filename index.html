@@ -646,6 +646,57 @@
         @keyframes dotsCloseBounce { 0% { transform: scale(1); } 35% { transform: scale(0.82); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
         @keyframes dotsCloseSpin { 0% { transform: rotate(90deg); } 100% { transform: rotate(360deg); } }
 
+        /* ===== Menu button: three dots slowly stretch into three lines while pressed / open, and shrink back to dots ===== */
+        #side-menu-toggle .dots-icon { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 20px; height: 20px; pointer-events: none; }
+        #side-menu-toggle .dots-icon span { display: block; width: 4px; height: 4px; border-radius: 2px; background: #fff; box-shadow: 0 0 6px rgba(233,213,255,0.7);
+            transition: width 0.7s cubic-bezier(0.22,1,0.36,1), height 0.7s cubic-bezier(0.22,1,0.36,1), opacity 0.5s ease; }
+        #side-menu-toggle .dots-icon span:nth-child(2) { transition-delay: 0.07s; }
+        #side-menu-toggle .dots-icon span:nth-child(3) { transition-delay: 0.14s; }
+        #side-menu-toggle:hover .dots-icon span { width: 6px; }
+        #side-menu-toggle:active .dots-icon span { width: 12px; transition-duration: 1s; }              /* mouse / finger held down: stretching slowly */
+        #side-menu-toggle.menu-open .dots-icon span { width: 20px; height: 3px; }                       /* menu open: three lines */
+        #side-menu-toggle.menu-open .dots-icon span:nth-child(2) { width: 14px; }
+        #side-menu-toggle.menu-closing .dots-icon span { transition-duration: 0.6s; }
+        #side-menu-toggle.menu-open i, #side-menu-toggle.menu-closing i { animation: none; transform: none; }
+
+        /* ===== Icon animations ===== */
+        /* bell in the admin notification: rings every few seconds while the banner is visible */
+        @keyframes bellRing { 0%,60%,100% { transform: rotate(0); } 6% { transform: rotate(16deg); } 12% { transform: rotate(-14deg); } 18% { transform: rotate(11deg); } 24% { transform: rotate(-9deg); } 30% { transform: rotate(6deg); } 36% { transform: rotate(-3deg); } 42% { transform: rotate(0); } }
+        @keyframes bellRipple { 0% { box-shadow: 0 0 0 0 rgba(56,189,248,0.55); } 100% { box-shadow: 0 0 0 14px rgba(56,189,248,0); } }
+        #live-notification .fa-bell { display: inline-block; transform-origin: 50% 12%; animation: bellRing 2.6s ease-in-out infinite; }
+        #live-notification span:has(> .fa-bell) { animation: bellRipple 1.6s ease-out infinite; }
+        h2:hover > .fa-bell, h2 > .fa-bell { display: inline-block; transform-origin: 50% 12%; }
+        h2:hover > .fa-bell { animation: bellRing 1.4s ease-in-out 1; }
+        /* shield: soft safety pulse */
+        @keyframes shieldPulse { 0%,100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(52,211,153,0)); } 50% { transform: scale(1.18); filter: drop-shadow(0 0 6px rgba(52,211,153,0.9)); } }
+        @keyframes shieldLock { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-8deg); } 70% { transform: scale(0.9) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+        .menu-item:hover i.fa-shield-halved, .menu-item:focus-visible i.fa-shield-halved { animation: shieldPulse 1.1s ease-in-out infinite; }
+        .menu-item-danger:hover i.fa-user-shield { animation: shieldLock 0.7s cubic-bezier(0.34,1.56,0.64,1); transform: none; }
+        .menu-item.menu-item-active i.fa-shield-halved { animation: shieldPulse 2.4s ease-in-out infinite; }
+        /* each menu icon has its own little motion on hover */
+        @keyframes icoSpin { to { transform: rotate(180deg) scale(1.2); } }
+        @keyframes icoWiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.2); } 75% { transform: rotate(14deg) scale(1.2); } }
+        @keyframes icoBounce { 0%,100% { transform: translateY(0) scale(1.2); } 40% { transform: translateY(-5px) scale(1.25); } 70% { transform: translateY(1px) scale(1.2); } }
+        @keyframes icoShake { 0%,100% { transform: translateX(0) scale(1.2); } 20% { transform: translateX(-3px) scale(1.2); } 40% { transform: translateX(3px) scale(1.2); } 60% { transform: translateX(-2px) scale(1.2); } 80% { transform: translateX(2px) scale(1.2); } }
+        @keyframes icoPulse { 0%,100% { transform: scale(1.1); } 50% { transform: scale(1.4); } }
+        @keyframes icoFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+        .menu-item:hover i.fa-cog { animation: icoSpin 0.8s ease-in-out infinite alternate; }
+        .menu-item:hover i.fa-note-sticky { animation: icoWiggle 0.7s ease-in-out infinite; }
+        .menu-item:hover i.fa-comments { animation: icoBounce 0.8s ease-in-out infinite; }
+        .menu-item:hover i.fa-gamepad { animation: icoWiggle 0.6s ease-in-out infinite; }
+        .menu-item:hover i.fa-bug { animation: icoShake 0.5s ease-in-out infinite; }
+        .menu-item:hover i.fa-trophy { animation: icoBounce 0.9s ease-in-out infinite; color: #fde68a; }
+        .menu-item:hover i.fa-toolbox { animation: icoWiggle 0.8s ease-in-out infinite; }
+        .menu-item:hover i.fa-bullhorn { animation: icoShake 0.6s ease-in-out infinite; }
+        .menu-item:hover i.fa-user { animation: icoPulse 0.9s ease-in-out infinite; }
+        .menu-item:hover i.fa-circle-info { animation: icoPulse 0.9s ease-in-out infinite; }
+        .menu-item.menu-item-active i { animation: icoFloat 2.2s ease-in-out infinite; }
+        /* all the icon motion respects "reduce motion" and Low graphics */
+        @media (prefers-reduced-motion: reduce) {
+            #live-notification .fa-bell, #live-notification span:has(> .fa-bell), .menu-item i, #side-menu-toggle .dots-icon span { animation: none !important; transition: none !important; }
+        }
+        body.perf-disable-animations #live-notification .fa-bell, body.perf-disable-animations #live-notification span:has(> .fa-bell) { animation: none !important; }
+
         /* section content swaps in with a soft slide/fade; title pops */
         #tab-content.tab-enter { animation: tabContentIn 0.4s cubic-bezier(0.22,1,0.36,1); }
         @keyframes tabContentIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
@@ -686,7 +737,7 @@
 
     <!-- Global Top-Left Three-Dots Menu Button -->
     <button id="side-menu-toggle" type="button" onclick="toggleSideMenu()" aria-label="Open menu" aria-haspopup="true" aria-expanded="false" class="fixed top-4 left-4 z-40 w-10 h-10 bg-purple-600/40 hover:bg-purple-600/80 active:scale-95 border border-purple-400/40 rounded-xl flex items-center justify-center text-white shadow-lg transition backdrop-blur-md" title="Menu">
-        <i class="fa fa-ellipsis-vertical text-lg"></i>
+        <span class="dots-icon" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
 
     <!-- Side Menu (slides in from the left) -->
@@ -710,7 +761,7 @@
             <button type="button" data-tab="about" onclick="menuGoTo('about')" class="menu-item"><i class="fa fa-circle-info"></i><span>About Us</span></button>
                 <button type="button" id="admin-nav-btn" data-tab="admin" onclick="menuGoTo('admin')" class="menu-item hidden"><i class="fa fa-shield-halved"></i><span>Admin Panel</span></button>
                 <div class="pt-1 mt-1 border-t border-white/10">
-                    <button type="button" onclick="menuLogout()" class="menu-item menu-item-danger"><i class="fa fa-sign-out-alt"></i><span>Logout</span></button>
+                    <button type="button" onclick="menuLogout()" class="menu-item menu-item-danger"><i class="fa fa-user-shield"></i><span>Logout</span></button>
                 </div>
             </div>
         </div>
@@ -4260,6 +4311,7 @@
             _menuClosingTimer = setTimeout(() => btn.classList.remove('menu-closing'), 600);
         };
         window.toggleSideMenu = function() {
+            try { if (navigator.vibrate && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) navigator.vibrate(8); } catch (e) {}
             document.getElementById('side-menu').classList.contains('open') ? closeSideMenu() : openSideMenu();
         };
         window.menuGoTo = function(tab) {
@@ -4273,7 +4325,8 @@
         };
         window.menuLogout = function() {
             closeSideMenu();
-            logout();
+            // asks first, so a mis-tap in the menu does not log you out
+            openModal("Log out safely?", "You will be signed out on this device. Your notes and progress stay saved.", "", () => { logout(); });
         };
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') closeSideMenu();
