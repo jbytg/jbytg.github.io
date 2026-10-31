@@ -2165,7 +2165,7 @@
         setTimeout(() => {
             const origSwitch = window.switchTab;
             if (typeof origSwitch === 'function' && !origSwitch.__bgWrapped) {
-                window.switchTab = function () { try { window.bgPulse(550); } catch (e) {} return origSwitch.apply(this, arguments); };
+                window.switchTab = function () { try { window.bgPulse(550); } catch (e) {} try { arcadeAutoPause(); } catch (e) {} return origSwitch.apply(this, arguments); };
                 window.switchTab.__bgWrapped = true;
             }
         }, 0);
@@ -4082,6 +4082,18 @@
             if (currentUser && currentUser.id) db.ref(path).orderByChild('userId').equalTo(currentUser.id).on('value', grab('legacy'), () => {});
         }
 
+        // Leaderboard read errors only matter while someone is logged in (after logout the database correctly refuses reads)
+        function lbReadError(name) {
+            return err => { jbLogErr(name + ' leaderboard', err); if (currentUser && auth.currentUser) showToast(name + ' leaderboard blocked', 'error'); };
+        }
+        // Stops every leaderboard listener (called on logout, so nothing tries to read after the session ended)
+        function detachLeaderboardListeners() {
+            try {
+                ['snake','memory','flappy','glitch','breakout','2048','neonDodger','spaceInvaders'].concat(typeof EXTRA_GAMES !== 'undefined' ? EXTRA_GAMES.map(g => g.key) : [])
+                    .forEach(k => db.ref('leaderboards/' + k).off());
+            } catch (e) {}
+        }
+
         function listenForRealtimeUpdates() {
             startLiveNotifications();
             db.ref('settings').on('value', snap => {
@@ -4129,7 +4141,7 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { jbLogErr('glitchLeaderboard read error:', err); showToast('Glitch leaderboard blocked', 'error'); });
+            }, lbReadError('Glitch'));
 
             db.ref('leaderboards/breakout').on('value', snap => {
                 breakoutLeaderboardData = [];
@@ -4138,7 +4150,7 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { jbLogErr('breakoutLeaderboard read error:', err); showToast('Breakout leaderboard blocked', 'error'); });
+            }, lbReadError('Breakout'));
 
             db.ref('leaderboards/2048').on('value', snap => {
                 game2048LeaderboardData = [];
@@ -4147,21 +4159,23 @@
                 }
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { jbLogErr('game2048Leaderboard read error:', err); showToast('2048 leaderboard blocked', 'error'); });
+            }, lbReadError('2048'));
 
             db.ref('leaderboards/neonDodger').on('value', snap => {
                 neonDodgerLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { neonDodgerLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { jbLogErr('neonDodgerLeaderboard read error:', err); showToast('Neon Dodger leaderboard blocked', 'error'); });
+            }, lbReadError('Neon Dodger'));
 
             db.ref('leaderboards/spaceInvaders').on('value', snap => {
                 spaceInvadersLeaderboardData = [];
                 if (snap.exists()) snap.forEach(child => { spaceInvadersLeaderboardData.push(child.val()); });
                 if (currentTab === 'leaderboard') renderLeaderboard();
                 if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
-            }, err => { jbLogErr('spaceInvadersLeaderboard read error:', err); showToast('Space Invaders leaderboard blocked', 'error'); });
+            }, lbReadError('Space Invaders'));
+
+            listenExtraLeaderboards();
 
             listenOwned('notes', list => {
                 notesData = list;
@@ -4768,13 +4782,14 @@
                         </button>
                         <button onclick="switchArcadeGame('spaceInvaders')" id="arcade-mode-spaceInvaders-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === 'spaceInvaders' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent shadow-lg shadow-purple-500/30' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
                             <i class="fa fa-rocket mr-1"></i> Space Invaders
-                        </button>
+                        </button>${extraArcadeButtonsHtml()}
                     </div>
 
                     <div id="arcade-game-area" class="w-full flex flex-col items-center space-y-4"></div>
                 </div>
             `;
             renderArcadeGameArea();
+            mountArcadePause();
         }
 
         window.switchArcadeGame = function(mode) {
@@ -4805,7 +4820,10 @@
             } else if (arcadeGameMode === 'spaceInvaders') {
                 cancelAnimationFrame(spaceInvadersGame.rafId);
                 spaceInvadersGame.running = false;
+            } else if (EXTRA_BY_KEY[arcadeGameMode]) {
+                stopExtra();
             }
+            arcadePaused = false;
 
             arcadeGameMode = mode;
             renderArcadeTab(document.getElementById('tab-content'));
@@ -4836,6 +4854,9 @@
             } else if (arcadeGameMode === 'spaceInvaders') {
                 area.innerHTML = spaceInvadersMarkup();
                 initSpaceInvaders();
+            } else if (EXTRA_BY_KEY[arcadeGameMode]) {
+                area.innerHTML = extraMarkup(EXTRA_BY_KEY[arcadeGameMode]);
+                initExtra(arcadeGameMode);
             } else {
                 area.innerHTML = snakeGameMarkup();
                 initCyberCanvas();
@@ -4988,6 +5009,7 @@
             return `
                 <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
                     <span>Score: <span id="breakout-score" class="text-pink-400">0</span></span>
+                    <span>Level: <span id="breakout-level" class="text-cyan-300">1</span></span>
                     <span>Lives: <span id="breakout-lives" class="text-emerald-400">3</span></span>
                     <span>Best: <span id="breakout-best" class="text-purple-200">0</span></span>
                 </div>
@@ -4996,7 +5018,7 @@
                     <canvas id="breakout-canvas" width="320" height="360" class="block select-none"></canvas>
                     <div id="breakout-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
                         <h3 id="breakout-overlay-title" class="text-2xl font-black glowing-logo">BRICK BREAKER</h3>
-                        <p class="text-xs text-gray-400 max-w-[220px]">Move the paddle to bounce the ball and smash every brick. Lose all 3 lives and it's game over.</p>
+                        <p class="text-xs text-gray-400 max-w-[220px]">Tough bricks take several hits, the ball speeds up, the paddle shrinks and the wall slowly creeps down. Clear a board to reach the next level. 3 lives.</p>
                         <button id="breakout-overlay-btn" onclick="startBreakoutGame()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
                     </div>
                 </div>
@@ -5040,6 +5062,7 @@
             return `
                 <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
                     <span>Score: <span id="g2048-score" class="text-pink-400">0</span></span>
+                    <span>Moves: <span id="g2048-moves" class="text-cyan-300">0</span></span>
                     <span>Best: <span id="g2048-best" class="text-purple-200">0</span></span>
                     <button onclick="startGame2048()" class="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 rounded-lg text-xs text-purple-200 transition"><i class="fa fa-clock-rotate-left mr-1"></i>New Game</button>
                 </div>
@@ -5048,7 +5071,7 @@
                     <div id="g2048-board" class="grid grid-cols-4 gap-2 w-[280px] sm:w-[320px] aspect-square select-none"></div>
                     <div id="g2048-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
                         <h3 id="g2048-overlay-title" class="text-2xl font-black glowing-logo">2048</h3>
-                        <p id="g2048-overlay-desc" class="text-xs text-gray-400 max-w-[220px]">Slide matching tiles together to merge them and reach the 2048 tile.</p>
+                        <p id="g2048-overlay-desc" class="text-xs text-gray-400 max-w-[220px]">Hard mode: more 4s appear over time, extra tiles pop up as you go, and stone blocks that cannot move or merge crumble in. Reach 2048 and keep going.</p>
                         <button id="g2048-overlay-btn" onclick="startGame2048()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90 rounded-xl text-sm font-bold shadow-lg shadow-purple-500/40 transition">Start Game</button>
                     </div>
                 </div>
@@ -5382,7 +5405,7 @@
             ballX: 0, ballY: 0, ballRadius: 6, ballDX: 3.2, ballDY: -3.2,
             bricks: [], brickRows: 5, brickCols: 8, brickWidth: 0, brickHeight: 16, brickPadding: 4, brickOffsetTop: 30, brickOffsetLeft: 4,
             score: 0, lives: 3, running: false, gameOver: false, rafId: null,
-            moveDir: null, best: 0
+            moveDir: null, best: 0, level: 1, lastTime: 0, descendAcc: 0
         };
 
         // --- 2048 GAME (Cyber Arcade fifth game) ---
@@ -5390,7 +5413,7 @@
             2: '#3f3b5c', 4: '#4c4372', 8: '#a855f7', 16: '#c026d3', 32: '#ec4899',
             64: '#f472b6', 128: '#6366f1', 256: '#22d3ee', 512: '#34d399', 1024: '#fbbf24', 2048: '#f59e0b'
         };
-        let game2048 = { grid: [], score: 0, best: 0, running: false, gameOver: false, touchStartX: 0, touchStartY: 0 };
+        let game2048 = { grid: [], score: 0, best: 0, running: false, gameOver: false, touchStartX: 0, touchStartY: 0, moves: 0, stoneBorn: {} };
 
         // --- GLITCH HUNTER GAME (Cyber Arcade sixth game) ---
         let glitchGame = {
@@ -5606,6 +5629,7 @@
             breakoutGame.gameOver = false;
             breakoutGame.score = 0;
             breakoutGame.lives = 3;
+            breakoutGame.level = 1;
             breakoutGame.best = parseInt(localStorage.getItem('breakout_best') || '0', 10);
             const bestEl = document.getElementById('breakout-best');
             if (bestEl) bestEl.innerText = breakoutGame.best;
@@ -5629,47 +5653,58 @@
             breakoutGame.paddleX = Math.max(0, Math.min(BREAKOUT_W - breakoutGame.paddleWidth, x - breakoutGame.paddleWidth / 2));
         }
 
+        function breakoutBaseSpeed() { return Math.min(8.2, 3.7 + (breakoutGame.level - 1) * 0.45); }
+
         function resetBreakoutBallAndPaddle() {
-            breakoutGame.paddleX = (BREAKOUT_W - breakoutGame.paddleWidth) / 2;
-            breakoutGame.ballX = BREAKOUT_W / 2;
-            breakoutGame.ballY = BREAKOUT_H - 40;
-            breakoutGame.ballDX = 3.2 * (Math.random() < 0.5 ? 1 : -1);
-            breakoutGame.ballDY = -3.2;
+            const g = breakoutGame;
+            g.paddleWidth = Math.max(34, 62 - (g.level - 1) * 4);          // the paddle shrinks every level
+            g.paddleX = (BREAKOUT_W - g.paddleWidth) / 2;
+            g.ballX = BREAKOUT_W / 2;
+            g.ballY = BREAKOUT_H - 40;
+            const s = breakoutBaseSpeed(), a = (Math.random() < 0.5 ? -1 : 1) * (0.45 + Math.random() * 0.35);
+            g.ballDX = s * Math.sin(a);
+            g.ballDY = -s * Math.cos(a);
         }
 
         function buildBreakoutBricks() {
-            breakoutGame.brickWidth = (BREAKOUT_W - breakoutGame.brickOffsetLeft * 2 - breakoutGame.brickPadding * (breakoutGame.brickCols - 1)) / breakoutGame.brickCols;
-            breakoutGame.bricks = [];
+            const g = breakoutGame;
+            g.brickRows = Math.min(8, 4 + g.level);
+            g.brickWidth = (BREAKOUT_W - g.brickOffsetLeft * 2 - g.brickPadding * (g.brickCols - 1)) / g.brickCols;
+            g.bricks = []; g.descendAcc = 0;
             const colors = ['#a855f7', '#c026d3', '#ec4899', '#6366f1', '#22d3ee'];
-            for (let r = 0; r < breakoutGame.brickRows; r++) {
-                for (let c = 0; c < breakoutGame.brickCols; c++) {
-                    breakoutGame.bricks.push({
-                        x: breakoutGame.brickOffsetLeft + c * (breakoutGame.brickWidth + breakoutGame.brickPadding),
-                        y: breakoutGame.brickOffsetTop + r * (breakoutGame.brickHeight + breakoutGame.brickPadding),
-                        alive: true,
-                        color: colors[r % colors.length]
+            for (let r = 0; r < g.brickRows; r++) {
+                // upper rows are tougher: 2 hits from the start of level 1, 3 hits from level 3 onwards
+                const hp = Math.min(3, 1 + (r < Math.floor(g.level / 2) + 1 ? 1 : 0) + (r < Math.floor(g.level / 3) ? 1 : 0));
+                for (let c = 0; c < g.brickCols; c++) {
+                    g.bricks.push({
+                        x: g.brickOffsetLeft + c * (g.brickWidth + g.brickPadding),
+                        y: g.brickOffsetTop + r * (g.brickHeight + g.brickPadding),
+                        alive: true, color: colors[r % colors.length], hp: hp, maxHp: hp
                     });
                 }
             }
         }
 
+        function breakoutHud() {
+            const sc = document.getElementById('breakout-score'), li = document.getElementById('breakout-lives'), lv = document.getElementById('breakout-level');
+            if (sc) sc.innerText = breakoutGame.score;
+            if (li) li.innerText = breakoutGame.lives;
+            if (lv) lv.innerText = breakoutGame.level;
+        }
+
         window.startBreakoutGame = function() {
             const overlay = document.getElementById('breakout-overlay');
             if (overlay) overlay.classList.add('hidden');
-
             breakoutGame.score = 0;
             breakoutGame.lives = 3;
+            breakoutGame.level = 1;
             breakoutGame.running = true;
             breakoutGame.gameOver = false;
             resetBreakoutBallAndPaddle();
             buildBreakoutBricks();
-
-            const scoreEl = document.getElementById('breakout-score');
-            const livesEl = document.getElementById('breakout-lives');
-            if (scoreEl) scoreEl.innerText = '0';
-            if (livesEl) livesEl.innerText = '3';
-
+            breakoutHud();
             cancelAnimationFrame(breakoutGame.rafId);
+            breakoutGame.lastTime = performance.now();
             breakoutGame.rafId = requestAnimationFrame(breakoutLoop);
         }
 
@@ -5677,69 +5712,81 @@
             breakoutGame.moveDir = dir;
         }
 
-        function breakoutLoop() {
+        function breakoutLoop(now) {
             if (!breakoutGame.running) return;
-            updateBreakoutPhysics();
-            if (!breakoutGame.running) return; // a life lost or a win may have ended the game this frame
+            const dt = Math.min(32, (now - breakoutGame.lastTime) || 16);
+            breakoutGame.lastTime = now;
+            updateBreakoutPhysics(dt / 16.67, dt);                  // frame-rate independent: same speed on 60 Hz and 120 Hz screens
+            if (!breakoutGame.running) return;                      // a lost last life ended the game this frame
             drawBreakoutBoard();
             breakoutGame.rafId = requestAnimationFrame(breakoutLoop);
         }
 
-        function updateBreakoutPhysics() {
-            const paddleSpeed = 6;
-            if (breakoutGame.moveDir === 'LEFT') breakoutGame.paddleX = Math.max(0, breakoutGame.paddleX - paddleSpeed);
-            if (breakoutGame.moveDir === 'RIGHT') breakoutGame.paddleX = Math.min(BREAKOUT_W - breakoutGame.paddleWidth, breakoutGame.paddleX + paddleSpeed);
+        function updateBreakoutPhysics(f, dt) {
+            const g = breakoutGame;
+            const paddleSpeed = 6.5 * f;
+            if (g.moveDir === 'LEFT') g.paddleX = Math.max(0, g.paddleX - paddleSpeed);
+            if (g.moveDir === 'RIGHT') g.paddleX = Math.min(BREAKOUT_W - g.paddleWidth, g.paddleX + paddleSpeed);
 
-            breakoutGame.ballX += breakoutGame.ballDX;
-            breakoutGame.ballY += breakoutGame.ballDY;
+            g.ballX += g.ballDX * f;
+            g.ballY += g.ballDY * f;
+            if (g.ballX - g.ballRadius < 0) { g.ballX = g.ballRadius; g.ballDX = Math.abs(g.ballDX); }
+            if (g.ballX + g.ballRadius > BREAKOUT_W) { g.ballX = BREAKOUT_W - g.ballRadius; g.ballDX = -Math.abs(g.ballDX); }
+            if (g.ballY - g.ballRadius < 0) { g.ballY = g.ballRadius; g.ballDY = Math.abs(g.ballDY); }
 
-            if (breakoutGame.ballX - breakoutGame.ballRadius < 0 || breakoutGame.ballX + breakoutGame.ballRadius > BREAKOUT_W) {
-                breakoutGame.ballDX *= -1;
-            }
-            if (breakoutGame.ballY - breakoutGame.ballRadius < 0) {
-                breakoutGame.ballDY *= -1;
-            }
-
+            // paddle: the bounce angle depends on where it hits, and every bounce makes the ball a little faster
             const paddleY = BREAKOUT_H - 16;
-            if (breakoutGame.ballY + breakoutGame.ballRadius > paddleY &&
-                breakoutGame.ballY + breakoutGame.ballRadius < paddleY + breakoutGame.paddleHeight + 6 &&
-                breakoutGame.ballX > breakoutGame.paddleX &&
-                breakoutGame.ballX < breakoutGame.paddleX + breakoutGame.paddleWidth &&
-                breakoutGame.ballDY > 0) {
-                breakoutGame.ballDY *= -1;
-                const hitPos = (breakoutGame.ballX - (breakoutGame.paddleX + breakoutGame.paddleWidth / 2)) / (breakoutGame.paddleWidth / 2);
-                breakoutGame.ballDX = hitPos * 4.5;
+            if (g.ballDY > 0 && g.ballY + g.ballRadius > paddleY && g.ballY + g.ballRadius < paddleY + g.paddleHeight + 8 &&
+                g.ballX > g.paddleX - 2 && g.ballX < g.paddleX + g.paddleWidth + 2) {
+                const hitPos = Math.max(-1, Math.min(1, (g.ballX - (g.paddleX + g.paddleWidth / 2)) / (g.paddleWidth / 2)));
+                const speed = Math.min(9.5, Math.hypot(g.ballDX, g.ballDY) * 1.02);
+                const ang = hitPos * 1.05;
+                g.ballDX = speed * Math.sin(ang);
+                g.ballDY = -speed * Math.cos(ang);
+                g.ballY = paddleY - g.ballRadius;
             }
 
-            for (const b of breakoutGame.bricks) {
+            for (const b of g.bricks) {
                 if (!b.alive) continue;
-                if (breakoutGame.ballX + breakoutGame.ballRadius > b.x && breakoutGame.ballX - breakoutGame.ballRadius < b.x + breakoutGame.brickWidth &&
-                    breakoutGame.ballY + breakoutGame.ballRadius > b.y && breakoutGame.ballY - breakoutGame.ballRadius < b.y + breakoutGame.brickHeight) {
-                    b.alive = false;
-                    breakoutGame.ballDY *= -1;
-                    breakoutGame.score += 10;
-                    const scoreEl = document.getElementById('breakout-score');
-                    if (scoreEl) scoreEl.innerText = breakoutGame.score;
+                if (g.ballX + g.ballRadius > b.x && g.ballX - g.ballRadius < b.x + g.brickWidth &&
+                    g.ballY + g.ballRadius > b.y && g.ballY - g.ballRadius < b.y + g.brickHeight) {
+                    // bounce off the side that was hit
+                    if (g.ballX > b.x && g.ballX < b.x + g.brickWidth) g.ballDY *= -1; else g.ballDX *= -1;
+                    b.hp--;
+                    g.score += 1;
+                    if (b.hp <= 0) { b.alive = false; g.score += 10 * b.maxHp; }
+                    const sp = Math.min(9.5, Math.hypot(g.ballDX, g.ballDY) * 1.006);
+                    const cur = Math.hypot(g.ballDX, g.ballDY) || 1;
+                    g.ballDX *= sp / cur; g.ballDY *= sp / cur;
+                    breakoutHud();
                     break;
                 }
             }
 
-            if (breakoutGame.ballY - breakoutGame.ballRadius > BREAKOUT_H) {
-                breakoutGame.lives--;
-                const livesEl = document.getElementById('breakout-lives');
-                if (livesEl) livesEl.innerText = breakoutGame.lives;
-                if (breakoutGame.lives <= 0) {
-                    endBreakoutGame(false);
-                    return;
-                }
+            // the wall creeps down: touching the paddle zone ends the run
+            g.descendAcc += dt;
+            const every = Math.max(7000, 16000 - g.level * 1200);
+            if (g.descendAcc >= every) {
+                g.descendAcc = 0;
+                g.bricks.forEach(b => { if (b.alive) b.y += 10; });
+            }
+            if (g.bricks.some(b => b.alive && b.y + g.brickHeight >= BREAKOUT_H - 56)) { endBreakoutGame(false); return; }
+
+            if (g.ballY - g.ballRadius > BREAKOUT_H) {
+                g.lives--;
+                breakoutHud();
+                if (g.lives <= 0) { endBreakoutGame(false); return; }
                 resetBreakoutBallAndPaddle();
             }
 
-            if (breakoutGame.bricks.every(b => !b.alive)) {
-                breakoutGame.score += 100;
-                const scoreEl = document.getElementById('breakout-score');
-                if (scoreEl) scoreEl.innerText = breakoutGame.score;
-                endBreakoutGame(true);
+            // board cleared: it never ends, the next level starts harder
+            if (g.bricks.every(b => !b.alive)) {
+                g.score += 100 * g.level;
+                g.level++;
+                resetBreakoutBallAndPaddle();
+                buildBreakoutBricks();
+                breakoutHud();
+                showToast('Level ' + g.level + '!');
             }
         }
 
@@ -5751,14 +5798,23 @@
             brCtx.fillStyle = grad;
             brCtx.fillRect(0, 0, BREAKOUT_W, BREAKOUT_H);
 
+            // danger line
+            brCtx.strokeStyle = 'rgba(239,68,68,0.25)'; brCtx.setLineDash([4, 4]);
+            brCtx.beginPath(); brCtx.moveTo(0, BREAKOUT_H - 56); brCtx.lineTo(BREAKOUT_W, BREAKOUT_H - 56); brCtx.stroke(); brCtx.setLineDash([]);
+
             breakoutGame.bricks.forEach(b => {
                 if (!b.alive) return;
                 brCtx.save();
                 brCtx.shadowColor = b.color;
                 brCtx.shadowBlur = 6;
+                brCtx.globalAlpha = 0.5 + 0.5 * (b.hp / b.maxHp);
                 brCtx.fillStyle = b.color;
                 brCtx.fillRect(b.x, b.y, breakoutGame.brickWidth, breakoutGame.brickHeight);
                 brCtx.restore();
+                if (b.maxHp > 1) {                                   // armoured bricks: white pips show the hits left
+                    brCtx.fillStyle = '#fff';
+                    for (let i = 0; i < b.hp; i++) brCtx.fillRect(b.x + 4 + i * 6, b.y + 6, 4, 4);
+                }
             });
 
             const paddleY = BREAKOUT_H - 16;
@@ -5800,7 +5856,7 @@
                     }
                 } catch (err) {
                     jbLogErr('breakoutLeaderboard write error:', err);
-                    showToast('Could not save score: ' + err.message, 'error');
+                    showToast('Could not save your score. Please try again.', 'error');
                 }
             }
 
@@ -5943,51 +5999,91 @@
 
         // ============== SPACE INVADERS LITE (keyboard + touch, Firebase leaderboard) ==============
         let spaceInvadersCanvas=null, siCtx=null;
-        const spaceInvadersGame={playerX:150, playerW:34, bullets:[], enemies:[], score:0, best:0, running:false, gameOver:false, rafId:0, moveDir:0, lastTime:0, shotCooldown:0, enemyDir:1, enemyTimer:0, wave:1};
+        const spaceInvadersGame={playerX:150, playerW:34, bullets:[], enemies:[], enemyBullets:[], score:0, best:0, running:false, gameOver:false, rafId:0, moveDir:0, lastTime:0, shotCooldown:0, enemyDir:1, enemyTimer:0, wave:1, lives:3, invuln:0, enemyShotAcc:0, totalEnemies:1};
         const SI_W=320, SI_H=400;
         function spaceInvadersMarkup(){return `
-            <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300"><span>Score: <span id="si-score" class="text-pink-400">0</span></span><span>Best: <span id="si-best" class="text-emerald-400">0</span></span></div>
-            <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl"><canvas id="space-invaders-canvas" width="${SI_W}" height="${SI_H}" class="block max-w-full h-auto touch-none"></canvas><div id="si-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center"><h3 id="si-overlay-title" class="text-2xl font-black glowing-logo">SPACE INVADERS</h3><p id="si-overlay-desc" class="text-xs text-gray-400 max-w-[240px]">Clear endless alien waves. Each wave gets faster and rewards more points.</p><button id="si-overlay-btn" onclick="startSpaceInvaders()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-bold shadow-lg transition">Start Game</button></div></div>
+            <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300"><span>Score: <span id="si-score" class="text-pink-400">0</span></span><span>Wave: <span id="si-wave" class="text-cyan-300">1</span></span><span>Lives: <span id="si-lives" class="text-emerald-400">3</span></span><span>Best: <span id="si-best" class="text-emerald-400">0</span></span></div>
+            <div class="relative bg-black/60 border border-purple-500/40 rounded-2xl overflow-hidden shadow-2xl"><canvas id="space-invaders-canvas" width="${SI_W}" height="${SI_H}" class="block max-w-full h-auto touch-none"></canvas><div id="si-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center"><h3 id="si-overlay-title" class="text-2xl font-black glowing-logo">SPACE INVADERS</h3><p id="si-overlay-desc" class="text-xs text-gray-400 max-w-[240px]">Endless alien waves that shoot back. You have 3 lives. Tougher aliens, faster fire and faster waves every level.</p><button id="si-overlay-btn" onclick="startSpaceInvaders()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-bold shadow-lg transition">Start Game</button></div></div>
             <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 select-none"><div class="grid grid-cols-3 gap-2"><button ontouchstart="event.preventDefault(); spaceInvadersSetDir(-1)" onmousedown="spaceInvadersSetDir(-1)" onmouseup="spaceInvadersSetDir(0)" onmouseleave="spaceInvadersSetDir(0)" ontouchend="spaceInvadersSetDir(0)" ontouchcancel="spaceInvadersSetDir(0)" class="dpad-btn h-12 bg-purple-600/30 border border-purple-400/40 rounded-xl text-white"><i class="fa fa-chevron-left"></i></button><button ontouchstart="event.preventDefault(); spaceInvadersShoot()" onmousedown="spaceInvadersShoot()" class="h-12 bg-pink-600/40 border border-pink-400/40 rounded-xl text-white font-bold"><i class="fa fa-crosshairs mr-1"></i> FIRE</button><button ontouchstart="event.preventDefault(); spaceInvadersSetDir(1)" onmousedown="spaceInvadersSetDir(1)" onmouseup="spaceInvadersSetDir(0)" onmouseleave="spaceInvadersSetDir(0)" ontouchend="spaceInvadersSetDir(0)" ontouchcancel="spaceInvadersSetDir(0)" class="dpad-btn h-12 bg-purple-600/30 border border-purple-400/40 rounded-xl text-white"><i class="fa fa-chevron-right"></i></button></div><p class="text-[10px] text-gray-500 text-center mt-2">PC: A/D or Arrow Keys + Space • Mobile: Touch controls</p></div>
         `;}
         function initSpaceInvaders(){spaceInvadersCanvas=document.getElementById('space-invaders-canvas');if(!spaceInvadersCanvas)return;siCtx=spaceInvadersCanvas.getContext('2d');cancelAnimationFrame(spaceInvadersGame.rafId);spaceInvadersGame.running=false;spaceInvadersGame.gameOver=false;spaceInvadersGame.best=parseInt(localStorage.getItem('space_invaders_best')||'0',10);document.getElementById('si-best').innerText=spaceInvadersGame.best;drawSpaceInvaders();}
         function spaceInvadersSetDir(d){spaceInvadersGame.moveDir=d;if(d!==0&&!spaceInvadersGame.running)startSpaceInvaders();}
-        function spaceInvadersShoot(){if(!spaceInvadersGame.running){startSpaceInvaders();return;}if(spaceInvadersGame.shotCooldown<=0){spaceInvadersGame.bullets.push({x:spaceInvadersGame.playerX+spaceInvadersGame.playerW/2,y:SI_H-30});spaceInvadersGame.shotCooldown=180;}}
+        function spaceInvadersShoot(){if(!spaceInvadersGame.running){startSpaceInvaders();return;}if(spaceInvadersGame.shotCooldown<=0&&spaceInvadersGame.bullets.length<3){spaceInvadersGame.bullets.push({x:spaceInvadersGame.playerX+spaceInvadersGame.playerW/2,y:SI_H-30});spaceInvadersGame.shotCooldown=260;}}
+        function siHud(){const g=spaceInvadersGame;const a=document.getElementById('si-score'),b=document.getElementById('si-wave'),c=document.getElementById('si-lives');if(a)a.innerText=g.score;if(b)b.innerText=g.wave;if(c)c.innerText=g.lives;}
         function spawnSpaceInvadersWave(){
-            const wave=spaceInvadersGame.wave;
-            spaceInvadersGame.enemies=[];
-            const rows=Math.min(7,3+Math.floor((wave-1)/2));
-            const cols=7;
-            const gap=38;
+            const g=spaceInvadersGame, wave=g.wave;
+            g.enemies=[]; g.enemyBullets=[];
+            const rows=Math.min(6,3+Math.floor((wave-1)/2)), cols=7, gap=38;
             const startX=(SI_W-(cols*gap-14))/2-12;
-            for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) spaceInvadersGame.enemies.push({x:startX+c*gap,y:42+r*27,w:24,h:16,row:r});
-            spaceInvadersGame.enemyDir=wave%2===0?-1:1;
-            spaceInvadersGame.enemyTimer=0;
+            for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+                // the front rows get armour as waves go on: 2 hits from wave 3, 3 hits from wave 7, second row from wave 5
+                const hp=r===0?(wave>=7?3:(wave>=3?2:1)):(r===1&&wave>=5?2:1);
+                g.enemies.push({x:startX+c*gap,y:42+r*27,w:24,h:16,row:r,hp:hp,maxHp:hp});
+            }
+            g.totalEnemies=g.enemies.length;
+            g.enemyDir=wave%2===0?-1:1; g.enemyTimer=0; g.enemyShotAcc=0;
         }
-        function startSpaceInvaders(){cancelAnimationFrame(spaceInvadersGame.rafId);spaceInvadersGame.playerX=(SI_W-spaceInvadersGame.playerW)/2;spaceInvadersGame.bullets=[];spaceInvadersGame.score=0;spaceInvadersGame.wave=1;spaceInvadersGame.shotCooldown=0;spaceInvadersGame.enemyTimer=0;spaceInvadersGame.running=true;spaceInvadersGame.gameOver=false;spawnSpaceInvadersWave();document.getElementById('si-score').innerText='0';document.getElementById('si-overlay').classList.add('hidden');spaceInvadersGame.lastTime=performance.now();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);}
+        function startSpaceInvaders(){const g=spaceInvadersGame;cancelAnimationFrame(g.rafId);g.playerX=(SI_W-g.playerW)/2;g.bullets=[];g.enemyBullets=[];g.score=0;g.wave=1;g.lives=3;g.invuln=0;g.shotCooldown=0;g.enemyTimer=0;g.running=true;g.gameOver=false;spawnSpaceInvadersWave();siHud();document.getElementById('si-overlay').classList.add('hidden');g.lastTime=performance.now();g.rafId=requestAnimationFrame(spaceInvadersLoop);}
         function spaceInvadersLoop(now){
-            if(!spaceInvadersGame.running)return;
-            const dt=Math.min(32,now-spaceInvadersGame.lastTime||16);spaceInvadersGame.lastTime=now;const f=dt/16.67;
-            const wave=spaceInvadersGame.wave;
-            // Every cleared wave increases speed, descent amount and firing cadence.
-            const enemySpeed=0.35+Math.min(1.8,(wave-1)*0.075);
-            const descent=12+Math.min(12,Math.floor((wave-1)/3));
+            const g=spaceInvadersGame;
+            if(!g.running)return;
+            const dt=Math.min(32,now-g.lastTime||16);g.lastTime=now;const f=dt/16.67;
+            const wave=g.wave;
+            const alive=g.enemies.length, lost=1-alive/Math.max(1,g.totalEnemies);
+            // harder: aliens speed up as they die (and every wave), drop faster, and shoot back
+            const enemySpeed=(0.5+Math.min(1.7,(wave-1)*0.09))*(1+lost*1.8);
+            const descent=12+Math.min(10,Math.floor((wave-1)/3)*2);
             const bulletSpeed=7+Math.min(3,(wave-1)*0.08);
-            const moveSpeed=4.8+Math.min(2.2,(wave-1)*0.06);
-            spaceInvadersGame.playerX+=spaceInvadersGame.moveDir*moveSpeed*f;
-            spaceInvadersGame.playerX=Math.max(0,Math.min(SI_W-spaceInvadersGame.playerW,spaceInvadersGame.playerX));
-            spaceInvadersGame.shotCooldown-=dt;
-            spaceInvadersGame.bullets.forEach(b=>b.y-=bulletSpeed*f);
-            spaceInvadersGame.bullets=spaceInvadersGame.bullets.filter(b=>b.y>-10);
+            const moveSpeed=4.6+Math.min(1.8,(wave-1)*0.05);
+            g.playerX=Math.max(0,Math.min(SI_W-g.playerW,g.playerX+g.moveDir*moveSpeed*f));
+            g.shotCooldown-=dt; g.invuln=Math.max(0,g.invuln-dt);
+            g.bullets.forEach(b=>b.y-=bulletSpeed*f);
+            g.bullets=g.bullets.filter(b=>b.y>-10);
             let minX=SI_W,maxX=0;
-            spaceInvadersGame.enemies.forEach(e=>{minX=Math.min(minX,e.x);maxX=Math.max(maxX,e.x+e.w);});
-            if((minX<=8&&spaceInvadersGame.enemyDir<0)||(maxX>=SI_W-8&&spaceInvadersGame.enemyDir>0)){spaceInvadersGame.enemyDir*=-1;spaceInvadersGame.enemies.forEach(e=>e.y+=descent);}else spaceInvadersGame.enemies.forEach(e=>e.x+=enemySpeed*spaceInvadersGame.enemyDir*f);
-            for(let bi=spaceInvadersGame.bullets.length-1;bi>=0;bi--){let hit=-1;for(let ei=0;ei<spaceInvadersGame.enemies.length;ei++){const b=spaceInvadersGame.bullets[bi],e=spaceInvadersGame.enemies[ei];if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){hit=ei;break;}}if(hit>=0){spaceInvadersGame.enemies.splice(hit,1);spaceInvadersGame.bullets.splice(bi,1);spaceInvadersGame.score+=1;document.getElementById('si-score').innerText=spaceInvadersGame.score;}}
-            if(spaceInvadersGame.enemies.length===0){spaceInvadersGame.wave++;spawnSpaceInvadersWave();}
-            if(spaceInvadersGame.enemies.some(e=>e.y+e.h>=SI_H-55||(e.y+e.h>SI_H-40&&e.x<spaceInvadersGame.playerX+spaceInvadersGame.playerW&&e.x+e.w>spaceInvadersGame.playerX)))return endSpaceInvaders(false);
-            drawSpaceInvaders();spaceInvadersGame.rafId=requestAnimationFrame(spaceInvadersLoop);
+            g.enemies.forEach(e=>{minX=Math.min(minX,e.x);maxX=Math.max(maxX,e.x+e.w);});
+            if((minX<=8&&g.enemyDir<0)||(maxX>=SI_W-8&&g.enemyDir>0)){g.enemyDir*=-1;g.enemies.forEach(e=>e.y+=descent);}else g.enemies.forEach(e=>e.x+=enemySpeed*g.enemyDir*f);
+            // enemy fire: the lowest alien of a random column shoots; rate rises with the wave and as the formation thins out
+            g.enemyShotAcc+=dt;
+            const interval=Math.max(380,1150-wave*70-lost*250);
+            if(g.enemyShotAcc>=interval&&alive>0){
+                g.enemyShotAcc=0;
+                const cols={};g.enemies.forEach(e=>{const k=Math.round(e.x/38);if(!cols[k]||e.y>cols[k].y)cols[k]=e;});
+                const shooters=Object.values(cols);
+                const shots=wave>=6&&Math.random()<0.35?2:1;
+                for(let i=0;i<shots;i++){const e=shooters[Math.floor(Math.random()*shooters.length)];g.enemyBullets.push({x:e.x+e.w/2,y:e.y+e.h,vy:3.1+Math.min(2.4,wave*0.14)});}
+            }
+            g.enemyBullets.forEach(b=>b.y+=b.vy*f);
+            for(let i=g.enemyBullets.length-1;i>=0;i--){
+                const b=g.enemyBullets[i];
+                if(b.y>SI_H+10){g.enemyBullets.splice(i,1);continue;}
+                if(b.y>SI_H-24&&b.y<SI_H-8&&b.x>g.playerX&&b.x<g.playerX+g.playerW){
+                    g.enemyBullets.splice(i,1);
+                    if(g.invuln<=0){g.lives--;g.invuln=1500;siHud();if(g.lives<=0)return endSpaceInvaders(false);}
+                }
+            }
+            for(let bi=g.bullets.length-1;bi>=0;bi--){
+                let hit=-1;
+                for(let ei=0;ei<g.enemies.length;ei++){const b=g.bullets[bi],e=g.enemies[ei];if(b.x>e.x&&b.x<e.x+e.w&&b.y>e.y&&b.y<e.y+e.h){hit=ei;break;}}
+                if(hit>=0){
+                    const e=g.enemies[hit];e.hp--;g.bullets.splice(bi,1);
+                    if(e.hp<=0){g.enemies.splice(hit,1);g.score+=e.maxHp>1?2:1;siHud();}
+                }
+            }
+            if(g.enemies.length===0){g.wave++;g.score+=5;if(g.wave%4===1&&g.lives<5)g.lives++;spawnSpaceInvadersWave();siHud();}
+            if(g.enemies.some(e=>e.y+e.h>=SI_H-55||(e.y+e.h>SI_H-40&&e.x<g.playerX+g.playerW&&e.x+e.w>g.playerX)))return endSpaceInvaders(false);
+            drawSpaceInvaders();g.rafId=requestAnimationFrame(spaceInvadersLoop);
         }
-        function drawSpaceInvaders(){if(!siCtx)return;siCtx.clearRect(0,0,SI_W,SI_H);siCtx.fillStyle='#050511';siCtx.fillRect(0,0,SI_W,SI_H);siCtx.fillStyle='rgba(255,255,255,.45)';for(let i=0;i<45;i++){const x=(i*73)%SI_W,y=(i*97)%SI_H;siCtx.fillRect(x,y,1,1);}siCtx.shadowBlur=12;siCtx.shadowColor='#22d3ee';siCtx.fillStyle='#22d3ee';siCtx.fillRect(spaceInvadersGame.playerX,SI_H-24,spaceInvadersGame.playerW,12);siCtx.shadowColor='#f472b6';siCtx.fillStyle='#f472b6';spaceInvadersGame.enemies.forEach(e=>{siCtx.fillRect(e.x,e.y,e.w,e.h);siCtx.fillRect(e.x+4,e.y-4,e.w-8,4);});siCtx.shadowColor='#fff';siCtx.fillStyle='#fff';spaceInvadersGame.bullets.forEach(b=>siCtx.fillRect(b.x-1,b.y,2,9));siCtx.shadowBlur=0;}
+        function drawSpaceInvaders(){
+            if(!siCtx)return;const g=spaceInvadersGame;
+            siCtx.clearRect(0,0,SI_W,SI_H);siCtx.fillStyle='#050511';siCtx.fillRect(0,0,SI_W,SI_H);
+            siCtx.fillStyle='rgba(255,255,255,.45)';for(let i=0;i<45;i++){siCtx.fillRect((i*73)%SI_W,(i*97)%SI_H,1,1);}
+            // player blinks while it is invulnerable after a hit
+            if(!(g.invuln>0&&Math.floor(g.invuln/120)%2===0)){siCtx.shadowBlur=12;siCtx.shadowColor='#22d3ee';siCtx.fillStyle='#22d3ee';siCtx.fillRect(g.playerX,SI_H-24,g.playerW,12);siCtx.fillRect(g.playerX+g.playerW/2-3,SI_H-30,6,6);}
+            g.enemies.forEach(e=>{const c=e.maxHp>=3?'#f97316':(e.maxHp===2?(e.hp===2?'#c026d3':'#f472b6'):'#f472b6');siCtx.shadowColor=c;siCtx.fillStyle=c;siCtx.fillRect(e.x,e.y,e.w,e.h);siCtx.fillRect(e.x+4,e.y-4,e.w-8,4);if(e.hp>1){siCtx.fillStyle='rgba(255,255,255,.55)';siCtx.fillRect(e.x+3,e.y+6,e.w-6,3);}});
+            siCtx.shadowColor='#fff';siCtx.fillStyle='#fff';g.bullets.forEach(b=>siCtx.fillRect(b.x-1,b.y,2,9));
+            siCtx.shadowColor='#ef4444';siCtx.fillStyle='#ef4444';g.enemyBullets.forEach(b=>siCtx.fillRect(b.x-1.5,b.y,3,10));
+            siCtx.shadowBlur=0;
+        }
         async function endSpaceInvaders(won){spaceInvadersGame.running=false;spaceInvadersGame.gameOver=true;cancelAnimationFrame(spaceInvadersGame.rafId);if(spaceInvadersGame.score>spaceInvadersGame.best){spaceInvadersGame.best=spaceInvadersGame.score;localStorage.setItem('space_invaders_best',spaceInvadersGame.best);const el=document.getElementById('si-best');if(el)el.innerText=spaceInvadersGame.best;}if(spaceInvadersGame.score>0&&navigator.onLine&&isFirebaseConnected){try{const ref=db.ref('leaderboards/spaceInvaders/'+currentUser.username.toLowerCase());const snap=await ref.once('value');if(!snap.exists()||snap.val().score<spaceInvadersGame.score)await ref.set({username:currentUser.username,score:spaceInvadersGame.score});}catch(err){jbLogErr('JB HUB', err);}}const title=document.getElementById('si-overlay-title'),btn=document.getElementById('si-overlay-btn'),ov=document.getElementById('si-overlay'),desc=document.getElementById('si-overlay-desc');if(title)applyWaveEffect(title,won?'WAVE CLEARED!':'GAME OVER');if(desc)desc.classList.remove('hidden');if(btn)btn.innerText='Play Again';if(ov)ov.classList.remove('hidden');}
         window.addEventListener('keydown',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(e.key==='Enter'&&!spaceInvadersGame.running){e.preventDefault();startSpaceInvaders();return;}if(['ArrowLeft','a','A'].includes(e.key)||e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();spaceInvadersGame.moveDir=-1;}if(['ArrowRight','d','D'].includes(e.key)||e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();spaceInvadersGame.moveDir=1;}if(e.code==='Space'){e.preventDefault();spaceInvadersShoot();}});
         window.addEventListener('keyup',e=>{if(currentTab!=='arcade'||arcadeGameMode!=='spaceInvaders')return;if(['ArrowLeft','a','A','ArrowRight','d','D'].includes(e.key)||['ArrowLeft','ArrowRight','KeyA','KeyD'].includes(e.code))spaceInvadersGame.moveDir=0;});
@@ -6002,6 +6098,7 @@
             // Show empty board behind the start overlay instead of auto-starting
             game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
             game2048.score = 0;
+            game2048.moves = 0; game2048.stoneBorn = {};
             game2048.running = false;
             game2048.gameOver = false;
             const scoreEl = document.getElementById('g2048-score');
@@ -6039,6 +6136,7 @@
         window.startGame2048 = function() {
             game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
             game2048.score = 0;
+            game2048.moves = 0; game2048.stoneBorn = {};
             game2048.running = true;
             game2048.gameOver = false;
             spawn2048StartTile();
@@ -6061,25 +6159,50 @@
         }
 
         function spawn2048Tile() {
-            const empty = [];
-            for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (game2048.grid[r][c] === 0) empty.push([r, c]);
-            if (empty.length === 0) return;
-            const [r, c] = empty[Math.floor(Math.random() * empty.length)];
-            game2048.grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+            const g = game2048;
+            // pressure: 4s become more common as you play, and every 4th move after move 12 two tiles appear
+            const p4 = Math.min(0.42, 0.10 + g.moves * 0.006);
+            const count = (g.moves >= 12 && g.moves % 4 === 0) ? 2 : 1;
+            for (let k = 0; k < count; k++) {
+                const empty = [];
+                for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (g.grid[r][c] === 0) empty.push([r, c]);
+                if (empty.length === 0) return;
+                const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+                g.grid[r][c] = Math.random() < 1 - p4 ? 2 : 4;
+            }
+        }
+
+        // Stone blocks (-1): they do not slide or merge, and crumble away after 22 moves. A new one appears every 10 moves (max 3).
+        function manage2048Stones() {
+            const g = game2048;
+            Object.keys(g.stoneBorn).forEach(key => {
+                const [r, c] = key.split(',').map(Number);
+                if (g.grid[r][c] !== -1) { delete g.stoneBorn[key]; return; }
+                if (g.moves - g.stoneBorn[key] >= 22) { g.grid[r][c] = 0; delete g.stoneBorn[key]; }
+            });
+            if (g.moves > 0 && g.moves % 10 === 0 && Object.keys(g.stoneBorn).length < 3) {
+                const empty = [];
+                for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if (g.grid[r][c] === 0) empty.push([r, c]);
+                if (empty.length > 2) {
+                    const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+                    g.grid[r][c] = -1; g.stoneBorn[r + ',' + c] = g.moves;
+                }
+            }
         }
 
         function slideAndMergeRow(row) {
-            let vals = row.filter(v => v !== 0);
-            let gained = 0;
-            for (let i = 0; i < vals.length - 1; i++) {
-                if (vals[i] === vals[i + 1]) {
-                    vals[i] *= 2;
-                    gained += vals[i];
-                    vals.splice(i + 1, 1);
+            const out = []; let gained = 0; let seg = [];
+            const flush = () => {
+                const vals = seg.filter(v => v !== 0);
+                for (let i = 0; i < vals.length - 1; i++) {
+                    if (vals[i] === vals[i + 1]) { vals[i] *= 2; gained += vals[i]; vals.splice(i + 1, 1); }
                 }
-            }
-            while (vals.length < 4) vals.push(0);
-            return { row: vals, gained };
+                while (vals.length < seg.length) vals.push(0);
+                out.push(...vals); seg = [];
+            };
+            for (const v of row) { if (v === -1) { flush(); out.push(-1); } else seg.push(v); }   // a stone splits the row into separate lanes
+            flush();
+            return { row: out, gained };
         }
 
         window.move2048 = function(direction) {
@@ -6125,8 +6248,12 @@
             if (!moved) return;
 
             game2048.score += totalGained;
+            game2048.moves++;
             spawn2048Tile();
+            manage2048Stones();
             render2048Board();
+            const movesEl = document.getElementById('g2048-moves');
+            if (movesEl) movesEl.innerText = game2048.moves;
 
             const scoreEl = document.getElementById('g2048-score');
             if (scoreEl) scoreEl.innerText = game2048.score;
@@ -6148,6 +6275,7 @@
             for (let r = 0; r < 4; r++) {
                 for (let c = 0; c < 4; c++) {
                     if (grid[r][c] === 0) return true;
+                    if (grid[r][c] === -1) continue;
                     if (c < 3 && grid[r][c] === grid[r][c + 1]) return true;
                     if (r < 3 && grid[r][c] === grid[r + 1][c]) return true;
                 }
@@ -6171,6 +6299,7 @@
                         cell.style.boxShadow = `0 0 10px ${(G2048_COLORS[val] || '#f59e0b')}66`;
                         cell.innerText = val;
                     }
+                    if (val === -1) { cell.style.background = '#2b2f3a'; cell.style.boxShadow = 'inset 0 0 8px rgba(0,0,0,0.7)'; cell.innerText = '🪨'; }
                     board.appendChild(cell);
                 }
             }
@@ -6189,7 +6318,7 @@
                     }
                 } catch (err) {
                     jbLogErr('game2048Leaderboard write error:', err);
-                    showToast('Could not save score: ' + err.message, 'error');
+                    showToast('Could not save your score. Please try again.', 'error');
                 }
             }
 
@@ -6323,7 +6452,7 @@
                     }
                 } catch (err) {
                     jbLogErr('glitchLeaderboard write error:', err);
-                    showToast('Could not save score: ' + err.message, 'error');
+                    showToast('Could not save your score. Please try again.', 'error');
                 }
             }
 
@@ -6541,7 +6670,7 @@
                         <button onclick="switchLeaderboardGame('breakout')" id="lb-mode-breakout-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'breakout' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-square mr-1"></i>Breakout</button>
                         <button onclick="switchLeaderboardGame('2048')" id="lb-mode-2048-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === '2048' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-hashtag mr-1"></i>2048</button>
                         <button onclick="switchLeaderboardGame('neonDodger')" id="lb-mode-neonDodger-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'neonDodger' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-bolt mr-1"></i>Neon Dodger</button>
-                        <button onclick="switchLeaderboardGame('spaceInvaders')" id="lb-mode-spaceInvaders-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'spaceInvaders' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-rocket mr-1"></i>Space Invaders</button>
+                        <button onclick="switchLeaderboardGame('spaceInvaders')" id="lb-mode-spaceInvaders-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === 'spaceInvaders' ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa fa-rocket mr-1"></i>Space Invaders</button>${extraLeaderboardButtonsHtml()}
                     </div>
                     <div id="leaderboard-list" class="space-y-2"></div>
                 </div>
@@ -6558,7 +6687,7 @@
         function renderLeaderboard() {
             const list = document.getElementById('leaderboard-list');
             if (!list) return;
-            const source = leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : (leaderboardGameMode === 'breakout' ? breakoutLeaderboardData : (leaderboardGameMode === '2048' ? game2048LeaderboardData : (leaderboardGameMode === 'neonDodger' ? neonDodgerLeaderboardData : (leaderboardGameMode === 'spaceInvaders' ? spaceInvadersLeaderboardData : leaderboardData))))));
+            const source = EXTRA_BY_KEY[leaderboardGameMode] ? (extraLeaderboardData[leaderboardGameMode] || []) : leaderboardGameMode === 'memory' ? memoryLeaderboardData : (leaderboardGameMode === 'flappy' ? flappyLeaderboardData : (leaderboardGameMode === 'glitch' ? glitchLeaderboardData : (leaderboardGameMode === 'breakout' ? breakoutLeaderboardData : (leaderboardGameMode === '2048' ? game2048LeaderboardData : (leaderboardGameMode === 'neonDodger' ? neonDodgerLeaderboardData : (leaderboardGameMode === 'spaceInvaders' ? spaceInvadersLeaderboardData : leaderboardData))))));
             const sorted = [...source].sort((a, b) => b.score - a.score).slice(0, 10);
             if (sorted.length === 0) {
                 list.innerHTML = `<p class="text-xs text-gray-400 italic text-center">No scores recorded yet.</p>`;
@@ -7042,9 +7171,9 @@
                 updates['users/' + oldKey] = null;
 
                 const leaderboardPaths = [
-                    'leaderboard', 'memoryLeaderboard', 'flappyLeaderboard', 'glitchLeaderboard',
-                    'breakoutLeaderboard', 'game2048Leaderboard', 'neonDodgerLeaderboard', 'spaceInvadersLeaderboard'
-                ];
+                    'leaderboards/snake', 'leaderboards/memory', 'leaderboards/flappy', 'leaderboards/glitch',
+                    'leaderboards/breakout', 'leaderboards/2048', 'leaderboards/neonDodger', 'leaderboards/spaceInvaders'
+                ].concat(EXTRA_GAMES.map(g => 'leaderboards/' + g.key));
                 for (const path of leaderboardPaths) {
                     const scoreSnap = await db.ref(path + '/' + oldKey).once('value');
                     if (scoreSnap.exists()) {
@@ -7197,6 +7326,7 @@
                 await db.ref('leaderboards/2048/' + usernameKey).remove();
                 await db.ref('leaderboards/neonDodger/' + usernameKey).remove();
                 await db.ref('leaderboards/spaceInvaders/' + usernameKey).remove();
+                for (const g of EXTRA_GAMES) await db.ref('leaderboards/' + g.key + '/' + usernameKey).remove();
 
                 // Last step: remove the login from Firebase Authentication
                 if (authUserToDelete) {
@@ -7693,7 +7823,7 @@
                                                 <p class="text-[11px] text-gray-400 mt-1">Reporter: ${escapeHtml(reporter)}</p>
                                             </div>
                                             <div class="flex space-x-2 shrink-0">
-                                                <button onclick="adminReplyBugPrompt('${jsArg(b.id)}', '${escapeHtml(b.reply || '')}', '${b.status || 'Pending'}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
+                                                <button onclick="adminReplyBugPrompt('${jsArg(b.id)}', '${jsArg(b.reply || '')}', '${b.status || 'Pending'}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
                                                 <button onclick="deleteBugReport('${jsArg(b.id)}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                             </div>
                                         </div>
@@ -7723,7 +7853,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7742,7 +7872,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditMemoryLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditMemoryLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteMemoryLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7761,7 +7891,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditFlappyLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditFlappyLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteFlappyLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7780,7 +7910,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditGlitchLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditGlitchLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteGlitchLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7799,7 +7929,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditBreakoutLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditBreakoutLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteBreakoutLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7818,7 +7948,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditGame2048LeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditGame2048LeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteGame2048Leaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7837,7 +7967,7 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditNeonDodgerLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditNeonDodgerLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteNeonDodgerLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
@@ -7856,13 +7986,15 @@
                                         <span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span>
                                     </div>
                                     <div class="space-x-2">
-                                        <button onclick="adminEditSpaceInvadersLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${escapeHtml(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminEditSpaceInvadersLeaderboardPrompt('${jsArg(lb.username.toLowerCase())}', '${jsArg(lb.username)}', ${lb.score})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
                                         <button onclick="adminDeleteSpaceInvadersLeaderboard('${jsArg(lb.username.toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
+
+                    ${adminExtraLeaderboardSections()}
 
                     <!-- All Notes Management -->
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
@@ -8632,6 +8764,460 @@
                 showToast("Leaderboard entry removed");
             });
         }
+
+        // =====================================================================
+        // ARCADE PLUS: pause for every game + three endless games that keep getting harder
+        // =====================================================================
+
+        // ---------- Pause ----------
+        let arcadePaused = false;
+        const ARCADE_PAUSABLE = {
+            memory: {
+                running: () => memoryGame.running && !memoryGame.gameOver,
+                pause() { memoryGame.running = false; clearInterval(memoryGame.timerInterval); },
+                resume() {
+                    memoryGame.running = true; clearInterval(memoryGame.timerInterval);
+                    memoryGame.timerInterval = setInterval(() => { memoryGame.timerSeconds++; const t = document.getElementById('memory-timer'); if (t) t.innerText = memoryGame.timerSeconds + 's'; }, 1000);
+                }
+            },
+            flappy: {
+                running: () => flappyBird.running && !flappyBird.gameOver,
+                pause() { flappyBird.running = false; cancelAnimationFrame(flappyBird.rafId); },
+                resume() { flappyBird.running = true; flappyBird.rafId = requestAnimationFrame(flappyLoop); }
+            },
+            breakout: {
+                running: () => breakoutGame.running && !breakoutGame.gameOver,
+                pause() { breakoutGame.running = false; cancelAnimationFrame(breakoutGame.rafId); breakoutGame.moveDir = null; },
+                resume() { breakoutGame.running = true; breakoutGame.lastTime = performance.now(); breakoutGame.rafId = requestAnimationFrame(breakoutLoop); }
+            },
+            '2048': {
+                running: () => game2048.running && !game2048.gameOver,
+                pause() { game2048.running = false; },
+                resume() { game2048.running = true; }
+            },
+            glitch: {
+                running: () => glitchGame.running && !glitchGame.gameOver,
+                pause() { glitchGame.running = false; clearTimeout(glitchGame.spawnTimer); },
+                resume() { glitchGame.running = true; spawnGlitch(); }
+            },
+            neonDodger: {
+                running: () => neonDodgerGame.running && !neonDodgerGame.gameOver,
+                pause() { neonDodgerGame.running = false; neonDodgerGame.moveDir = 0; cancelAnimationFrame(neonDodgerGame.rafId); },
+                resume() { neonDodgerGame.running = true; neonDodgerGame.lastTime = performance.now(); neonDodgerGame.rafId = requestAnimationFrame(neonDodgerLoop); }
+            },
+            spaceInvaders: {
+                running: () => spaceInvadersGame.running && !spaceInvadersGame.gameOver,
+                pause() { spaceInvadersGame.running = false; spaceInvadersGame.moveDir = 0; cancelAnimationFrame(spaceInvadersGame.rafId); },
+                resume() { spaceInvadersGame.running = true; spaceInvadersGame.lastTime = performance.now(); spaceInvadersGame.rafId = requestAnimationFrame(spaceInvadersLoop); }
+            }
+        };
+        const extraPauseHandler = {
+            running: () => extraRT.running && !extraRT.gameOver,
+            pause() { extraRT.running = false; cancelAnimationFrame(extraRT.raf); if (extraRT.game && extraRT.game.releaseInputs) extraRT.game.releaseInputs(); },
+            resume() { extraRT.running = true; extraRT.last = performance.now(); extraRT.raf = requestAnimationFrame(extraLoop); }
+        };
+        function arcadeHandler() { return EXTRA_BY_KEY[arcadeGameMode] ? extraPauseHandler : (ARCADE_PAUSABLE[arcadeGameMode] || null); }
+
+        function setArcadePauseUi(on) {
+            const ov = document.getElementById('arcade-pause-overlay'), txt = document.getElementById('arcade-pause-text'), ic = document.getElementById('arcade-pause-icon');
+            if (ov) ov.classList.toggle('hidden', !on);
+            if (txt) txt.innerText = on ? 'Resume' : 'Pause';
+            if (ic) ic.className = 'fa mr-1 ' + (on ? 'fa-play' : 'fa-pause');
+        }
+        window.toggleArcadePause = function () {
+            if (currentTab !== 'arcade') return;
+            if (arcadeGameMode === 'snake') { try { togglePauseGame(); } catch (e) {} return; }   // Snake already has its own pause screen
+            const h = arcadeHandler(); if (!h) return;
+            if (arcadePaused) { arcadePaused = false; h.resume(); setArcadePauseUi(false); }
+            else if (h.running()) { h.pause(); arcadePaused = true; setArcadePauseUi(true); }
+        };
+        // pauses by itself when you switch tab/app, open the side menu or a popup
+        function arcadeAutoPause() {
+            if (arcadePaused || currentTab !== 'arcade') return;
+            if (arcadeGameMode === 'snake') { try { if (cyberSnake.running && !isGamePaused) togglePauseGame(); } catch (e) {} return; }
+            const h = arcadeHandler();
+            if (h && h.running()) { h.pause(); arcadePaused = true; setArcadePauseUi(true); }
+        }
+        function mountArcadePause() {
+            arcadePaused = false;
+            if (arcadeGameMode === 'snake') return;
+            const area = document.getElementById('arcade-game-area'); if (!area) return;
+            const holder = area.querySelector('.relative'); if (!holder || document.getElementById('arcade-pause-btn')) return;
+            holder.insertAdjacentHTML('beforebegin', '<div class="flex justify-end w-full max-w-sm px-2 -mb-2"><button id="arcade-pause-btn" type="button" onclick="toggleArcadePause()" class="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/60 border border-purple-500/40 rounded-lg text-xs text-purple-200 transition"><i id="arcade-pause-icon" class="fa fa-pause mr-1"></i><span id="arcade-pause-text">Pause</span> <span class="opacity-50">(P)</span></button></div>');
+            holder.insertAdjacentHTML('beforeend', '<div id="arcade-pause-overlay" class="hidden absolute inset-0 z-20 bg-black/80 flex flex-col items-center justify-center space-y-3 text-center p-4"><h3 class="text-2xl font-black glowing-logo">PAUSED</h3><p class="text-xs text-gray-400">Press P or tap Resume to continue.</p><button type="button" onclick="toggleArcadePause()" class="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-sm font-bold shadow-lg">Resume</button></div>');
+        }
+        // P pauses / resumes; while paused every other key is ignored (so Enter cannot restart a paused game)
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade') return;
+            if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+            if (e.key === 'p' || e.key === 'P') { e.preventDefault(); if (!e.repeat) toggleArcadePause(); return; }
+            if (arcadePaused) { e.stopImmediatePropagation(); e.preventDefault(); }
+        }, true);
+        document.addEventListener('visibilitychange', () => { if (document.hidden) arcadeAutoPause(); });
+        // a paused game cannot be (re)started from its buttons
+        ['startMemoryGame', 'startFlappyGame', 'startBreakoutGame', 'startGame2048', 'startGlitchGame', 'startNeonDodger', 'startSpaceInvaders'].forEach(name => {
+            const orig = window[name];
+            if (typeof orig === 'function') window[name] = function () { if (arcadePaused) return; return orig.apply(this, arguments); };
+        });
+        { const om = window.openModal; window.openModal = function () { arcadeAutoPause(); return om.apply(this, arguments); }; }
+        { const os = window.openSideMenu; window.openSideMenu = function () { arcadeAutoPause(); return os.apply(this, arguments); }; }
+        // a logout ends the session: stop reading leaderboards
+        try { auth.onAuthStateChanged(u => { if (!u) detachLeaderboardListeners(); }); } catch (e) {}
+
+        // ---------- Endless games (they never end, they only get harder) ----------
+        const EXTRA_GAMES = [
+            { key: 'cyberRunner', name: 'Cyber Runner', icon: 'fa-person-running', border: 'border-cyan-500/40', grad: 'from-cyan-600 to-purple-600', ctrl: 'jumpduck',
+              desc: 'Run forever. Jump over blocks, duck under drones. You get faster all the time.',
+              help: ['<strong class="text-gray-200">PC:</strong> Space / Up / W to jump, hold Down / S to duck, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the board or JUMP to jump, hold DUCK to duck.', '<strong class="text-gray-200">Endless:</strong> speed rises until it is brutal, drones show up after a few seconds.'],
+              keys: { Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', ArrowDown: 'duck', KeyS: 'duck' }, create: createCyberRunner },
+            { key: 'stackTower', name: 'Stack Tower', icon: 'fa-layer-group', border: 'border-pink-500/40', grad: 'from-pink-600 to-purple-600', ctrl: 'drop',
+              desc: 'Stack the moving blocks as high as you can. Misses slice your block thinner and it speeds up every floor.',
+              help: ['<strong class="text-gray-200">PC:</strong> Space / Up / Down to drop the block, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the board or the DROP button.', '<strong class="text-gray-200">Perfect drops</strong> keep your width and earn combo points; 4 perfects in a row even widen it.'],
+              keys: { Space: 'drop', ArrowUp: 'drop', ArrowDown: 'drop', Enter: 'drop' }, create: createStackTower },
+            { key: 'neonRacer', name: 'Neon Racer', icon: 'fa-car-side', border: 'border-amber-500/40', grad: 'from-amber-500 to-pink-600', ctrl: 'lanes',
+              desc: 'Weave through traffic on a 4-lane road and grab coins. Traffic gets faster and denser without end.',
+              help: ['<strong class="text-gray-200">PC:</strong> Left/Right or A/D to change lane, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the left or right side of the board, or use the buttons.', '<strong class="text-gray-200">Coins</strong> are worth 5 points each; every row always has a free lane.'],
+              keys: { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' }, create: createNeonRacer }
+        ];
+        const EXTRA_BY_KEY = {}; EXTRA_GAMES.forEach(g => { EXTRA_BY_KEY[g.key] = g; });
+        const EXTRA_W = 320, EXTRA_H = 400;
+        let extraLeaderboardData = {};
+        const extraRT = { key: null, def: null, game: null, canvas: null, ctx: null, running: false, gameOver: false, raf: 0, last: 0, best: 0 };
+
+        function extraArcadeButtonsHtml() {
+            return EXTRA_GAMES.map(g => `
+                        <button onclick="switchArcadeGame('${g.key}')" id="arcade-mode-${g.key}-btn" class="flex-1 min-w-[90px] px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition border ${arcadeGameMode === g.key ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}">
+                            <i class="fa ${g.icon} mr-1"></i> ${g.name}
+                        </button>`).join('');
+        }
+        function extraLeaderboardButtonsHtml() {
+            return EXTRA_GAMES.map(g => `
+                        <button onclick="switchLeaderboardGame('${g.key}')" id="lb-mode-${g.key}-btn" class="px-4 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition border ${leaderboardGameMode === g.key ? 'bg-gradient-to-r from-purple-600 to-pink-600 border-transparent' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}"><i class="fa ${g.icon} mr-1"></i>${g.name}</button>`).join('');
+        }
+        function listenExtraLeaderboards() {
+            EXTRA_GAMES.forEach(g => {
+                db.ref('leaderboards/' + g.key).on('value', snap => {
+                    extraLeaderboardData[g.key] = [];
+                    if (snap.exists()) snap.forEach(child => { extraLeaderboardData[g.key].push(child.val()); });
+                    if (currentTab === 'leaderboard') renderLeaderboard();
+                    if (currentTab === 'admin' && currentUser && currentUser.isAdmin) renderAdminTab(document.getElementById('tab-content'));
+                }, lbReadError(g.name));
+            });
+        }
+
+        function extraControlsHtml(def) {
+            const btn = 'class="dpad-btn h-12 bg-purple-600/30 border border-purple-400/40 rounded-xl text-white font-bold select-none"';
+            if (def.ctrl === 'jumpduck') return `<div class="grid grid-cols-2 gap-2">
+                <button ontouchstart="event.preventDefault(); extraInput('jump', true)" onmousedown="extraInput('jump', true)" ${btn}><i class="fa fa-arrow-up mr-1"></i>JUMP</button>
+                <button ontouchstart="event.preventDefault(); extraInput('duck', true)" ontouchend="extraInput('duck', false)" ontouchcancel="extraInput('duck', false)" onmousedown="extraInput('duck', true)" onmouseup="extraInput('duck', false)" onmouseleave="extraInput('duck', false)" ${btn}><i class="fa fa-arrow-down mr-1"></i>DUCK</button></div>`;
+            if (def.ctrl === 'drop') return `<button ontouchstart="event.preventDefault(); extraInput('drop', true)" onmousedown="extraInput('drop', true)" class="w-full h-12 bg-pink-600/40 border border-pink-400/40 rounded-xl text-white font-bold select-none"><i class="fa fa-arrow-down mr-1"></i>DROP</button>`;
+            return `<div class="grid grid-cols-2 gap-2">
+                <button ontouchstart="event.preventDefault(); extraInput('left', true)" onmousedown="extraInput('left', true)" ${btn}><i class="fa fa-chevron-left"></i></button>
+                <button ontouchstart="event.preventDefault(); extraInput('right', true)" onmousedown="extraInput('right', true)" ${btn}><i class="fa fa-chevron-right"></i></button></div>`;
+        }
+        function extraMarkup(def) {
+            return `
+                <div class="flex justify-between items-center w-full max-w-sm px-2 text-xs sm:text-sm font-bold text-purple-300">
+                    <span>Score: <span id="extra-score" class="text-pink-400">0</span></span>
+                    <span id="extra-hud" class="text-cyan-300"></span>
+                    <span>Best: <span id="extra-best" class="text-emerald-400">0</span></span>
+                </div>
+                <div class="relative bg-black/60 border ${def.border} rounded-2xl overflow-hidden shadow-2xl">
+                    <canvas id="extra-canvas" width="${EXTRA_W}" height="${EXTRA_H}" class="block max-w-full h-auto touch-none select-none"></canvas>
+                    <div id="extra-overlay" class="absolute inset-0 bg-black/85 flex flex-col items-center justify-center space-y-3 p-4 text-center">
+                        <h3 id="extra-overlay-title" class="text-2xl font-black glowing-logo">${def.name.toUpperCase()}</h3>
+                        <p id="extra-overlay-desc" class="text-xs text-gray-400 max-w-[240px]">${def.desc}</p>
+                        <button id="extra-overlay-btn" onclick="startExtra()" class="px-6 py-2.5 bg-gradient-to-r ${def.grad} rounded-xl text-sm font-bold shadow-lg transition">Start Game</button>
+                    </div>
+                </div>
+                <div class="glass p-3 rounded-2xl max-w-sm w-full border border-white/10 select-none">${extraControlsHtml(def)}</div>
+                <div class="glass p-4 rounded-xl max-w-sm w-full text-xs text-gray-300 space-y-2 border border-white/10">
+                    <h4 class="font-bold text-purple-300 flex items-center space-x-1.5"><i class="fa fa-circle-info text-pink-400"></i><span>How to Play</span></h4>
+                    <ul class="list-disc list-inside space-y-1 text-gray-400">${def.help.map(h => '<li>' + h + '</li>').join('')}</ul>
+                </div>`;
+        }
+        function initExtra(key) {
+            const def = EXTRA_BY_KEY[key]; if (!def) return;
+            cancelAnimationFrame(extraRT.raf);
+            extraRT.key = key; extraRT.def = def; extraRT.running = false; extraRT.gameOver = false;
+            extraRT.canvas = document.getElementById('extra-canvas'); if (!extraRT.canvas) return;
+            extraRT.ctx = extraRT.canvas.getContext('2d');
+            extraRT.best = parseInt(localStorage.getItem('extra_best_' + key) || '0', 10) || 0;
+            const b = document.getElementById('extra-best'); if (b) b.innerText = extraRT.best;
+            extraRT.game = def.create(); extraRT.game.draw(extraRT.ctx);
+            const c = extraRT.canvas;
+            c.onpointerdown = e => {
+                if (!extraRT.running) return;
+                e.preventDefault();
+                if (def.ctrl === 'jumpduck') extraInput('jump', true);
+                else if (def.ctrl === 'drop') extraInput('drop', true);
+                else { const r = c.getBoundingClientRect(); extraInput((e.clientX - r.left) < r.width / 2 ? 'left' : 'right', true); }
+            };
+        }
+        function stopExtra() { cancelAnimationFrame(extraRT.raf); extraRT.running = false; }
+        window.startExtra = function () {
+            if (arcadePaused || !extraRT.canvas || !extraRT.def) return;
+            cancelAnimationFrame(extraRT.raf);
+            extraRT.game = extraRT.def.create();
+            extraRT.running = true; extraRT.gameOver = false;
+            const ov = document.getElementById('extra-overlay'); if (ov) ov.classList.add('hidden');
+            extraHud();
+            extraRT.last = performance.now();
+            extraRT.raf = requestAnimationFrame(extraLoop);
+        };
+        window.extraInput = function (name, down) { if (extraRT.running && extraRT.game) extraRT.game.input(name, down); };
+        function extraHud() {
+            const g = extraRT.game; if (!g) return;
+            const s = document.getElementById('extra-score'), h = document.getElementById('extra-hud');
+            if (s) s.innerText = g.score(); if (h) h.innerText = g.hud();
+        }
+        function extraLoop(now) {
+            if (!extraRT.running) return;
+            const dt = Math.min(32, (now - extraRT.last) || 16); extraRT.last = now;
+            const res = extraRT.game.update(dt / 16.67, dt);
+            extraRT.game.draw(extraRT.ctx);
+            extraHud();
+            if (res === 'over') { endExtra(); return; }
+            extraRT.raf = requestAnimationFrame(extraLoop);
+        }
+        async function endExtra() {
+            extraRT.running = false; extraRT.gameOver = true; cancelAnimationFrame(extraRT.raf);
+            const key = extraRT.key, score = extraRT.game.score();
+            if (score > extraRT.best) {
+                extraRT.best = score; try { localStorage.setItem('extra_best_' + key, score); } catch (e) {}
+                const b = document.getElementById('extra-best'); if (b) b.innerText = score;
+            }
+            if (score > 0 && navigator.onLine && isFirebaseConnected && currentUser) {
+                try {
+                    const ref = db.ref('leaderboards/' + key + '/' + currentUser.username.toLowerCase());
+                    const snap = await ref.once('value');
+                    if (!snap.exists() || snap.val().score < score) await ref.set({ username: currentUser.username, score: score });
+                } catch (err) { jbLogErr(key + ' score write', err); showToast('Could not save your score. Please try again.', 'error'); }
+            }
+            const t = document.getElementById('extra-overlay-title'), d = document.getElementById('extra-overlay-desc'), b = document.getElementById('extra-overlay-btn'), ov = document.getElementById('extra-overlay');
+            if (t) applyWaveEffect(t, 'GAME OVER');
+            if (d) { d.innerText = 'Score: ' + score; d.classList.remove('hidden'); }
+            if (b) b.innerText = 'Play Again';
+            if (ov) ov.classList.remove('hidden');
+        }
+        window.addEventListener('keydown', e => {
+            if (currentTab !== 'arcade' || !EXTRA_BY_KEY[arcadeGameMode] || arcadePaused) return;
+            if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+            const def = EXTRA_BY_KEY[arcadeGameMode];
+            if (!extraRT.running) { if (e.key === 'Enter') { e.preventDefault(); startExtra(); } return; }
+            const name = def.keys[e.code];
+            if (name) { e.preventDefault(); if (!e.repeat || name === 'duck') extraInput(name, true); }
+        });
+        window.addEventListener('keyup', e => {
+            if (currentTab !== 'arcade' || !EXTRA_BY_KEY[arcadeGameMode]) return;
+            const name = EXTRA_BY_KEY[arcadeGameMode].keys[e.code];
+            if (name === 'duck') extraInput('duck', false);
+        });
+
+        // ----- Cyber Runner: endless runner -----
+        function createCyberRunner() {
+            const W = EXTRA_W, H = EXTRA_H, GROUND = 330, GRAV = 0.62, JUMP = -12.6;
+            const s = { t: 0, dist: 0, px: 56, py: GROUND - 40, vy: 0, h: 40, ducking: false, onGround: true, obstacles: [], nextGap: 260, score: 0, speed: 4.2, step: 0 };
+            return {
+                input(name, down) { if (name === 'jump' && down && s.onGround) { s.vy = JUMP; s.onGround = false; } if (name === 'duck') s.ducking = !!down; },
+                releaseInputs() { s.ducking = false; },
+                update(f) {
+                    s.t += f / 60;
+                    s.speed = Math.min(11.5, 4.2 + s.t * 0.11);                      // always faster, up to a brutal cap
+                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 14); s.step += s.speed * f * 0.08;
+                    s.h = (s.ducking && s.onGround) ? 22 : 40;
+                    if (!s.onGround) {
+                        s.vy += GRAV * f + (s.ducking ? 0.9 * f : 0);               // holding duck in the air = fast fall
+                        s.py += s.vy * f;
+                        if (s.py >= GROUND - s.h) { s.py = GROUND - s.h; s.vy = 0; s.onGround = true; }
+                    } else s.py = GROUND - s.h;
+                    s.nextGap -= s.speed * f;
+                    if (s.nextGap <= 0) {
+                        const air = s.speed * 40;                                    // distance covered during one jump
+                        if (s.t > 6 && Math.random() < 0.3) s.obstacles.push({ type: 'drone', x: W + 20, y: GROUND - 52, w: 34, h: 22 });
+                        else {
+                            const w = 20 + Math.random() * 16, h = 26 + Math.random() * (18 + Math.min(14, s.t));
+                            s.obstacles.push({ type: 'box', x: W + 20, y: GROUND - h, w, h });
+                            if (s.t > 12 && Math.random() < 0.25) { const w2 = 20 + Math.random() * 14, h2 = 26 + Math.random() * 22; s.obstacles.push({ type: 'box', x: W + 20 + w + air * 0.3, y: GROUND - h2, w: w2, h: h2 }); }
+                        }
+                        s.nextGap = air * (1.05 + Math.random() * 0.7) + 40;           // always leaves room to land
+                    }
+                    s.obstacles.forEach(o => o.x -= s.speed * f);
+                    s.obstacles = s.obstacles.filter(o => o.x + o.w > -10);
+                    const p = { x: s.px + 4, y: s.py + 3, w: 18, h: s.h - 3 };
+                    for (const o of s.obstacles) if (p.x < o.x + o.w - 2 && p.x + p.w > o.x + 2 && p.y < o.y + o.h - 2 && p.y + p.h > o.y + 2) return 'over';
+                },
+                draw(ctx) {
+                    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a0620'); g.addColorStop(1, '#150a2e');
+                    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+                    ctx.strokeStyle = 'rgba(34,211,238,0.10)'; ctx.lineWidth = 1;
+                    const off = (s.dist * 0.5) % 40;
+                    for (let x = -off; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GROUND); ctx.stroke(); }
+                    for (let y = 40; y < GROUND; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+                    ctx.shadowBlur = 12; ctx.shadowColor = '#22d3ee'; ctx.fillStyle = '#22d3ee'; ctx.fillRect(0, GROUND, W, 3); ctx.shadowBlur = 0;
+                    ctx.fillStyle = 'rgba(34,211,238,0.12)'; ctx.fillRect(0, GROUND + 3, W, H - GROUND);
+                    // runner
+                    ctx.shadowBlur = 12; ctx.shadowColor = '#a855f7'; ctx.fillStyle = '#c084fc';
+                    ctx.fillRect(s.px, s.py + 8, 26, s.h - 8); ctx.fillStyle = '#f0abfc'; ctx.fillRect(s.px + 8, s.py, 14, 12);
+                    if (s.onGround && !(s.ducking)) { const l = Math.sin(s.step * 2) * 5; ctx.fillStyle = '#7c3aed'; ctx.fillRect(s.px + 4 + l, GROUND - 6, 8, 6); ctx.fillRect(s.px + 14 - l, GROUND - 6, 8, 6); }
+                    ctx.shadowColor = '#ec4899';
+                    s.obstacles.forEach(o => {
+                        ctx.fillStyle = o.type === 'drone' ? '#f59e0b' : '#ec4899';
+                        ctx.fillRect(o.x, o.y, o.w, o.h);
+                        if (o.type === 'drone') { ctx.fillStyle = '#fde68a'; ctx.fillRect(o.x - 6, o.y + 4 + Math.sin(s.step * 4) * 3, 8, 3); ctx.fillRect(o.x + o.w - 2, o.y + 4 - Math.sin(s.step * 4) * 3, 8, 3); }
+                    });
+                    ctx.shadowBlur = 0;
+                },
+                score() { return s.score; },
+                hud() { return 'Speed ' + (s.speed / 4.2).toFixed(1) + 'x'; }
+            };
+        }
+
+        // ----- Stack Tower: endless stacker -----
+        function createStackTower() {
+            const W = EXTRA_W, H = EXTRA_H, BH = 22, BASE = 40;
+            const s = { blocks: [{ x: 70, w: 180 }], mover: null, combo: 0, score: 0, cam: 0, debris: [], dead: 0, flash: 0 };
+            function newMover() { const top = s.blocks[s.blocks.length - 1]; const fromLeft = s.blocks.length % 2 === 0; s.mover = { x: fromLeft ? 0 : W - top.w, w: top.w, dir: fromLeft ? 1 : -1 }; }
+            newMover();
+            const hue = i => (i * 14) % 360;
+            return {
+                input(name, down) {
+                    if (name !== 'drop' || !down || s.dead) return;
+                    const top = s.blocks[s.blocks.length - 1], m = s.mover;
+                    const overlap = Math.min(m.x + m.w, top.x + top.w) - Math.max(m.x, top.x);
+                    if (overlap < 3) { s.dead = 20; s.debris.push({ x: m.x, w: m.w, y: H - BASE - (s.blocks.length + 1) * BH, vy: 0, i: s.blocks.length }); return; }
+                    if (Math.abs(m.x - top.x) <= 5) {                               // perfect drop
+                        s.combo++; let w = top.w, x = top.x;
+                        if (s.combo >= 4) { const nw = Math.min(180, w + 8); x -= (nw - w) / 2; w = nw; }
+                        s.blocks.push({ x, w, perfect: true }); s.score += 1 + Math.min(4, s.combo); s.flash = 14;
+                    } else {
+                        const nx = Math.max(m.x, top.x);
+                        const cutX = m.x < top.x ? m.x : top.x + top.w, cutW = m.w - overlap;
+                        s.debris.push({ x: cutX, w: cutW, y: H - BASE - (s.blocks.length + 1) * BH, vy: 0, i: s.blocks.length });
+                        s.blocks.push({ x: nx, w: overlap }); s.combo = 0; s.score += 1;
+                    }
+                    newMover();
+                },
+                releaseInputs() {},
+                update(f) {
+                    const speed = Math.min(8.2, 2.2 + s.blocks.length * 0.09);          // faster with every floor
+                    if (!s.dead) { const m = s.mover; m.x += m.dir * speed * f; if (m.x <= 0) { m.x = 0; m.dir = 1; } if (m.x + m.w >= W) { m.x = W - m.w; m.dir = -1; } }
+                    s.debris.forEach(d => { d.vy += 0.4 * f; d.y += d.vy * f; });
+                    s.debris = s.debris.filter(d => d.y < H + 40);
+                    const target = Math.max(0, (s.blocks.length - 9) * BH); s.cam += (target - s.cam) * 0.08 * f;
+                    if (s.flash > 0) s.flash -= f;
+                    if (s.dead) { s.dead -= f; if (s.dead <= 0) return 'over'; }
+                },
+                draw(ctx) {
+                    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#0a0620'); g.addColorStop(1, '#1a0b33');
+                    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+                    const blockY = i => H - BASE - (i + 1) * BH + s.cam;
+                    s.blocks.forEach((b, i) => { ctx.shadowBlur = 8; ctx.shadowColor = 'hsl(' + hue(i) + ',80%,60%)'; ctx.fillStyle = 'hsl(' + hue(i) + ',75%,58%)'; ctx.fillRect(b.x, blockY(i), b.w, BH - 2); if (b.perfect && i === s.blocks.length - 1 && s.flash > 0) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(b.x, blockY(i), b.w, BH - 2); } });
+                    if (!s.dead) { const m = s.mover, i = s.blocks.length; ctx.shadowColor = 'hsl(' + hue(i) + ',80%,60%)'; ctx.fillStyle = 'hsl(' + hue(i) + ',75%,58%)'; ctx.fillRect(m.x, blockY(i), m.w, BH - 2); }
+                    ctx.fillStyle = 'rgba(244,114,182,0.8)';
+                    s.debris.forEach(d => { ctx.fillRect(d.x, d.y + s.cam, d.w, BH - 2); });
+                    ctx.shadowBlur = 0; ctx.fillStyle = '#22d3ee'; ctx.fillRect(0, H - BASE + s.cam, W, 3);
+                    if (s.combo >= 2) { ctx.fillStyle = '#fde68a'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('PERFECT x' + s.combo, W / 2, 28); }
+                },
+                score() { return s.score; },
+                hud() { return 'Floor ' + s.blocks.length; }
+            };
+        }
+
+        // ----- Neon Racer: endless lane dodger -----
+        function createNeonRacer() {
+            const W = EXTRA_W, H = EXTRA_H, LANES = 4, LW = 64, X0 = (W - LANES * LW) / 2, PY = 322;
+            const cx = i => X0 + LW * i + LW / 2;
+            const s = { lane: 1, x: cx(1), t: 0, dist: 0, speed: 4.4, rows: [], nextRow: 160, coins: 0, score: 0, freeLane: 1 };
+            return {
+                input(name, down) { if (!down) return; if (name === 'left') s.lane = Math.max(0, s.lane - 1); if (name === 'right') s.lane = Math.min(LANES - 1, s.lane + 1); },
+                releaseInputs() {},
+                update(f) {
+                    s.t += f / 60; s.speed = Math.min(11, 4.4 + s.t * 0.1);
+                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 16) + s.coins * 5;
+                    s.x += (cx(s.lane) - s.x) * Math.min(1, 0.28 * f);
+                    s.nextRow -= s.speed * f;
+                    if (s.nextRow <= 0) {
+                        // a free lane always exists, and it is never more than 2 lanes away from the previous one
+                        const free = Math.max(0, Math.min(LANES - 1, s.freeLane + Math.floor(Math.random() * 5) - 2));
+                        const p = Math.min(0.8, 0.35 + s.t * 0.01);
+                        const blocked = []; for (let i = 0; i < LANES; i++) blocked.push(i !== free && Math.random() < p);
+                        let coin = -1; if (Math.random() < 0.5) coin = free;
+                        s.rows.push({ y: -70, blocked, coin }); s.freeLane = free;
+                        s.nextRow = s.speed * (20 + Math.random() * 14) + 70;            // enough time to change lanes at any speed
+                    }
+                    s.rows.forEach(r => r.y += s.speed * f);
+                    const p = { x: s.x - 15, y: PY, w: 30, h: 52 };
+                    for (const r of s.rows) {
+                        for (let i = 0; i < LANES; i++) if (r.blocked[i]) { const c = { x: cx(i) - 17, y: r.y, w: 34, h: 56 }; if (p.x + 3 < c.x + c.w && p.x + p.w - 3 > c.x && p.y + 3 < c.y + c.h && p.y + p.h - 3 > c.y) return 'over'; }
+                        if (r.coin >= 0 && Math.hypot(cx(r.coin) - s.x, r.y + 28 - (PY + 26)) < 26) { r.coin = -1; s.coins++; }
+                    }
+                    s.rows = s.rows.filter(r => r.y < H + 80);
+                },
+                draw(ctx) {
+                    ctx.fillStyle = '#05030f'; ctx.fillRect(0, 0, W, H);
+                    ctx.fillStyle = '#0d0a1f'; ctx.fillRect(X0, 0, LANES * LW, H);
+                    ctx.strokeStyle = 'rgba(251,191,36,0.9)'; ctx.lineWidth = 3; ctx.shadowBlur = 8; ctx.shadowColor = '#f59e0b';
+                    ctx.beginPath(); ctx.moveTo(X0, 0); ctx.lineTo(X0, H); ctx.moveTo(X0 + LANES * LW, 0); ctx.lineTo(X0 + LANES * LW, H); ctx.stroke(); ctx.shadowBlur = 0;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 2; ctx.setLineDash([18, 22]); ctx.lineDashOffset = -(s.dist % 40);
+                    for (let i = 1; i < LANES; i++) { ctx.beginPath(); ctx.moveTo(X0 + LW * i, 0); ctx.lineTo(X0 + LW * i, H); ctx.stroke(); } ctx.setLineDash([]);
+                    s.rows.forEach(r => {
+                        for (let i = 0; i < LANES; i++) if (r.blocked[i]) { ctx.shadowBlur = 10; ctx.shadowColor = '#ec4899'; ctx.fillStyle = i % 2 ? '#ec4899' : '#a855f7'; ctx.fillRect(cx(i) - 17, r.y, 34, 56); ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(cx(i) - 12, r.y + 8, 24, 10); }
+                        if (r.coin >= 0) { ctx.shadowBlur = 12; ctx.shadowColor = '#facc15'; ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(cx(r.coin), r.y + 28, 9, 0, Math.PI * 2); ctx.fill(); }
+                    });
+                    ctx.shadowBlur = 14; ctx.shadowColor = '#22d3ee'; ctx.fillStyle = '#22d3ee'; ctx.fillRect(s.x - 15, PY, 30, 52); ctx.fillStyle = '#0e7490'; ctx.fillRect(s.x - 10, PY + 10, 20, 12); ctx.shadowBlur = 0;
+                },
+                score() { return s.score; },
+                hud() { return 'Coins ' + s.coins; }
+            };
+        }
+
+        // ---------- Admin panel: leaderboard control for the new games ----------
+        function adminExtraLeaderboardSections() {
+            return EXTRA_GAMES.map(g => {
+                const data = extraLeaderboardData[g.key] || [];
+                return `
+                    <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
+                        <h2 class="text-lg font-bold text-purple-300 border-b border-white/10 pb-2"><i class="fa ${g.icon} mr-1"></i>${g.name} Leaderboard Management</h2>
+                        <div class="space-y-2">
+                            ${data.length === 0 ? '<p class="text-xs text-gray-400 italic">No leaderboard scores available.</p>' : data.map(lb => `
+                                <div class="p-3 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center text-xs sm:text-sm">
+                                    <div><span class="font-bold text-purple-300">${escapeHtml(lb.username)}</span><span class="ml-2 font-extrabold text-pink-400">${safeNum(lb.score)} pts</span></div>
+                                    <div class="space-x-2">
+                                        <button onclick="adminEditExtraLeaderboardPrompt('${g.key}', '${jsArg(String(lb.username).toLowerCase())}', '${jsArg(lb.username)}', ${safeNum(lb.score)})" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Edit Score</button>
+                                        <button onclick="adminDeleteExtraLeaderboard('${g.key}', '${jsArg(String(lb.username).toLowerCase())}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
+                                    </div>
+                                </div>`).join('')}
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+        window.adminEditExtraLeaderboardPrompt = function (game, userKey, currentUsername, currentScore) {
+            if (!EXTRA_BY_KEY[game]) return;
+            const inputsHtml = `
+                <div><label class="text-xs text-gray-400 mb-1 block">Username</label><input id="admin-xlb-username" type="text" maxlength="20" value="${escapeHtml(currentUsername)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"></div>
+                <div><label class="text-xs text-gray-400 mb-1 block">Score</label><input id="admin-xlb-score" type="number" min="0" value="${safeNum(currentScore)}" class="w-full p-2.5 bg-white/5 border border-white/10 rounded-xl text-sm"></div>`;
+            openModal('Edit ' + EXTRA_BY_KEY[game].name + ' Leaderboard Entry', 'Modify score or leaderboard username', inputsHtml, async () => {
+                if (!navigator.onLine) { showToast('No Internet', 'error'); return; }
+                if (!isFirebaseConnected) { showToast('Cant connect to server', 'error'); return; }
+                const newUsername = cleanText(document.getElementById('admin-xlb-username').value, 20);
+                const newScore = Math.max(0, parseInt(document.getElementById('admin-xlb-score').value) || 0);
+                if (!newUsername) { showToast('Username required', 'error'); return; }
+                const newKey = newUsername.toLowerCase();
+                if (userKey !== newKey) await db.ref('leaderboards/' + game + '/' + userKey).remove();
+                await db.ref('leaderboards/' + game + '/' + newKey).set({ username: newUsername, score: newScore });
+                showToast('Leaderboard updated!');
+            });
+        };
+        window.adminDeleteExtraLeaderboard = function (game, userKey) {
+            if (!EXTRA_BY_KEY[game]) return;
+            openModal('Delete Score Entry', 'Remove ' + EXTRA_BY_KEY[game].name + " leaderboard entry for '" + userKey + "'?", '', async () => {
+                if (!navigator.onLine) { showToast('No Internet', 'error'); return; }
+                if (!isFirebaseConnected) { showToast('Cant connect to server', 'error'); return; }
+                await db.ref('leaderboards/' + game + '/' + userKey).remove();
+                showToast('Leaderboard entry removed');
+            });
+        };
 
         // ===== Security helpers =====
         // Escapes text for HTML text and attribute contexts (also ' and `), and accepts numbers / null safely.
