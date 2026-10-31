@@ -1446,12 +1446,14 @@
 
         // Detaches the realtime listener that watches the logged-in user's
         // own ban status (see setupBanWatcher / forceLogoutBanned below).
+        let myBanUid = null;
         function detachMyBanListener() {
-            if (myBanListenerUsernameKey && myBanListenerHandler) {
-                db.ref('users/' + myBanListenerUsernameKey + '/ban').off('value', myBanListenerHandler);
+            if (myBanUid && myBanListenerHandler) {
+                db.ref('bans/' + myBanUid).off('value', myBanListenerHandler);
             }
             myBanListenerUsernameKey = null;
             myBanListenerHandler = null;
+            myBanUid = null;
         }
 
         // Watches the current user's own ban field so that if an admin bans
@@ -1459,15 +1461,17 @@
         // out immediately and shown the ban screen instead of staying in.
         function setupBanWatcher(usernameKey) {
             detachMyBanListener();
+            myBanUid = (auth.currentUser && auth.currentUser.uid) || null;
             myBanListenerUsernameKey = usernameKey;
-            myBanListenerHandler = db.ref('users/' + usernameKey + '/ban').on('value', snap => {
+            if (!myBanUid) return;
+            myBanListenerHandler = db.ref('bans/' + myBanUid).on('value', snap => {
                 if (!currentUser) return;
                 const ban = snap.val();
                 if (!ban || !ban.isBanned) return;
 
                 const banExpired = ban.type === 'temporary' && ban.unbanAt && Date.now() >= ban.unbanAt;
                 if (banExpired) {
-                    db.ref('users/' + usernameKey + '/ban').remove();
+                    db.ref('bans/' + myBanUid).remove().catch(() => {});
                 } else {
                     forceLogoutBanned(ban);
                 }
@@ -1491,6 +1495,7 @@
             }
 
             currentUser = null;
+            try { await auth.signOut(); } catch (e) {}
             humanTestPassed = false;
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
@@ -2254,32 +2259,11 @@
         let signupFinishing = false;
         let signupResendAt = 0;
 
-        // Look up a JB HUB account by its email (works for accounts that saved
-        // either "email" or "authEmail"). Add ".indexOn": ["email","authEmail"]
-        // under "users" in your Realtime Database rules to make this efficient.
-        async function findUserRecordsByEmail(email) {
-            const out = [];
-            const seen = {};
-            // both lookups run at the same time (before: one after the other, which doubled the wait)
-            const snaps = await Promise.all(['email', 'authEmail'].map(field => db.ref('users').orderByChild(field).equalTo(email).once('value')));
-            snaps.forEach(snap => {
-                snap.forEach(child => {
-                    if (!seen[child.key]) { seen[child.key] = true; out.push({ key: child.key, val: child.val() }); }
-                });
-            });
-            return out;
-        }
-
-        async function findUserRecordByEmail(email) {
-            const all = await findUserRecordsByEmail(email);
-            return all.length ? all[0] : null;
-        }
-
-        // True when ANOTHER account (not ownKey) already uses this email.
-        async function emailTakenByOther(email, ownKey) {
-            const all = await findUserRecordsByEmail(email);
-            return all.some(m => m.key !== ownKey);
-        }
+        // The database no longer lets anyone list accounts or search them by email, so these old lookups are gone.
+        // (Firebase Authentication already allows only one account per email address.)
+        async function findUserRecordsByEmail(email) { return []; }
+        async function findUserRecordByEmail(email) { return null; }
+        async function emailTakenByOther(email, ownKey) { return false; }
 
         // Username rules: at least 3 characters, and none of the characters Firebase keys
         // cannot hold (@ is also blocked because login treats "@" as an email).
@@ -2353,12 +2337,8 @@
             if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
 
             const usernameKey = username.toLowerCase();
-            if ((await db.ref('users/' + usernameKey).once('value')).exists()) {
+            if ((await db.ref('users/' + usernameKey + '/username').once('value')).exists()) {
                 showToast("Username already exists", "error");
-                return;
-            }
-            if (await findUserRecordByEmail(email)) {
-                showToast("An account with this email already exists. Please log in.", "error");
                 return;
             }
 
@@ -2379,6 +2359,9 @@
                     throw e;
                 }
             }
+
+            // a finished account for this login already exists: sign in instead of creating a second one
+            try { if ((await findOwnRecords(authUser.uid)).length) { await auth.signOut(); showToast("An account with this email already exists. Please log in.", "error"); return; } } catch (e) {}
 
             pendingSignup = { username, email, password, dob, gender };
 
@@ -2410,7 +2393,7 @@
                 const usernameKey = p.username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
 
-                if ((await userRef.once('value')).exists()) {
+                if ((await userRef.child('username').once('value')).exists()) {
                     showToast("That username was just taken. Please choose another.", "error");
                     hideSignupVerifyPanel();
                     return;
@@ -2421,10 +2404,10 @@
                 const newUser = {
                     username: p.username, email: p.email,
                     authEmail: p.email, authUid: authUser.uid, emailVerified: true,
-                    dob: p.dob, gender: p.gender, isAdmin: false, id: 'u_' + Date.now()
+                    dob: p.dob, gender: p.gender, id: 'u_' + Date.now()
                 };
                 await userRef.set(newUser);
-                currentUser = newUser;
+                currentUser = Object.assign({}, newUser, { isAdmin: false });
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
@@ -2522,35 +2505,15 @@
             const btn = document.getElementById('forgot-send-btn');
             if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
             try {
-                const matches = await findUserRecordsByEmail(email);
                 const genericResetMsg = 'If an account exists for ' + email + ', a reset link has been sent. Open it, set a new password, then log in here with your username or email and the new password.';
-                if (!matches.length) {   // same answer as success, so this form cannot be used to find out which emails are registered
-                    const st0 = document.getElementById('forgot-status');
-                    st0.textContent = genericResetMsg; st0.classList.remove('hidden');
-                    showToast('If that email has an account, a reset link was sent.', 'success');
-                    return;
-                }
-
-                // Make sure a Firebase Authentication user exists for this email (older accounts may
-                // not have one yet). It gets a random password nobody knows; the emailed link is
-                // what sets the real one, so only the mailbox owner can finish the reset.
-                try {
-                    const bytes = new Uint8Array(18);
-                    crypto.getRandomValues(bytes);
-                    const tmpPass = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('') + 'Aa1!';
-                    await auth.createUserWithEmailAndPassword(email, tmpPass);
-                    await auth.signOut();
-                } catch (e) {
-                    if (e.code !== 'auth/email-already-in-use') throw e;
-                }
-
+                // Firebase checks the email itself; the answer shown is always the same, so this form cannot be used to find out which emails are registered
                 const url = window.location.origin + window.location.pathname;
                 try {
                     await auth.sendPasswordResetEmail(email, { url, handleCodeInApp: false });
                 } catch (e) {
                     if (e.code === 'auth/unauthorized-continue-uri' || e.code === 'auth/invalid-continue-uri' || e.code === 'auth/missing-continue-uri') {
-                        await auth.sendPasswordResetEmail(email);
-                    } else {
+                        try { await auth.sendPasswordResetEmail(email); } catch (e2) { if (e2.code !== 'auth/user-not-found') throw e2; }
+                    } else if (e.code !== 'auth/user-not-found') {
                         throw e;
                     }
                 }
@@ -2606,21 +2569,19 @@
 
         async function completeGoogleLogin(usernameKey, userVal, gUser, email) {
             const userRef = db.ref('users/' + usernameKey);
+            userVal.isAdmin = await loadIsAdmin(gUser.uid);                // admin rights come from /admins
+            delete userVal.password;
 
             if (!userVal.id) {
                 userVal.id = 'u_' + Date.now();
                 await userRef.update({ id: userVal.id });
             }
 
-            if (userVal.ban && userVal.ban.isBanned) {
-                const banExpired = userVal.ban.type === 'temporary' && userVal.ban.unbanAt && Date.now() >= userVal.ban.unbanAt;
-                if (banExpired) {
-                    await db.ref('users/' + usernameKey + '/ban').remove();
-                    delete userVal.ban;
-                } else {
-                    showBanScreen(userVal.ban);
-                    return;
-                }
+            const gBan = await readMyBan();
+            if (gBan && gBan.isBanned) {
+                const banExpired = gBan.type === 'temporary' && gBan.unbanAt && Date.now() >= gBan.unbanAt;
+                if (banExpired) { try { await myBanRef().remove(); } catch (e) {} }
+                else { showBanScreen(gBan); try { await auth.signOut(); } catch (e) {} return; }
             }
 
             // Google proved ownership of this email, so link/verify the account
@@ -2697,8 +2658,8 @@
                     return;
                 }
 
-                const matches = await findUserRecordsByEmail(email);
-                const pick = matches.find(m => m.val && m.val.authUid === gUser.uid) || matches[0];
+                const matches = await findOwnRecords(gUser.uid);
+                const pick = matches[0];
                 if (pick) {
                     await completeGoogleLogin(pick.key, pick.val, gUser, email);
                     return;
@@ -2767,7 +2728,7 @@
             try {
                 const usernameKey = username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
-                if ((await userRef.once('value')).exists()) { showToast("Username already exists", "error"); return; }
+                if ((await userRef.child('username').once('value')).exists()) { showToast("Username already exists", "error"); return; }
                 if (await emailTakenByOther(pendingGoogle.email, usernameKey)) {
                     showToast("An account with this email already exists. Please log in.", "error");
                     return;
@@ -2796,10 +2757,10 @@
                     username: username, password: '', email: pendingGoogle.email,
                     authEmail: pendingGoogle.email, authUid: pendingGoogle.uid,
                     emailVerified: true, googleAccount: true,
-                    dob: dob, gender: gender, isAdmin: false, id: 'u_' + Date.now()
+                    dob: dob, gender: gender, id: 'u_' + Date.now()
                 };
                 await userRef.set(newUser);
-                currentUser = newUser;
+                currentUser = Object.assign({}, newUser, { isAdmin: false });
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
@@ -3061,7 +3022,7 @@
                 const list = getSavedAccounts();
                 const keep = [];
                 for (const a of list) {
-                    const snap = await db.ref('users/' + a.u.toLowerCase()).once('value');
+                    const snap = await db.ref('users/' + a.u.toLowerCase() + '/username').once('value');
                     if (snap.exists()) keep.push(a);
                 }
                 if (keep.length !== list.length) {
@@ -3336,7 +3297,7 @@
         // Checks the password a logged-in user typed (account edit / account deletion)
         async function verifyCurrentUserPassword(typed) {
             if (!currentUser || !typed) return false;
-            if (!currentUser.authUid) return typed === currentUser.password;       // older account, no Firebase identity yet
+            if (!currentUser.authUid) return false;                               // every account must have a Firebase login
             try {
                 const cred = await auth.signInWithEmailAndPassword(accountAuthEmail(currentUser), typed);
                 return cred.user.uid === currentUser.authUid;
@@ -3351,17 +3312,20 @@
         async function scrubSecuredAccountPasswords() {
             try {
                 const snap = await db.ref('users').once('value');
-                const updates = {};
-                let n = 0;
+                const haveBan = {}; try { (await db.ref('bans').once('value')).forEach(c => { haveBan[c.key] = true; }); } catch (e) {}
+                const updates = {}; let n = 0;
                 snap.forEach(child => {
-                    const v = child.val();
-                    if (v && v.authUid && typeof v.password === 'string' && v.password !== '') { updates[child.key + '/password'] = null; n++; }
+                    const v = child.val(); if (!v || typeof v !== 'object') return;
+                    const k = child.key;
+                    if ('password' in v) { updates['users/' + k + '/password'] = null; n++; }                 // passwords live only in Firebase Authentication
+                    if ('isAdmin' in v) { updates['users/' + k + '/isAdmin'] = null; n++; }                  // admin rights live only in /admins (never promoted from this old flag)
+                    if (v.ban && typeof v.ban === 'object' && v.authUid) { if (!haveBan[v.authUid]) updates['bans/' + v.authUid] = v.ban; updates['users/' + k + '/ban'] = null; n++; }   // an existing ban is never overwritten
                 });
                 if (n) {
-                    await db.ref('users').update(updates);
-                    showToast('Security: removed stored passwords from ' + n + ' protected account' + (n === 1 ? '' : 's') + '.');
+                    await db.ref().update(updates);
+                    showToast('Security: moved ' + n + ' old account field' + (n === 1 ? '' : 's') + ' to protected places.');
                 }
-            } catch (e) { jbLogErr('Password clean-up skipped', e); }
+            } catch (e) { jbLogErr('Security clean-up skipped', e); }
         }
 
         // ===== Faster login =====
@@ -3371,12 +3335,10 @@
         function prefetchLoginRecord() {
             const el = document.getElementById('username');
             const id = ((el && el.value) || '').trim().toLowerCase();
-            if (!id || isSignupMode || !navigator.onLine) return;
+            if (!id || id.includes('@') || isSignupMode || !navigator.onLine) return;
             if (loginPrefetch && loginPrefetch.id === id && Date.now() - loginPrefetch.t < 45000) return;
-            const p = id.includes('@')
-                ? findUserRecordsByEmail(id)
-                : db.ref('users/' + id).once('value').then(snap => (snap.exists() ? { key: snap.key, val: snap.val() } : null));
-            p.catch(() => {}); // a failed prefetch is simply not used
+            const p = fetchLoginEmail(id);
+            p.catch(() => {});   // a failed prefetch is simply not used
             loginPrefetch = { id: id, t: Date.now(), p: p };
         }
         window.prefetchLoginRecord = prefetchLoginRecord;
@@ -3449,68 +3411,48 @@
                     return;
                 }
 
-                // ---- Login with email (older accounts without an email can still use their username) ----
+                // ---- Login with username or email ----
+                // Before login only the email of a username can be read. The password is checked by Firebase Authentication
+                // (hashed + rate limited on Google's servers); the account record is read AFTER sign-in, and only its owner can read it.
                 let usernameKey = null;
                 let userVal = null;
-                if (identifier.includes('@')) {
-                    let matches = null;
-                    const pre = takePrefetchedLogin(identifier.toLowerCase());
-                    if (pre) { try { matches = await pre; } catch (e) { matches = null; } }
-                    if (!matches) matches = await findUserRecordsByEmail(identifier.toLowerCase());
-                    const pick = matches.find(m => m.val && !m.val.authUid && m.val.password === password) || matches.find(m => m.val && m.val.authUid) || matches[0];
-                    if (pick) { usernameKey = pick.key; userVal = pick.val; }
-                } else {
-                    let rec;
-                    const pre = takePrefetchedLogin(identifier.toLowerCase());
-                    if (pre) { try { rec = await pre; } catch (e) { rec = undefined; } }
-                    if (rec === undefined) {
-                        const snap = await db.ref('users/' + identifier.toLowerCase()).once('value');
-                        rec = snap.exists() ? { key: snap.key, val: snap.val() } : null;
-                    }
-                    if (rec) { usernameKey = rec.key; userVal = rec.val; }
-                }
-
-                const acctEmail = accountAuthEmail(userVal);
                 let passwordOk = false;
                 let blockMsg = '';   // set when Firebase refuses to even check (too many attempts, network, disabled)
-
-                if (userVal && userVal.authUid && acctEmail) {
-                    // Firebase-protected account: the password is verified on Firebase's servers (hashed + rate-limited).
-                    // There is deliberately NO fallback to a stored copy, so a leaked database cannot log anyone in.
+                const idLower = identifier.toLowerCase();
+                let acctEmail = '';
+                if (idLower.includes('@')) acctEmail = idLower;
+                else {
+                    let em = null;
+                    const pre = takePrefetchedLogin(idLower);
+                    if (pre) { try { em = await pre; } catch (e) { em = null; } }
+                    if (!em) em = await fetchLoginEmail(idLower);
+                    acctEmail = em || '';
+                }
+                if (acctEmail) {
                     try {
                         const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
                         const au = cred.user;
-                        if (au.uid === userVal.authUid && au.emailVerified) passwordOk = true;
-                        else await auth.signOut();
+                        if (au.emailVerified) {
+                            const recs = await findOwnRecords(au.uid);
+                            let rec = idLower.includes('@') ? recs[0] : recs.find(r => r.key === idLower);
+                            if (!rec && !idLower.includes('@')) {
+                                // an account that has a verified login but was never linked: link it now (allowed only for the verified email owner)
+                                try {
+                                    const one = await db.ref('users/' + idLower).once('value');
+                                    if (one.exists() && !one.val().authUid && String(one.val().authEmail || one.val().email || '').toLowerCase() === String(au.email || '').toLowerCase()) {
+                                        await db.ref('users/' + idLower).update({ authUid: au.uid, authEmail: au.email, emailVerified: true });
+                                        rec = { key: idLower, val: Object.assign({}, one.val(), { authUid: au.uid, authEmail: au.email, emailVerified: true }) };
+                                    }
+                                } catch (e) { /* not the owner */ }
+                            }
+                            if (rec) {
+                                usernameKey = rec.key; userVal = rec.val; passwordOk = true;
+                                userVal.isAdmin = await loadIsAdmin(au.uid);        // admin rights come from /admins, never from the user record
+                                if (Object.prototype.hasOwnProperty.call(userVal, 'password')) { db.ref('users/' + usernameKey + '/password').remove().catch(() => {}); delete userVal.password; }
+                            } else { await auth.signOut(); }
+                        } else { await auth.signOut(); }
                     } catch (e) {
                         if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // anything else = wrong password
-                    }
-                    if (passwordOk && Object.prototype.hasOwnProperty.call(userVal, 'password')) {
-                        db.ref('users/' + usernameKey + '/password').remove().catch(() => {}); // clean-up in the background
-                        delete userVal.password; // clean up an old stored copy
-                    }
-                } else {
-                    // Older account without a Firebase identity yet: still checked against the stored value so nobody is locked out.
-                    passwordOk = !!userVal && userVal.password === password;
-
-                    // Password may have been reset through the emailed Firebase link. Firebase Auth
-                    // verifies the new password, then we link it to the JB HUB account (no password is stored).
-                    if (userVal && !passwordOk && password.length >= 6 && acctEmail) {
-                        try {
-                            const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
-                            const au = cred.user;
-                            if (au.emailVerified && (!userVal.authUid || userVal.authUid === au.uid)) {
-                                const upd = { password: null, authUid: au.uid, authEmail: acctEmail, emailVerified: true };
-                                await db.ref('users/' + usernameKey).update(upd);
-                                delete userVal.password;
-                                Object.assign(userVal, { authUid: au.uid, authEmail: acctEmail, emailVerified: true });
-                                passwordOk = true;
-                            } else {
-                                await auth.signOut();
-                            }
-                        } catch (e) {
-                            if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // otherwise: wrong password
-                        }
                     }
                 }
 
@@ -3545,17 +3487,12 @@
                     await userRef.update({ id: userVal.id });
                 }
 
-                // Ban Enforcement: check for an active ban before granting access
-                if (userVal.ban && userVal.ban.isBanned) {
-                    const banExpired = userVal.ban.type === 'temporary' && userVal.ban.unbanAt && Date.now() >= userVal.ban.unbanAt;
-                    if (banExpired) {
-                        // Temporary ban has passed its unban date - automatically lift it
-                        await db.ref('users/' + usernameKey + '/ban').remove();
-                        delete userVal.ban;
-                    } else {
-                        showBanScreen(userVal.ban);
-                        return;
-                    }
+                // Ban enforcement: bans live in /bans/<uid>, which only admins can write
+                const myBan = await readMyBan();
+                if (myBan && myBan.isBanned) {
+                    const banExpired = myBan.type === 'temporary' && myBan.unbanAt && Date.now() >= myBan.unbanAt;
+                    if (banExpired) { try { await myBanRef().remove(); } catch (e) {} }
+                    else { showBanScreen(myBan); try { await auth.signOut(); } catch (e) {} return; }
                 }
 
                 currentUser = userVal;
@@ -4082,6 +4019,33 @@
             if (currentUser && currentUser.id) db.ref(path).orderByChild('userId').equalTo(currentUser.id).on('value', grab('legacy'), () => {});
         }
 
+        // ===== Account / admin / ban helpers (admin rights live in /admins, bans in /bans, keyed by Firebase uid) =====
+        async function loadIsAdmin(uid) { try { return (await db.ref('admins/' + uid).once('value')).val() === true; } catch (e) { return false; } }
+        async function readMyBan() { try { const u = auth.currentUser; if (!u) return null; return (await db.ref('bans/' + u.uid).once('value')).val(); } catch (e) { return null; } }
+        function myBanRef() { const u = auth.currentUser; return u ? db.ref('bans/' + u.uid) : db.ref('bans/_none'); }
+        async function findOwnRecords(uid) {
+            const snap = await db.ref('users').orderByChild('authUid').equalTo(uid).once('value');
+            const out = []; snap.forEach(c => { out.push({ key: c.key, val: c.val() }); }); return out;
+        }
+        // The only thing readable before login: the email that belongs to a username
+        async function fetchLoginEmail(key) {
+            const r = await Promise.all([db.ref('users/' + key + '/authEmail').once('value'), db.ref('users/' + key + '/email').once('value')]);
+            return String(r[0].val() || r[1].val() || '').trim().toLowerCase();
+        }
+        let adminUidMap = {}, bansByUid = {}, usersRaw = [];
+        function rebuildUsersData() {
+            usersData = usersRaw.map(v => Object.assign({}, v, { isAdmin: adminUidMap[v.authUid] === true, ban: bansByUid[v.authUid] || undefined }));
+            if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
+        }
+        function banTargetUid(usernameKey) { const u = usersData.find(x => x.username && x.username.toLowerCase() === usernameKey); return (u && u.authUid) || ''; }
+        // Writes that are rate limited by the database rules: the message and a server timestamp go in ONE atomic update
+        async function jbRatedWrite(kind, path, obj) {
+            const uid = auth.currentUser && auth.currentUser.uid;
+            const upd = {}; upd[path] = obj;
+            if (uid) upd['rate/' + uid + '/' + kind] = firebase.database.ServerValue.TIMESTAMP;
+            await db.ref().update(upd);
+        }
+
         // Leaderboard read errors only matter while someone is logged in (after logout the database correctly refuses reads)
         function lbReadError(name) {
             return err => { jbLogErr(name + ' leaderboard', err); if (currentUser && auth.currentUser) showToast(name + ' leaderboard blocked', 'error'); };
@@ -4095,6 +4059,17 @@
         }
 
         function listenForRealtimeUpdates() {
+            try {
+                const myUid = auth.currentUser && auth.currentUser.uid;
+                if (myUid) db.ref('admins/' + myUid).on('value', snap => {
+                    const nowAdmin = snap.val() === true;
+                    if (currentUser && currentUser.isAdmin !== nowAdmin) {
+                        currentUser.isAdmin = nowAdmin;
+                        const nb = document.getElementById('admin-nav-btn'); if (nb) nb.classList.toggle('hidden', !nowAdmin);
+                        if (!nowAdmin && currentTab === 'admin') switchTab('notes');
+                    }
+                }, () => {});
+            } catch (e) {}
             startLiveNotifications();
             db.ref('settings').on('value', snap => {
                 if (snap.exists()) globalSettings = snap.val();
@@ -4226,19 +4201,21 @@
                     snap.forEach(child => { presenceMap[child.key.toLowerCase()] = child.val() || {}; });
                     if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
                 });
+                db.ref('admins').on('value', snap => { adminUidMap = {}; snap.forEach(c => { if (c.val() === true) adminUidMap[c.key] = true; }); rebuildUsersData(); }, () => {});
+                db.ref('bans').on('value', snap => { bansByUid = {}; snap.forEach(c => { bansByUid[c.key] = c.val(); }); rebuildUsersData(); }, () => {});
                 db.ref('users').on('value', snap => {
-                    usersData = [];
+                    usersRaw = [];
                     if (snap.exists()) {
                         snap.forEach(child => {
                             const v = child.val();
-                            if (v && v.username) { usersData.push(v); }
-                            else if (!v || typeof v !== 'object' || (!v.username && !v.password)) {
+                            if (v && v.username) { usersRaw.push(v); }
+                            else if (!v || typeof v !== 'object' || !v.username) {
                                 // Ghost record (e.g. only {isOnline:false}) - safe to purge automatically
                                 db.ref('users/' + child.key).remove().catch(() => {});
                             }
                         });
                     }
-                    if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
+                    rebuildUsersData();
                 });
             }
         }
@@ -4465,7 +4442,7 @@
             if (!jbThrottle('note', 3000, 'Please wait a moment before saving another note.')) return;
 
             const noteId = 'n_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-            await db.ref('notes/' + noteId).set({
+            await jbRatedWrite('note', 'notes/' + noteId, {
                 id: noteId,
                 ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
@@ -4592,7 +4569,7 @@
             if (!jbThrottle('bug', 30000, 'Please wait 30 seconds before sending another report.')) return;
 
             const bugId = 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-            await db.ref('bugReports/' + bugId).set({
+            await jbRatedWrite('bug', 'bugReports/' + bugId, {
                 id: bugId,
                 ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
@@ -4694,7 +4671,7 @@
             if (!text) { showToast("Message cannot be empty", "error"); return; }
 
             const msgId = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-            await db.ref('globalChat/' + msgId).set({
+            await jbRatedWrite('chat', 'globalChat/' + msgId, {
                 id: msgId,
                 ownerUid: (auth.currentUser && auth.currentUser.uid) || null,
                 userId: currentUser.id,
@@ -5367,13 +5344,13 @@
             memoryGame.gameOver = true;
             clearInterval(memoryGame.timerInterval);
 
-            const score = Math.max(50, 1000 - (memoryGame.moves * 15) - (memoryGame.timerSeconds * 5));
+            const score = Math.max(5, Math.round((1000 - (memoryGame.moves * 15) - (memoryGame.timerSeconds * 5)) / 10));   // 5-100
 
             if (navigator.onLine && isFirebaseConnected) {
                 const userLbRef = db.ref('leaderboards/memory/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < score) {
-                    await userLbRef.set({ username: currentUser.username, score });
+                    await userLbRef.set({ username: currentUser.username, score, v: 2 });
                 }
             }
 
@@ -5753,8 +5730,7 @@
                     // bounce off the side that was hit
                     if (g.ballX > b.x && g.ballX < b.x + g.brickWidth) g.ballDY *= -1; else g.ballDX *= -1;
                     b.hp--;
-                    g.score += 1;
-                    if (b.hp <= 0) { b.alive = false; g.score += 10 * b.maxHp; }
+                    if (b.hp <= 0) { b.alive = false; g.score += b.maxHp; }          // 1-3 points per brick destroyed
                     const sp = Math.min(9.5, Math.hypot(g.ballDX, g.ballDY) * 1.006);
                     const cur = Math.hypot(g.ballDX, g.ballDY) || 1;
                     g.ballDX *= sp / cur; g.ballDY *= sp / cur;
@@ -5781,7 +5757,7 @@
 
             // board cleared: it never ends, the next level starts harder
             if (g.bricks.every(b => !b.alive)) {
-                g.score += 100 * g.level;
+                g.score += 5 * g.level;
                 g.level++;
                 resetBreakoutBallAndPaddle();
                 buildBreakoutBricks();
@@ -5852,7 +5828,7 @@
                     const userLbRef = db.ref('leaderboards/breakout/' + currentUser.username.toLowerCase());
                     const snap = await userLbRef.once('value');
                     if (!snap.exists() || snap.val().score < breakoutGame.score) {
-                        await userLbRef.set({ username: currentUser.username, score: breakoutGame.score });
+                        await userLbRef.set({ username: currentUser.username, score: breakoutGame.score, v: 2 });
                     }
                 } catch (err) {
                     jbLogErr('breakoutLeaderboard write error:', err);
@@ -6098,7 +6074,7 @@
             // Show empty board behind the start overlay instead of auto-starting
             game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
             game2048.score = 0;
-            game2048.moves = 0; game2048.stoneBorn = {};
+            game2048.moves = 0; game2048.stoneBorn = {}; game2048.raw = 0;
             game2048.running = false;
             game2048.gameOver = false;
             const scoreEl = document.getElementById('g2048-score');
@@ -6136,7 +6112,7 @@
         window.startGame2048 = function() {
             game2048.grid = Array.from({ length: 4 }, () => [0, 0, 0, 0]);
             game2048.score = 0;
-            game2048.moves = 0; game2048.stoneBorn = {};
+            game2048.moves = 0; game2048.stoneBorn = {}; game2048.raw = 0;
             game2048.running = true;
             game2048.gameOver = false;
             spawn2048StartTile();
@@ -6247,7 +6223,8 @@
 
             if (!moved) return;
 
-            game2048.score += totalGained;
+            game2048.raw = (game2048.raw || 0) + totalGained;
+            game2048.score = Math.floor(game2048.raw / 10);         // merge value / 10
             game2048.moves++;
             spawn2048Tile();
             manage2048Stones();
@@ -6314,7 +6291,7 @@
                     const userLbRef = db.ref('leaderboards/2048/' + currentUser.username.toLowerCase());
                     const snap = await userLbRef.once('value');
                     if (!snap.exists() || snap.val().score < game2048.score) {
-                        await userLbRef.set({ username: currentUser.username, score: game2048.score });
+                        await userLbRef.set({ username: currentUser.username, score: game2048.score, v: 2 });
                     }
                 } catch (err) {
                     jbLogErr('game2048Leaderboard write error:', err);
@@ -6617,10 +6594,10 @@
             }
 
             if (head.x === cyberSnake.food.x && head.y === cyberSnake.food.y) {
-                cyberSnake.score += 10;
+                cyberSnake.score += 1;                                  // 1 point per food
                 document.getElementById('game-score').innerText = cyberSnake.score;
                 
-                const newLevel = Math.floor(cyberSnake.score / 50) + 1;
+                const newLevel = Math.floor(cyberSnake.score / 5) + 1;      // a new level every 5 foods (same pace as before)
                 if (newLevel !== cyberSnake.level) {
                     cyberSnake.level = newLevel;
                     cyberSnake.speed = Math.max(45, 150 - (cyberSnake.level - 1) * 20);
@@ -6650,7 +6627,7 @@
                 const userLbRef = db.ref('leaderboards/snake/' + currentUser.username.toLowerCase());
                 const snap = await userLbRef.once('value');
                 if (!snap.exists() || snap.val().score < cyberSnake.score) {
-                    await userLbRef.set({ username: currentUser.username, score: cyberSnake.score });
+                    await userLbRef.set({ username: currentUser.username, score: cyberSnake.score, v: 2 });
                 }
             }
             applyWaveEffect(document.getElementById('overlay-title'), "GAME OVER");
@@ -7139,16 +7116,14 @@
                 dob: newDob || currentUser.dob || fullRecord.dob || '',
                 gender: newGender,
                 // Notes / chat / bug reports are linked by this id, so it MUST survive a rename.
-                id: fullRecord.id || currentUser.id || ('u_' + Date.now()),
-                isAdmin: (fullRecord.isAdmin !== undefined) ? fullRecord.isAdmin : !!currentUser.isAdmin
+                id: fullRecord.id || currentUser.id || ('u_' + Date.now())
             });
-            // Firebase-protected accounts never get a password written to the database; older accounts keep the stored value for now
-            if (currentUser.authUid) delete mergedRecord.password;
-            else mergedRecord.password = newPassword || currentUser.password;
+            // These never live in the user record any more: admin rights (/admins), bans (/bans), passwords (Firebase Authentication)
+            delete mergedRecord.isAdmin; delete mergedRecord.ban; delete mergedRecord.password;
             if (sessionId) mergedRecord.activeSession = sessionId;
 
             if (usernameChanged) {
-                const targetSnap = await db.ref('users/' + newKey).once('value');
+                const targetSnap = await db.ref('users/' + newKey + '/username').once('value');
                 if (targetSnap.exists()) {
                     showToast("Username already taken", "error");
                     return;
@@ -7164,11 +7139,10 @@
                 // ghost "users/<oldKey>" node when the tab closes later.
                 await endMyPresence(); // the old username's online entry is replaced by one for the new name (setupPresence below)
 
-                // Build ONE atomic multi-path update: create new record, delete old
-                // record, move leaderboard entries, refresh the username on notes.
+                // Three steps, in this order (the database rules check who owns a score through the account record):
+                // 1) create the new account record  2) move leaderboard entries and refresh the username on notes / bug reports
+                // 3) delete the old record. If step 2 fails the new record is removed again, so nothing is half renamed.
                 const updates = {};
-                updates['users/' + newKey] = mergedRecord;
-                updates['users/' + oldKey] = null;
 
                 const leaderboardPaths = [
                     'leaderboards/snake', 'leaderboards/memory', 'leaderboards/flappy', 'leaderboards/glitch',
@@ -7186,15 +7160,16 @@
                 notesData.forEach(n => {
                     if (n.userId === mergedRecord.id) updates['notes/' + n.id + '/username'] = newUsername;
                 });
-                chatData.forEach(m => {
-                    if (m.userId === mergedRecord.id) updates['globalChat/' + m.id + '/username'] = newUsername;
-                });
+                // (old chat messages keep the old name; they disappear after 24 hours and cannot be edited)
                 bugReportsData.forEach(r => {
                     if (r.userId === mergedRecord.id) updates['bugReports/' + r.id + '/username'] = newUsername;
                 });
 
                 try {
-                    await db.ref().update(updates);   // all-or-nothing
+                    await db.ref('users/' + newKey).set(mergedRecord);
+                    try { if (Object.keys(updates).length) await db.ref().update(updates); }
+                    catch (moveErr) { await db.ref('users/' + newKey).remove().catch(() => {}); throw moveErr; }
+                    await db.ref('users/' + oldKey).remove();
                 } catch (err) {
                     showToast("Could not rename account: " + err.message, "error");
                     // Put listeners back on the unchanged old account
@@ -7317,7 +7292,6 @@
                 if (presenceRef) { db.ref('.info/connected').off('value', presenceRef); presenceRef = null; }
                 detachSessionListener();
                 detachMyBanListener();
-                await db.ref('users/' + usernameKey).remove();
                 await db.ref('leaderboards/snake/' + usernameKey).remove();
                 await db.ref('leaderboards/memory/' + usernameKey).remove();
                 await db.ref('leaderboards/flappy/' + usernameKey).remove();
@@ -7327,6 +7301,7 @@
                 await db.ref('leaderboards/neonDodger/' + usernameKey).remove();
                 await db.ref('leaderboards/spaceInvaders/' + usernameKey).remove();
                 for (const g of EXTRA_GAMES) await db.ref('leaderboards/' + g.key + '/' + usernameKey).remove();
+                await db.ref('users/' + usernameKey).remove();            // the record goes last: the rules use it to check who owns the scores above
 
                 // Last step: remove the login from Firebase Authentication
                 if (authUserToDelete) {
@@ -8276,7 +8251,7 @@
                 const newKey = newUsername.toLowerCase();
 
                 if (usernameKey !== newKey) {
-                    const targetSnap = await db.ref('users/' + newKey).once('value');
+                    const targetSnap = await db.ref('users/' + newKey + '/username').once('value');
                     if (targetSnap.exists()) {
                         showToast("Username already exists", "error");
                         return;
@@ -8307,8 +8282,7 @@
 
                 user.username = newUsername;
                 user.email = newEmail;
-                if (user.authUid) delete user.password;            // Firebase-protected: never store a password
-                else if (newPassword) user.password = newPassword; // older account: only change it when the admin typed one
+                delete user.password; delete user.isAdmin; delete user.ban;   // never stored in the user record (see /admins, /bans, Firebase Authentication)
                 user.dob = newDob;
                 user.gender = newGender;
                 await db.ref('users/' + newKey).set(user);
@@ -8337,11 +8311,10 @@
         window.adminToggleRole = async function(usernameKey, newAdminStatus) {
             if (!navigator.onLine) { showToast("No Internet", "error"); return; }
             if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
-
-            const upd = {};
-            upd[`users/${usernameKey}/isAdmin`] = !!newAdminStatus;
-            try { const a = (await db.ref(`users/${usernameKey}/authUid`).once('value')).val(); if (a) upd[`admins/${a}`] = newAdminStatus ? true : null; } catch (e) {}
-            await db.ref().update(upd);
+            const uid = banTargetUid(usernameKey);
+            if (!uid) { showToast("This account has no Firebase login yet, so it cannot be an admin.", "error"); return; }
+            if (auth.currentUser && uid === auth.currentUser.uid && !newAdminStatus) { showToast("You cannot remove your own admin rights.", "error"); return; }
+            await db.ref('admins/' + uid).set(newAdminStatus ? true : null);   // the ONLY place admin rights are stored
             showToast("User role updated");
         }
 
@@ -8350,6 +8323,8 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
+                const delUid = banTargetUid(usernameKey);
+                if (delUid) { await db.ref('bans/' + delUid).remove().catch(() => {}); await db.ref('admins/' + delUid).remove().catch(() => {}); }
                 await db.ref(`users/${usernameKey}`).remove();
                 db.ref(`presence/${usernameKey}`).remove().catch(() => {});
                 await db.ref(`leaderboards/snake/${usernameKey}`).remove();
@@ -8358,6 +8333,7 @@
                 await db.ref(`leaderboards/glitch/${usernameKey}`).remove();
                 await db.ref(`leaderboards/breakout/${usernameKey}`).remove();
                 await db.ref(`leaderboards/2048/${usernameKey}`).remove();
+                for (const g of ['neonDodger', 'spaceInvaders'].concat(EXTRA_GAMES.map(x => x.key))) await db.ref('leaderboards/' + g + '/' + usernameKey).remove();
                 showToast("User deleted permanently");
             });
         }
@@ -8407,7 +8383,8 @@
                     if (unbanAt <= Date.now()) { showToast("Unban date must be in the future", "error"); return; }
                 }
 
-                await db.ref('users/' + usernameKey + '/ban').set({
+                if (!banTargetUid(usernameKey)) { showToast('This account has no Firebase login yet, so it cannot be banned.', 'error'); return; }
+                await db.ref('bans/' + banTargetUid(usernameKey)).set({
                     isBanned: true,
                     type,
                     reason,
@@ -8425,7 +8402,7 @@
                 if (!navigator.onLine) { showToast("No Internet", "error"); return; }
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
-                await db.ref('users/' + usernameKey + '/ban').remove();
+                await db.ref('bans/' + (banTargetUid(usernameKey) || '_none')).remove();
                 showToast("User unbanned");
             });
         }
@@ -8448,7 +8425,7 @@
                 const reason = document.getElementById('edit-ban-reason-input').value.trim();
                 if (!reason) { showToast("Please provide a ban reason", "error"); return; }
 
-                await db.ref('users/' + usernameKey + '/ban').update({ reason });
+                await db.ref('bans/' + (banTargetUid(usernameKey) || '_none')).update({ reason });
                 showToast("Ban reason updated");
             });
         }
@@ -8479,7 +8456,7 @@
                     await db.ref('leaderboards/snake/' + userKey).remove();
                 }
 
-                await db.ref('leaderboards/snake/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/snake/' + newKey).set({ username: newUsername, score: newScore, v: 2 });
                 showToast("Leaderboard updated!");
             });
         }
@@ -8520,7 +8497,7 @@
                     await db.ref('leaderboards/memory/' + userKey).remove();
                 }
 
-                await db.ref('leaderboards/memory/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/memory/' + newKey).set({ username: newUsername, score: newScore, v: 2 });
                 showToast("Leaderboard updated!");
             });
         }
@@ -8643,7 +8620,7 @@
                     await db.ref('leaderboards/breakout/' + userKey).remove();
                 }
 
-                await db.ref('leaderboards/breakout/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/breakout/' + newKey).set({ username: newUsername, score: newScore, v: 2 });
                 showToast("Leaderboard updated!");
             });
         }
@@ -8684,7 +8661,7 @@
                     await db.ref('leaderboards/2048/' + userKey).remove();
                 }
 
-                await db.ref('leaderboards/2048/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/2048/' + newKey).set({ username: newUsername, score: newScore, v: 2 });
                 showToast("Leaderboard updated!");
             });
         }
@@ -8768,6 +8745,14 @@
         // =====================================================================
         // ARCADE PLUS: pause for every game + three endless games that keep getting harder
         // =====================================================================
+
+        // The scoring scale changed: forget old on-device best scores once so the new, lower scores can show as best
+        try {
+            if (!localStorage.getItem('jb_score_scale_v2')) {
+                ['breakout_best', '2048_best', 'extra_best_cyberRunner', 'extra_best_stackTower', 'extra_best_neonRacer'].forEach(k => localStorage.removeItem(k));
+                localStorage.setItem('jb_score_scale_v2', '1');
+            }
+        } catch (e) {}
 
         // ---------- Pause ----------
         let arcadePaused = false;
@@ -8872,11 +8857,11 @@
               keys: { Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', ArrowDown: 'duck', KeyS: 'duck' }, create: createCyberRunner },
             { key: 'stackTower', name: 'Stack Tower', icon: 'fa-layer-group', border: 'border-pink-500/40', grad: 'from-pink-600 to-purple-600', ctrl: 'drop',
               desc: 'Stack the moving blocks as high as you can. Misses slice your block thinner and it speeds up every floor.',
-              help: ['<strong class="text-gray-200">PC:</strong> Space / Up / Down to drop the block, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the board or the DROP button.', '<strong class="text-gray-200">Perfect drops</strong> keep your width and earn combo points; 4 perfects in a row even widen it.'],
+              help: ['<strong class="text-gray-200">PC:</strong> Space / Up / Down to drop the block, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the board or the DROP button.', '<strong class="text-gray-200">Scoring:</strong> 1 point per floor, 2 for a perfect drop; 4 perfects in a row even widen the block.'],
               keys: { Space: 'drop', ArrowUp: 'drop', ArrowDown: 'drop', Enter: 'drop' }, create: createStackTower },
             { key: 'neonRacer', name: 'Neon Racer', icon: 'fa-car-side', border: 'border-amber-500/40', grad: 'from-amber-500 to-pink-600', ctrl: 'lanes',
               desc: 'Weave through traffic on a 4-lane road and grab coins. Traffic gets faster and denser without end.',
-              help: ['<strong class="text-gray-200">PC:</strong> Left/Right or A/D to change lane, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the left or right side of the board, or use the buttons.', '<strong class="text-gray-200">Coins</strong> are worth 5 points each; every row always has a free lane.'],
+              help: ['<strong class="text-gray-200">PC:</strong> Left/Right or A/D to change lane, P to pause.', '<strong class="text-gray-200">Mobile:</strong> tap the left or right side of the board, or use the buttons.', '<strong class="text-gray-200">Coins</strong> are worth 1 point each, plus 1 point for every 800 metres; every row always has a free lane.'],
               keys: { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right' }, create: createNeonRacer }
         ];
         const EXTRA_BY_KEY = {}; EXTRA_GAMES.forEach(g => { EXTRA_BY_KEY[g.key] = g; });
@@ -8991,7 +8976,7 @@
                 try {
                     const ref = db.ref('leaderboards/' + key + '/' + currentUser.username.toLowerCase());
                     const snap = await ref.once('value');
-                    if (!snap.exists() || snap.val().score < score) await ref.set({ username: currentUser.username, score: score });
+                    if (!snap.exists() || snap.val().score < score) await ref.set({ username: currentUser.username, score: score, v: 2 });
                 } catch (err) { jbLogErr(key + ' score write', err); showToast('Could not save your score. Please try again.', 'error'); }
             }
             const t = document.getElementById('extra-overlay-title'), d = document.getElementById('extra-overlay-desc'), b = document.getElementById('extra-overlay-btn'), ov = document.getElementById('extra-overlay');
@@ -9024,7 +9009,7 @@
                 update(f) {
                     s.t += f / 60;
                     s.speed = Math.min(11.5, 4.2 + s.t * 0.11);                      // always faster, up to a brutal cap
-                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 14); s.step += s.speed * f * 0.08;
+                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 450); s.step += s.speed * f * 0.08;
                     s.h = (s.ducking && s.onGround) ? 22 : 40;
                     if (!s.onGround) {
                         s.vy += GRAV * f + (s.ducking ? 0.9 * f : 0);               // holding duck in the air = fast fall
@@ -9089,7 +9074,7 @@
                     if (Math.abs(m.x - top.x) <= 5) {                               // perfect drop
                         s.combo++; let w = top.w, x = top.x;
                         if (s.combo >= 4) { const nw = Math.min(180, w + 8); x -= (nw - w) / 2; w = nw; }
-                        s.blocks.push({ x, w, perfect: true }); s.score += 1 + Math.min(4, s.combo); s.flash = 14;
+                        s.blocks.push({ x, w, perfect: true }); s.score += 2; s.flash = 14;
                     } else {
                         const nx = Math.max(m.x, top.x);
                         const cutX = m.x < top.x ? m.x : top.x + top.w, cutW = m.w - overlap;
@@ -9134,7 +9119,7 @@
                 releaseInputs() {},
                 update(f) {
                     s.t += f / 60; s.speed = Math.min(11, 4.4 + s.t * 0.1);
-                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 16) + s.coins * 5;
+                    s.dist += s.speed * f; s.score = Math.floor(s.dist / 800) + s.coins;
                     s.x += (cx(s.lane) - s.x) * Math.min(1, 0.28 * f);
                     s.nextRow -= s.speed * f;
                     if (s.nextRow <= 0) {
@@ -9173,8 +9158,34 @@
         }
 
         // ---------- Admin panel: leaderboard control for the new games ----------
+        window.adminMigrateScoreScale = function () {
+            openModal('Convert old scores?', 'One time only. Scores saved before the lower scoring update (Breakout, 2048, Memory, Snake, Neon Racer, Cyber Runner, Stack Tower) are divided to match the new scale. Scores already saved by the new version are left alone.', '', async () => {
+                if (!currentUser || !currentUser.isAdmin) return;
+                if (!navigator.onLine) { showToast('No Internet', 'error'); return; }
+                if (!isFirebaseConnected) { showToast('Cant connect to server', 'error'); return; }
+                try {
+                    if ((await db.ref('settings/scoreScaleV2Done').once('value')).val()) { showToast('Scores were already converted', 'error'); return; }
+                    const F = { breakout: 10, '2048': 10, memory: 10, snake: 10, neonRacer: 30, cyberRunner: 32, stackTower: 2 };
+                    const up = {}; let n = 0;
+                    for (const game of Object.keys(F)) {
+                        const snap = await db.ref('leaderboards/' + game).once('value');
+                        snap.forEach(c => { const v = c.val(); if (v && v.v !== 2 && Number(v.score) > 0) { up['leaderboards/' + game + '/' + c.key] = { username: v.username, score: Math.max(1, Math.round(Number(v.score) / F[game])), v: 2 }; n++; } });
+                    }
+                    up['settings/scoreScaleV2Done'] = true;
+                    await db.ref().update(up);
+                    showToast('Converted ' + n + ' scores');
+                } catch (err) { jbLogErr('score conversion', err); showToast('Could not convert the scores. Please try again.', 'error'); }
+            });
+        };
+
         function adminExtraLeaderboardSections() {
-            return EXTRA_GAMES.map(g => {
+            const migrateCard = `
+                    <div class="glass p-5 rounded-xl space-y-2 border border-amber-500/30">
+                        <h2 class="text-sm font-bold text-amber-300"><i class="fa fa-scale-balanced mr-1"></i>Lower scoring: convert old scores</h2>
+                        <p class="text-xs text-gray-400">Run this once after the update, before anyone plays, so old high scores do not block the new lower scores.</p>
+                        <button onclick="adminMigrateScoreScale()" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs rounded-lg transition">Convert old scores</button>
+                    </div>`;
+            return migrateCard + EXTRA_GAMES.map(g => {
                 const data = extraLeaderboardData[g.key] || [];
                 return `
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
@@ -9205,7 +9216,7 @@
                 if (!newUsername) { showToast('Username required', 'error'); return; }
                 const newKey = newUsername.toLowerCase();
                 if (userKey !== newKey) await db.ref('leaderboards/' + game + '/' + userKey).remove();
-                await db.ref('leaderboards/' + game + '/' + newKey).set({ username: newUsername, score: newScore });
+                await db.ref('leaderboards/' + game + '/' + newKey).set({ username: newUsername, score: newScore, v: 2 });
                 showToast('Leaderboard updated!');
             });
         };
