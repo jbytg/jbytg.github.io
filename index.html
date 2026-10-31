@@ -2363,6 +2363,9 @@
             // a finished account for this login already exists: sign in instead of creating a second one
             try { if ((await findOwnRecords(authUser.uid)).length) { await auth.signOut(); showToast("An account with this email already exists. Please log in.", "error"); return; } } catch (e) {}
 
+            // this login belonged to an account an admin deleted: remove the old login and start fresh with the same email
+            if (await consumeDeletionMarker(authUser)) { const fresh = await auth.createUserWithEmailAndPassword(email, password); authUser = fresh.user; }
+
             pendingSignup = { username, email, password, dob, gender };
 
             if (authUser.emailVerified) {
@@ -2665,6 +2668,8 @@
                     return;
                 }
 
+                if (await consumeDeletionMarker(gUser)) { showToast('This account was deleted by an administrator.', 'error'); return; }
+
                 // No JB HUB account for this Google email yet: collect username, DOB, gender
                 pendingGoogle = { email: email, uid: gUser.uid, name: gUser.displayName || '' };
                 showGoogleSignupPanel();
@@ -2816,6 +2821,21 @@
             if (prev && prev.gs) entry.gs = true;         // keep "stay signed in with Google"
             rest.unshift(entry);
             setSavedAccounts(rest);
+        }
+
+        // After a username change: the saved-account entry (and its encrypted password, which is tied to the name) moves to the new name
+        async function renameSavedAccount(oldName, newName, newPasswordOrNull) {
+            const ok = String(oldName || '').toLowerCase(), nk = String(newName || '').toLowerCase();
+            const list = getSavedAccounts();
+            const entry = list.find(a => a.u.toLowerCase() === ok);
+            if (!entry) return;
+            let pw = null;
+            if (entry.pw) pw = await decryptPassword(oldName, entry.pw);
+            entry.u = newName; delete entry.pw;
+            setSavedAccounts(list.filter(a => a === entry || a.u.toLowerCase() !== nk));
+            const keep = newPasswordOrNull || pw;
+            if (keep) await setSavedPassword(newName, keep);
+            if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
         }
 
         // ---- encryption helpers (AES-GCM, key can never be exported from the browser) ----
@@ -3449,7 +3469,8 @@
                                 usernameKey = rec.key; userVal = rec.val; passwordOk = true;
                                 userVal.isAdmin = await loadIsAdmin(au.uid);        // admin rights come from /admins, never from the user record
                                 if (Object.prototype.hasOwnProperty.call(userVal, 'password')) { db.ref('users/' + usernameKey + '/password').remove().catch(() => {}); delete userVal.password; }
-                            } else { await auth.signOut(); }
+                            } else if (await consumeDeletionMarker(au)) { blockMsg = 'This account was deleted by an administrator. You can create a new one.'; }
+                            else { await auth.signOut(); }
                         } else { await auth.signOut(); }
                     } catch (e) {
                         if (e && ['auth/too-many-requests', 'auth/network-request-failed', 'auth/user-disabled'].includes(e.code)) blockMsg = authErrorMessage(e); // anything else = wrong password
@@ -4032,7 +4053,19 @@
             const r = await Promise.all([db.ref('users/' + key + '/authEmail').once('value'), db.ref('users/' + key + '/email').once('value')]);
             return String(r[0].val() || r[1].val() || '').trim().toLowerCase();
         }
-        let adminUidMap = {}, bansByUid = {}, usersRaw = [];
+        // "deletions/<uid>" = an admin removed this person's data. A login (Firebase Authentication user) can only be deleted by its OWNER from a browser,
+        // so it is removed automatically the next time that person signs in. No server and no secret key are needed, and nobody else can delete it.
+        async function consumeDeletionMarker(au) {
+            try {
+                const m = (await db.ref('deletions/' + au.uid).once('value')).val();
+                if (!m) return false;
+                await db.ref('deletions/' + au.uid).remove().catch(() => {});
+                try { await au.delete(); }
+                catch (e) { jbLogErr('Removing a deleted login failed', e); try { await db.ref('deletions/' + au.uid).set(m); } catch (e2) {} try { await auth.signOut(); } catch (e3) {} }
+                return true;
+            } catch (e) { return false; }
+        }
+        let adminUidMap = {}, bansByUid = {}, usersRaw = [], deletionsData = [];
         function rebuildUsersData() {
             usersData = usersRaw.map(v => Object.assign({}, v, { isAdmin: adminUidMap[v.authUid] === true, ban: bansByUid[v.authUid] || undefined }));
             if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
@@ -4202,6 +4235,7 @@
                     if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content'));
                 });
                 db.ref('admins').on('value', snap => { adminUidMap = {}; snap.forEach(c => { if (c.val() === true) adminUidMap[c.key] = true; }); rebuildUsersData(); }, () => {});
+                db.ref('deletions').on('value', snap => { deletionsData = []; snap.forEach(c => { deletionsData.push(Object.assign({ uid: c.key }, c.val())); }); if (currentTab === 'admin') renderAdminTab(document.getElementById('tab-content')); }, () => {});
                 db.ref('bans').on('value', snap => { bansByUid = {}; snap.forEach(c => { bansByUid[c.key] = c.val(); }); rebuildUsersData(); }, () => {});
                 db.ref('users').on('value', snap => {
                     usersRaw = [];
@@ -7179,6 +7213,7 @@
                     return;
                 }
 
+                try { await renameSavedAccount(oldKey, newUsername, newPassword || null); } catch (e) {}
                 Object.assign(currentUser, mergedRecord);
                 setupPresence(newKey);
                 setupBanWatcher(newKey);
@@ -7209,6 +7244,12 @@
                     showToast('Profile saved, but Firebase Authentication password sync failed. Please contact the site administrator before changing email again.', 'error');
                 }
             }
+            // keep the "choose account" list on this device in step with the profile (name, email, saved password)
+            try {
+                if (!usernameChanged && newPassword && (getSavedAccounts().find(a => a.u.toLowerCase() === newKey) || {}).pw) await setSavedPassword(newUsername, newPassword);
+                rememberAccountOnThisDevice(currentUser);
+                if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
+            } catch (e) {}
             accountEmailVerifiedFor = '';
             currentUser.emailVerified = true;
             showToast("Profile updated successfully!");
@@ -7284,6 +7325,8 @@
                     return; // stop so database and Authentication don't get out of sync
                 }
                 // ---- then the existing database cleanup ----
+                // (marker: if removing the login below fails, it is removed the next time this person signs in)
+                try { await db.ref('deletions/' + authUserToDelete.uid).set({ at: firebase.database.ServerValue.TIMESTAMP, email: String(currentUser.authEmail || currentUser.email || '').slice(0, 254), by: 'self' }); } catch (e) {}
 
                 await Promise.all(notesData.filter(n => n.userId === currentUser.id).map(n => db.ref('notes/' + n.id).remove().catch(() => {})));
                 await Promise.all(bugReportsData.filter(r => r.userId === currentUser.id).map(r => db.ref('bugReports/' + r.id).remove().catch(() => {})));
@@ -7305,8 +7348,8 @@
 
                 // Last step: remove the login from Firebase Authentication
                 if (authUserToDelete) {
-                    try { await authUserToDelete.delete(); }
-                    catch (e) { jbLogErr('Auth delete failed:', e); showToast("Your data was deleted, but the login could not be removed: " + (e.message || e.code), "error"); }
+                    try { await db.ref('deletions/' + authUserToDelete.uid).remove().catch(() => {}); await authUserToDelete.delete(); }
+                    catch (e) { jbLogErr('Auth delete failed:', e); try { await db.ref('deletions/' + authUserToDelete.uid).set({ at: firebase.database.ServerValue.TIMESTAMP, by: 'self' }); } catch (e2) {} showToast("Your data was deleted. Your login will be removed automatically the next time you try to log in.", "error"); }
                 }
 
                 showToast("Account deleted successfully.");
@@ -8324,7 +8367,13 @@
                 if (!isFirebaseConnected) { showToast("Cant connect to server", "error"); return; }
 
                 const delUid = banTargetUid(usernameKey);
-                if (delUid) { await db.ref('bans/' + delUid).remove().catch(() => {}); await db.ref('admins/' + delUid).remove().catch(() => {}); }
+                const delUser = usersData.find(x => x.username && x.username.toLowerCase() === usernameKey) || {};
+                let markerSaved = false;
+                if (delUid) {
+                    await db.ref('admins/' + delUid).remove().catch(() => {});      // (a ban, if there is one, is kept so a banned person cannot simply start over)
+                    // the login itself can only be removed by its owner, so it is marked and removed when they next try to log in
+                    await db.ref('deletions/' + delUid).set({ at: firebase.database.ServerValue.TIMESTAMP, email: String(delUser.authEmail || delUser.email || '').slice(0, 254), by: String(currentUser.username).slice(0, 40) }).then(() => { markerSaved = true; }).catch(() => {});
+                }
                 await db.ref(`users/${usernameKey}`).remove();
                 db.ref(`presence/${usernameKey}`).remove().catch(() => {});
                 await db.ref(`leaderboards/snake/${usernameKey}`).remove();
@@ -8334,7 +8383,7 @@
                 await db.ref(`leaderboards/breakout/${usernameKey}`).remove();
                 await db.ref(`leaderboards/2048/${usernameKey}`).remove();
                 for (const g of ['neonDodger', 'spaceInvaders'].concat(EXTRA_GAMES.map(x => x.key))) await db.ref('leaderboards/' + g + '/' + usernameKey).remove();
-                showToast("User deleted permanently");
+                showToast(markerSaved ? "User deleted. Their login is removed from Authentication automatically when they next try to log in with their email." : "User deleted. Their login (" + String(delUser.authEmail || delUser.email || "no email") + ") is still in Authentication: delete it there under Authentication > Users.");
             });
         }
 
@@ -9158,6 +9207,8 @@
         }
 
         // ---------- Admin panel: leaderboard control for the new games ----------
+        window.adminClearDeletion = async function (uid) { try { await db.ref('deletions/' + uid).remove(); } catch (e) { showToast('Could not clear that entry.', 'error'); } };
+
         window.adminMigrateScoreScale = function () {
             openModal('Convert old scores?', 'One time only. Scores saved before the lower scoring update (Breakout, 2048, Memory, Snake, Neon Racer, Cyber Runner, Stack Tower) are divided to match the new scale. Scores already saved by the new version are left alone.', '', async () => {
                 if (!currentUser || !currentUser.isAdmin) return;
@@ -9185,7 +9236,13 @@
                         <p class="text-xs text-gray-400">Run this once after the update, before anyone plays, so old high scores do not block the new lower scores.</p>
                         <button onclick="adminMigrateScoreScale()" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs rounded-lg transition">Convert old scores</button>
                     </div>`;
-            return migrateCard + EXTRA_GAMES.map(g => {
+            const pendingCard = deletionsData.length === 0 ? '' : `
+                    <div class="glass p-5 rounded-xl space-y-2 border border-red-500/30">
+                        <h2 class="text-sm font-bold text-red-300"><i class="fa fa-user-slash mr-1"></i>Logins waiting to be removed</h2>
+                        <p class="text-xs text-gray-400">These people were deleted. Their login (email) is removed from Firebase Authentication automatically the next time they try to log in. You can also delete it yourself in Authentication &rarr; Users, then press Clear.</p>
+                        ${deletionsData.map(d => `<div class="flex justify-between items-center text-xs bg-white/5 rounded-lg p-2"><span class="text-gray-300">${escapeHtml(d.email || d.uid)}</span><button onclick="adminClearDeletion('${jsArg(d.uid)}')" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg">Clear</button></div>`).join('')}
+                    </div>`;
+            return migrateCard + pendingCard + EXTRA_GAMES.map(g => {
                 const data = extraLeaderboardData[g.key] || [];
                 return `
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
