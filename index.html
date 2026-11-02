@@ -3329,24 +3329,6 @@
 
         // Removes any leftover stored password from accounts that Firebase Authentication already protects.
         // Runs quietly when an admin logs in, so old plaintext copies disappear even for people who have not logged in since.
-        async function scrubSecuredAccountPasswords() {
-            try {
-                const snap = await db.ref('users').once('value');
-                const haveBan = {}; try { (await db.ref('bans').once('value')).forEach(c => { haveBan[c.key] = true; }); } catch (e) {}
-                const updates = {}; let n = 0;
-                snap.forEach(child => {
-                    const v = child.val(); if (!v || typeof v !== 'object') return;
-                    const k = child.key;
-                    if ('password' in v) { updates['users/' + k + '/password'] = null; n++; }                 // passwords live only in Firebase Authentication
-                    if ('isAdmin' in v) { updates['users/' + k + '/isAdmin'] = null; n++; }                  // admin rights live only in /admins (never promoted from this old flag)
-                    if (v.ban && typeof v.ban === 'object' && v.authUid) { if (!haveBan[v.authUid]) updates['bans/' + v.authUid] = v.ban; updates['users/' + k + '/ban'] = null; n++; }   // an existing ban is never overwritten
-                });
-                if (n) {
-                    await db.ref().update(updates);
-                    showToast('Security: moved ' + n + ' old account field' + (n === 1 ? '' : 's') + ' to protected places.');
-                }
-            } catch (e) { jbLogErr('Security clean-up skipped', e); }
-        }
 
         // ===== Faster login =====
         // As soon as the user leaves the username box (or presses Enter there) the account is fetched in the background,
@@ -3523,7 +3505,6 @@
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
                 showToast("Logged in successfully!");
-                if (userVal.isAdmin) setTimeout(scrubSecuredAccountPasswords, 2000);
                 proceedAfterLogin();
             } catch (err) {
                 jbLogErr('JB HUB', err);
@@ -9209,40 +9190,14 @@
         // ---------- Admin panel: leaderboard control for the new games ----------
         window.adminClearDeletion = async function (uid) { try { await db.ref('deletions/' + uid).remove(); } catch (e) { showToast('Could not clear that entry.', 'error'); } };
 
-        window.adminMigrateScoreScale = function () {
-            openModal('Convert old scores?', 'One time only. Scores saved before the lower scoring update (Breakout, 2048, Memory, Snake, Neon Racer, Cyber Runner, Stack Tower) are divided to match the new scale. Scores already saved by the new version are left alone.', '', async () => {
-                if (!currentUser || !currentUser.isAdmin) return;
-                if (!navigator.onLine) { showToast('No Internet', 'error'); return; }
-                if (!isFirebaseConnected) { showToast('Cant connect to server', 'error'); return; }
-                try {
-                    if ((await db.ref('settings/scoreScaleV2Done').once('value')).val()) { showToast('Scores were already converted', 'error'); return; }
-                    const F = { breakout: 10, '2048': 10, memory: 10, snake: 10, neonRacer: 30, cyberRunner: 32, stackTower: 2 };
-                    const up = {}; let n = 0;
-                    for (const game of Object.keys(F)) {
-                        const snap = await db.ref('leaderboards/' + game).once('value');
-                        snap.forEach(c => { const v = c.val(); if (v && v.v !== 2 && Number(v.score) > 0) { up['leaderboards/' + game + '/' + c.key] = { username: v.username, score: Math.max(1, Math.round(Number(v.score) / F[game])), v: 2 }; n++; } });
-                    }
-                    up['settings/scoreScaleV2Done'] = true;
-                    await db.ref().update(up);
-                    showToast('Converted ' + n + ' scores');
-                } catch (err) { jbLogErr('score conversion', err); showToast('Could not convert the scores. Please try again.', 'error'); }
-            });
-        };
-
         function adminExtraLeaderboardSections() {
-            const migrateCard = `
-                    <div class="glass p-5 rounded-xl space-y-2 border border-amber-500/30">
-                        <h2 class="text-sm font-bold text-amber-300"><i class="fa fa-scale-balanced mr-1"></i>Lower scoring: convert old scores</h2>
-                        <p class="text-xs text-gray-400">Run this once after the update, before anyone plays, so old high scores do not block the new lower scores.</p>
-                        <button onclick="adminMigrateScoreScale()" class="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs rounded-lg transition">Convert old scores</button>
-                    </div>`;
             const pendingCard = deletionsData.length === 0 ? '' : `
                     <div class="glass p-5 rounded-xl space-y-2 border border-red-500/30">
                         <h2 class="text-sm font-bold text-red-300"><i class="fa fa-user-slash mr-1"></i>Logins waiting to be removed</h2>
                         <p class="text-xs text-gray-400">These people were deleted. Their login (email) is removed from Firebase Authentication automatically the next time they try to log in. You can also delete it yourself in Authentication &rarr; Users, then press Clear.</p>
                         ${deletionsData.map(d => `<div class="flex justify-between items-center text-xs bg-white/5 rounded-lg p-2"><span class="text-gray-300">${escapeHtml(d.email || d.uid)}</span><button onclick="adminClearDeletion('${jsArg(d.uid)}')" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-lg">Clear</button></div>`).join('')}
                     </div>`;
-            return migrateCard + pendingCard + EXTRA_GAMES.map(g => {
+            return pendingCard + EXTRA_GAMES.map(g => {
                 const data = extraLeaderboardData[g.key] || [];
                 return `
                     <div class="glass p-6 rounded-xl space-y-4 border border-purple-500/30">
