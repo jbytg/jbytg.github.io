@@ -1713,7 +1713,7 @@
             'Your Notes are saved in the cloud, so you can open them from any device.',
             'Need help? Ask JB AI, the purple button in the corner, about anything on this site.',
             'Found a bug or have an idea? Send it from Bug & Suggest.',
-            'Look in the Tools section of the menu for JB TV.',
+            'Look in the Tools section of the menu for JB TV and JB GUARD (it helps to secure accounts).',
             'After 3 wrong password tries a quick security check appears – it keeps accounts safe.'
         ];
         let startupTipTimer = null, startupTipIdx = Math.floor(Math.random() * STARTUP_TIPS.length);
@@ -6700,7 +6700,8 @@
         // --- TOOLS TAB ---
         // To add another tool, add one more object to this list.
         const TOOLS = [
-            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://tv.jbhub.ryzn.pro/' }
+            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://tv.jbhub.ryzn.pro/' },
+            { id: 'jbguard', name: 'JB GUARD', icon: 'fa-shield-halved', desc: 'Helps to secure accounts. Opens in a new tab.', url: 'https://guard.jbhub.ryzn.pro/' }
         ];
 
         function renderToolsTab(container) {

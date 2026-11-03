@@ -39,7 +39,7 @@
         '• **Cyber Arcade** – 8 games\n' +
         '• **Bug & Suggest** – send bugs/ideas\n' +
         '• **Leaderboard** – arcade high scores\n' +
-        '• **Tools** – extra tools such as **JB TV**\n' +
+        '• **Tools** – extra tools: **JB TV** and **JB GUARD**\n' +
         '• **Admin Message** – rules & announcements\n' +
         '• **Account** – your profile\n' +
         '• **About Us**\n' +
@@ -452,10 +452,12 @@
     },
     {
       id: 'tools',
-      title: 'Tools / JB TV',
-      keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv'],
+      title: 'Tools / JB TV / JB GUARD',
+      keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv', 'jb guard', 'jbguard', 'guard', 'what is jb guard', 'open jb guard', 'secure accounts', 'secure my account'],
       answer:
-        'Open the **⋮ menu → Tools** (you need to be logged in). Right now it contains **JB TV** – tap its card and it opens **https://tv.jbhub.ryzn.pro/** in a **new tab**, so you do not lose your JB HUB session.\n' +
+        'Open the **⋮ menu → Tools** (you need to be logged in). It contains two tools, and each opens in a **new tab**, so you do not lose your JB HUB session:\n' +
+        '• **JB TV** – **https://tv.jbhub.ryzn.pro/**\n' +
+        '• **JB GUARD** – helps to secure accounts – **https://guard.jbhub.ryzn.pro/**\n' +
         'New tools will appear in the same place.'
     },
     {
