@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <script>
+    // Clickjacking guard: if another website shows JB HUB inside its own page, hide it and open the real site instead
+    (function () { try { if (window.top !== window.self) { var same = false; try { same = window.top.location.origin === window.location.origin; } catch (e) { same = false; } if (!same) { document.documentElement.style.display = 'none'; window.top.location = window.self.location; } } } catch (e) { document.documentElement.style.display = 'none'; } })();
+    </script>
     <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1706,15 +1710,19 @@
 
         // Tips shown (one at a time, changing every few seconds) while connecting
         const STARTUP_TIPS = [
-            'Tick “Save this account on this device” when you log in, and next time you can pick your account from a list.',
-            'Feeling lag? Open Settings (⋮ menu) and choose Low graphics mode.',
-            'Tap the ⋮ button at the top-left to open the menu: Notes, Global Chat, Cyber Arcade, Leaderboard and more.',
-            'Play 8 arcade games and climb the leaderboard.',
+            'Tick “Save this account on this device” when you log in, and next time you can pick your account from a list. Changed your username? The list updates by itself.',
+            'Feeling lag? Open Settings (⋮ menu) and choose Low graphics mode. On phones, Ultra now uses fewer particles so it stays smooth.',
+            'Tap the ⋮ button at the top-left to open the menu: Notes, Global Chat, Cyber Arcade, Leaderboard, Tools and more.',
+            'Play 11 arcade games and climb the leaderboard. Every game has a Pause button (or press P).',
+            'Cyber Runner, Stack Tower and Neon Racer never end – they just get faster and harder. How long can you last?',
+            'Brick Breaker, Space Invaders and 2048 are harder now: tough bricks, aliens that shoot back, and stone blocks in 2048.',
+            'Scores are small numbers on purpose, so every point counts: for example 1 point per food in Snake.',
             'Your Notes are saved in the cloud, so you can open them from any device.',
             'Need help? Ask JB AI, the purple button in the corner, about anything on this site.',
             'Found a bug or have an idea? Send it from Bug & Suggest.',
-            'Look in the Tools section of the menu for JB TV and JB GUARD (it helps to secure accounts).',
-            'After 3 wrong password tries a quick security check appears – it keeps accounts safe.'
+            'Watch 10,000+ free channels on JB TV, and protect your accounts with JB GUARD – both are in the Tools section of the menu.',
+            'After 3 wrong password tries a quick security check appears – it keeps accounts safe.',
+            'Your password is checked by Firebase Authentication and is never stored in the JB HUB database.'
         ];
         let startupTipTimer = null, startupTipIdx = Math.floor(Math.random() * STARTUP_TIPS.length);
         // LOW graphics: a tiny dot ring and a block bar are stepped by script ~8 times a second (no CSS animation, no layers)
@@ -3309,7 +3317,7 @@
         // Accounts linked to Firebase Auth (they have an authUid) are checked on Firebase's servers: the password is
         // stored hashed there, and Firebase itself blocks repeated wrong guesses (auth/too-many-requests), so this
         // protection cannot be bypassed from the browser. Their password is NOT kept in the JB HUB database any more.
-        // Older accounts that never got a Firebase identity keep working with the stored value until they verify an email.
+        // Every account must have a Firebase identity: the old stored-password login no longer exists.
         function accountAuthEmail(rec) {
             return String((rec && (rec.authEmail || rec.email)) || '').trim().toLowerCase();
         }
@@ -3326,9 +3334,6 @@
                 return false;
             }
         }
-
-        // Removes any leftover stored password from accounts that Firebase Authentication already protects.
-        // Runs quietly when an admin logs in, so old plaintext copies disappear even for people who have not logged in since.
 
         // ===== Faster login =====
         // As soon as the user leaves the username box (or presses Enter there) the account is fetched in the background,
@@ -4018,7 +4023,6 @@
             const grab = (bucket) => snap => { const o = {}; snap.forEach(c => { o[c.key] = c.val(); }); parts[bucket] = o; emit(); };
             const au = auth.currentUser;
             if (au) db.ref(path).orderByChild('ownerUid').equalTo(au.uid).on('value', grab('uid'), () => {});
-            if (currentUser && currentUser.id) db.ref(path).orderByChild('userId').equalTo(currentUser.id).on('value', grab('legacy'), () => {});
         }
 
         // ===== Account / admin / ban helpers (admin rights live in /admins, bans in /bans, keyed by Firebase uid) =====
@@ -6700,7 +6704,7 @@
         // --- TOOLS TAB ---
         // To add another tool, add one more object to this list.
         const TOOLS = [
-            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Opens JB TV in a new tab.', url: 'https://tv.jbhub.ryzn.pro/' },
+            { id: 'jbtv', name: 'JB TV', icon: 'fa-tv', desc: 'Watch 10,000+ free channels. Opens in a new tab.', url: 'https://tv.jbhub.ryzn.pro/' },
             { id: 'jbguard', name: 'JB GUARD', icon: 'fa-shield-halved', desc: 'Helps to secure accounts. Opens in a new tab.', url: 'https://guard.jbhub.ryzn.pro/' }
         ];
 
@@ -7091,7 +7095,7 @@
                     }
                     accountEmailVerifiedFor = newEmail;
                 } catch (verifyErr) {
-                    showToast(verifyErr.message || 'Email verification is required before saving', 'error');
+                    showToast(authErrorMessage(verifyErr) || 'Email verification is required before saving', 'error');
                     return;
                 }
             }
@@ -7187,7 +7191,7 @@
                     catch (moveErr) { await db.ref('users/' + newKey).remove().catch(() => {}); throw moveErr; }
                     await db.ref('users/' + oldKey).remove();
                 } catch (err) {
-                    showToast("Could not rename account: " + err.message, "error");
+                    showToast("Could not rename account: " + authErrorMessage(err), "error");
                     // Put listeners back on the unchanged old account
                     setupPresence(oldKey);
                     setupBanWatcher(oldKey);
@@ -7302,7 +7306,7 @@
                     } else if (e.code === 'auth/popup-closed-by-user') {
                         showToast("Deletion canceled.", "error");
                     } else {
-                        showToast("Could not delete login: " + (e.message || e.code), "error");
+                        showToast("Could not delete login: " + authErrorMessage(e), "error");
                     }
                     return; // stop so database and Authentication don't get out of sync
                 }
@@ -7823,7 +7827,7 @@
                                                 <p class="text-[11px] text-gray-400 mt-1">Reporter: ${escapeHtml(reporter)}</p>
                                             </div>
                                             <div class="flex space-x-2 shrink-0">
-                                                <button onclick="adminReplyBugPrompt('${jsArg(b.id)}', '${jsArg(b.reply || '')}', '${b.status || 'Pending'}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
+                                                <button onclick="adminReplyBugPrompt('${jsArg(b.id)}', '${jsArg(b.reply || '')}', '${jsArg(b.status || 'Pending')}')" class="px-2.5 py-1 bg-purple-600/40 hover:bg-purple-600/70 text-purple-200 text-xs rounded-lg transition">Reply / Status</button>
                                                 <button onclick="deleteBugReport('${jsArg(b.id)}')" class="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs rounded-lg transition">Delete</button>
                                             </div>
                                         </div>

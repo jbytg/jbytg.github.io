@@ -24,7 +24,7 @@
       keys: ['about', 'jb hub', 'jbhub', 'platform', 'details', 'info', 'introduce', 'overview', 'this website', 'this site', 'the website', 'what is this', 'website'],
       answer:
         '**JB HUB** is a Digital and Cloud Platform: an all-in-one **Cloud Workspace** and **Cyber Arcade**.\n' +
-        'It is free, fast and completely **ad-free**, built for both work (notes, chat) and play (8 arcade games).\n' +
+        'It is free, fast and completely **ad-free**, built for both work (notes, chat) and play (11 arcade games).\n' +
         'Website: ' + SITE.url + '\nOwner: ' + SITE.owner + ' (' + SITE.email + ')'
     },
     {
@@ -32,14 +32,14 @@
       title: 'Sections / menu',
       keys: ['section', 'sections', 'menu', 'tabs', 'pages', 'what can i do', 'navigation', 'sidebar', 'three dots', 'menu items', 'menu options'],
       answer:
-        'Open the **three-dots button** (top-left) to see the menu:\n' +
+        'Open the **three-dots button** (top-left) to see the menu – the dots stretch into three lines while it is open:\n' +
         '• **Settings** – performance options\n' +
         '• **Notes** – private notes\n' +
         '• **Global Chat** – public chat\n' +
-        '• **Cyber Arcade** – 8 games\n' +
+        '• **Cyber Arcade** – 11 games (all with a Pause button)\n' +
         '• **Bug & Suggest** – send bugs/ideas\n' +
         '• **Leaderboard** – arcade high scores\n' +
-        '• **Tools** – extra tools: **JB TV** and **JB GUARD**\n' +
+        '• **Tools** – **JB TV** (10,000+ free channels) and **JB GUARD** (helps to secure accounts)\n' +
         '• **Admin Message** – rules & announcements\n' +
         '• **Account** – your profile\n' +
         '• **About Us**\n' +
@@ -74,21 +74,21 @@
       title: 'Cyber Arcade',
       keys: ['arcade', 'game', 'games', 'play', 'cyber arcade', 'how many games', 'list games', 'fun'],
       answer:
-        '**Cyber Arcade** has **8 games**:\n' +
-        '1. Cyber Snake\n2. Memory Matrix\n3. Cyber Flap (Flappy Bird style)\n4. Brick Breaker\n5. 2048\n6. Glitch Hunter\n7. Neon Dodger\n8. Space Invaders\n' +
-        'Most have on-screen touch controls for mobile. Ask me about any game by name!'
+        '**Cyber Arcade** has **11 games**:\n' +
+        '1. Cyber Snake\n2. Memory Matrix\n3. Cyber Flap (Flappy Bird style)\n4. Brick Breaker\n5. 2048\n6. Glitch Hunter\n7. Neon Dodger\n8. Space Invaders\n9. Cyber Runner (endless runner)\n10. Stack Tower (endless stacker)\n11. Neon Racer (endless lane racer)\n' +
+        'Most have on-screen touch controls for mobile, and **every game has a Pause button** (or press **P**). Ask me about any game by name!'
     },
     {
       id: 'snake',
       title: 'Cyber Snake',
       keys: ['how to play snake', 'play snake', 'snake controls', 'snake keys', 'snake', 'cyber snake', 'snake game', 'snake level', 'snake speed'],
-      answer: '**Cyber Snake** – eat the food to grow and score. PC: **Arrow keys or W/A/S/D**, **Space** to pause, **Enter** to restart. Mobile: use the on-screen **direction pad**.\nYou level up every **50 points** and the snake gets faster. High scores sync to the leaderboard.'
+      answer: '**Cyber Snake** – eat the food to grow and score. PC: **Arrow keys or W/A/S/D**, **Space** to pause, **Enter** to restart. Mobile: use the on-screen **direction pad**.\nYou get **1 point per food**, level up every **5 foods** and the snake gets faster. High scores sync to the leaderboard.'
     },
     {
       id: 'memory',
       title: 'Memory Matrix',
       keys: ['how to play memory', 'play memory', 'memory controls', 'memory keys', 'memory', 'memory matrix', 'cards', 'matching', 'pairs', 'card game', 'flip cards', 'memory game'],
-      answer: '**Memory Matrix** – tap two cards to flip them; matching symbols stay revealed. The cards are shuffled into new positions every game. Fewer moves and a faster time give a higher score.'
+      answer: '**Memory Matrix** – tap two cards to flip them; matching symbols stay revealed. The cards are shuffled into new positions every game. Fewer moves and a faster time give a higher score, from **5** up to **100**. Press **P** or the Pause button to stop the timer.'
     },
     {
       id: 'flappy',
@@ -100,13 +100,13 @@
       id: 'breakout',
       title: 'Brick Breaker',
       keys: ['how to play brick breaker', 'play brick breaker', 'brick breaker controls', 'brick breaker keys', 'how to play breakout', 'play breakout', 'breakout controls', 'breakout keys', 'breakout', 'brick', 'bricks', 'brick breaker', 'paddle', 'ball', 'lives', 'life'],
-      answer: '**Brick Breaker** – PC: **Arrow keys or A/D** move the paddle, **Enter** restarts. Mobile: drag your finger across the board or use the buttons. You have **3 lives**; every brick adds to your score and clearing the whole board gives a bonus.'
+      answer: '**Brick Breaker** – PC: **Arrow keys or A/D** move the paddle, **Enter** restarts, **P** pauses. Mobile: drag your finger across the board or use the buttons. You have **3 lives**.\nIt is **hard on purpose**: the top bricks take **2–3 hits** (white dots show the hits left), the ball gets faster with every bounce, the paddle shrinks each level and the whole wall slowly **creeps down** – if it reaches the red dashed line the run ends. Clear the board to reach the **next level** (it never ends).\nScoring: **1–3 points per brick** (tougher bricks give more) and **+5 × level** for clearing a board.'
     },
     {
       id: '2048',
       title: '2048',
       keys: ['how to play 2048', 'play 2048', '2048 controls', '2048 keys', '2048', 'tiles', 'merge', 'swipe', 'tile game', 'number game'],
-      answer: '**2048** – PC: **Arrow keys or W/A/S/D** slide the tiles. Mobile: **swipe** up, down, left or right. Merge matching tiles and reach **2048** (and beyond!). Your best score is saved on this device.'
+      answer: '**2048** – PC: **Arrow keys or W/A/S/D** slide the tiles. Mobile: **swipe**. **P** pauses. Merge matching tiles and reach **2048** (and beyond – it keeps going).\nThis version is **hard mode**: more **4s** appear as you play, **two tiles** pop up every 4th move after move 12, and **stone blocks** (🪨) appear every 10 moves – they cannot slide or merge and crumble after 22 moves.\nYour score is the merged value **divided by 10**. Your best score is saved on this device.'
     },
     {
       id: 'glitch',
@@ -124,14 +124,49 @@
       id: 'invaders',
       title: 'Space Invaders',
       keys: ['how to play space invaders', 'play space invaders', 'space invaders controls', 'space invaders keys', 'how to play invaders', 'play invaders', 'invaders controls', 'invaders keys', 'space invaders', 'invaders', 'space', 'alien', 'aliens', 'wave', 'waves'],
-      answer: '**Space Invaders** – clear endless alien waves. Each wave is faster and gives more points. PC: **A/D or Arrow keys + Space** to fire. Mobile: touch controls with a FIRE button.'
+      answer: '**Space Invaders** – endless alien waves that **shoot back**. PC: **A/D or Arrow keys + Space** to fire, **P** pauses. Mobile: touch controls with a FIRE button.\nYou have **3 lives** (a short shield after a hit, and a bonus life every 4 waves). Armoured aliens take **2–3 hits** from wave 3, the aliens speed up as you kill them, and you can have only **3 shots** on screen at once. If they reach the bottom the run ends.\nScoring: **1 point** per alien, **2** for armoured ones, **+5** for every cleared wave.'
+    },
+    {
+      id: 'runner',
+      title: 'Cyber Runner',
+      keys: ['how to play cyber runner', 'play cyber runner', 'cyber runner', 'runner', 'endless runner', 'runner controls', 'runner keys', 'jump over', 'duck', 'drone'],
+      answer: '**Cyber Runner** – an **endless runner** that never ends, it only gets faster. PC: **Space / Up / W** to jump, hold **Down / S** to duck, **P** pauses. Mobile: tap the board or **JUMP**, hold **DUCK**. Jump over blocks and duck under drones (they appear after a few seconds). Score: **1 point for every 450 distance**.'
+    },
+    {
+      id: 'stack',
+      title: 'Stack Tower',
+      keys: ['how to play stack tower', 'play stack tower', 'stack tower', 'stack', 'tower', 'stacker', 'stack controls', 'stack keys', 'drop block', 'perfect drop'],
+      answer: '**Stack Tower** – drop the sliding block on top of the tower. PC: **Space / Up / Down**, **P** pauses. Mobile: tap the board or **DROP**. Any overhang is sliced off, so the tower gets thinner; a **perfect drop** keeps the width and **4 perfects in a row** even widen it. Every floor is faster. Score: **1 point per floor**, **2 for a perfect drop**.'
+    },
+    {
+      id: 'racer',
+      title: 'Neon Racer',
+      keys: ['how to play neon racer', 'play neon racer', 'neon racer', 'racer', 'racing', 'race game', 'lane', 'lanes', 'traffic', 'coins', 'racer controls', 'racer keys'],
+      answer: '**Neon Racer** – weave through traffic on a **4-lane road** that never ends and keeps getting faster and denser. PC: **Left/Right or A/D**, **P** pauses. Mobile: tap the left or right side of the board, or use the buttons. Every row always has a free lane. Score: **1 point for every 800 metres** plus **1 per coin**.'
+    },
+    {
+      id: 'scoring',
+      title: 'How scoring works',
+      keys: ['how scoring works', 'scoring', 'points', 'how many points', 'score system', 'scoring system', 'how are points counted', 'low score', 'why scores are low', 'why is my score low'],
+      answer:
+        'Scores are **small numbers on purpose**, so every point counts:\n' +
+        '• **Snake** – 1 per food\n• **Memory** – 5 to 100 (fewer moves and less time = more)\n• **Flappy, Glitch Hunter, Neon Dodger** – 1 per pipe / hit / dodge\n' +
+        '• **Brick Breaker** – 1–3 per brick, +5 × level per cleared board\n• **2048** – merged value ÷ 10\n• **Space Invaders** – 1 per alien (2 armoured), +5 per wave\n' +
+        '• **Cyber Runner** – 1 per 450 distance\n• **Stack Tower** – 1 per floor, 2 for a perfect drop\n• **Neon Racer** – 1 per 800 metres + 1 per coin\n' +
+        'Leaderboards keep your best score only.'
+    },
+    {
+      id: 'pause',
+      title: 'Pause a game',
+      keys: ['pause', 'pause game', 'how to pause', 'stop game', 'freeze game', 'resume', 'resume game', 'pause button', 'press p'],
+      answer: '**Every arcade game can be paused**: press **P** or tap the **Pause** button above the game (Snake also uses **Space**). Press **P** or **Resume** to continue. A game also pauses **by itself** when you switch tab or app, open the menu or a pop-up, or leave the arcade, and while it is paused other keys (like Enter) are ignored.'
     },
     {
       id: 'leaderboard',
       title: 'Leaderboard',
       keys: ['leaderboard', 'score', 'scores', 'rank', 'ranking', 'high score', 'highscore', 'top players', 'best', 'top 10', 'top ten', 'winners', 'champion'],
       answer:
-        'The **Leaderboard** (⋮ menu) shows a separate **top 10** list for each arcade game: Snake, Memory, Flappy Bird, Glitch Hunter, Breakout, 2048, Neon Dodger and Space Invaders.\n' +
+        'The **Leaderboard** (⋮ menu) shows a separate **top 10** list for each arcade game: Snake, Memory, Flappy Bird, Glitch Hunter, Breakout, 2048, Neon Dodger, Space Invaders, Cyber Runner, Stack Tower and Neon Racer.\n' +
         'Your **username** is what appears on the boards, and you must be **logged in and online** for a score to be saved.'
     },
     {
@@ -160,8 +195,8 @@
       title: 'Forgot password',
       keys: ['forgot', 'forget', 'reset', 'lost password', 'password reset', 'forgot password', 'reset password', 'no account found', 'new password', 'recover account', 'recover password'],
       answer:
-        'On the login screen press **Forgot password?**, type the **email** on your account and press send. You will get an email with a link to set a new password (check **spam** too). Then log in with the new password.\n' +
-        'If you see **No account found with this email**, that email is not registered – check the spelling or try the email you signed up with.\n' +
+        'On the login screen press **Forgot password?**, type the **email** on your account, type the characters of the **captcha**, and press send. You will get an email with a link to set a new password (check **spam** too). Then log in with the new password.\n' +
+        'For privacy the page shows the **same message whether or not the email is registered**, so if no email arrives, check the spelling and try the email you signed up with. You can ask for a new link once a minute.\n' +
         'Google accounts have no password: use **Continue with Google** instead.'
     },
     {
@@ -193,7 +228,7 @@
       id: 'delete',
       title: 'Delete account',
       keys: ['delete account', 'remove account', 'danger zone', 'close account', 'delete my account', 'erase account', 'deactivate', 'delete everything'],
-      answer: 'Go to **Account → Danger Zone → Delete My Account**. A confirmation window appears first. Deleting permanently removes your private notes and account records, so it **cannot be undone**.'
+      answer: 'Go to **Account → Danger Zone → Delete My Account**. You must type your **current password**, and a confirmation window appears first. Deleting permanently removes your private notes, scores and account records **and your login**, so it **cannot be undone**. If an admin deletes an account, the login is removed the next time that person tries to log in with their email, and they can sign up again.'
     },
     {
       id: 'settings',
@@ -211,7 +246,7 @@
     {
       id: 'admin',
       title: 'Admin Panel',
-      keys: ['admin', 'admin panel', 'administrator', 'moderator', 'manage', 'control', 'admin powers', 'what can admin do', 'become admin', 'get admin'],
+      keys: ['admin', 'admins', 'what can admins do', 'admin panel', 'administrator', 'moderator', 'manage', 'control', 'admin powers', 'what can admin do', 'become admin', 'get admin'],
       answer:
         'The **Admin Panel** is only visible to admins. Admins can:\n' +
         '• edit the About text, rules and Special Thanks\n' +
@@ -219,8 +254,9 @@
         '• send a **temporary notification** to every member who is online\n' +
         '• manage user accounts (see who is online/offline, give **temporary or permanent bans** with a reason, send a **password reset email** – admins cannot see passwords)\n' +
         '• read bug reports, set **Pending / In Progress / Solved** and reply\n' +
-        '• manage leaderboard entries for all 8 games\n' +
+        '• manage leaderboard entries for all 11 games\n' +
         '• control notes and clear Global Chat\n' +
+        '• give or remove **admin rights** (an admin cannot remove their own) and **delete accounts** – a deleted person\'s login is removed from Authentication when they next try to log in with their email\n' +
         'Admin access is given by the owner, so it cannot be requested here. New accounts are **never** made admin automatically – an existing admin has to switch the role on in the Admin Panel.'
     },
     {
@@ -244,8 +280,8 @@
       title: 'Security & data',
       keys: ['secure', 'security', 'safe', 'safety', 'firebase', 'database', 'cloud', 'sync', 'hacked', 'hacker', 'trust', 'trustworthy', 'scam', 'fake', 'legit', 'is it safe'],
       answer:
-        'JB HUB is a cloud platform: accounts, notes, chat and leaderboards are synced through **Firebase** (database + authentication) over the internet. Your notes are private to your account.\n' +
-        'Passwords are checked by **Firebase Authentication** on Firebase\'s servers, which also **blocks repeated wrong guesses**. For protected accounts the password is **not stored in the JB HUB database**, and admins cannot see it.\n' +
+        'JB HUB is a cloud platform: accounts, notes, chat and leaderboards are synced through **Firebase** (database + authentication) over the internet. Your notes are private to your account, and the database rules only let you read and change **your own** data.\n' +
+        'Passwords are checked by **Firebase Authentication** on Firebase\'s servers, which also **blocks repeated wrong guesses**. The password is **never stored in the JB HUB database**, and admins cannot see it. Admin rights and bans are kept in protected places that only admins can change, and chat, notes and bug reports have **server-side cool-downs** against spam.\n' +
         'To stay safe: never share your password, use one you do not use elsewhere, log out on shared devices, and do not store very sensitive information in notes. If you notice something suspicious, email **' + SITE.email + '**.'
     },
     {
@@ -307,7 +343,8 @@
         '**JB HUB features:**\n' +
         '• **Cloud Notes** – private notes with text-colour highlighting, edit and delete, synced to your account\n' +
         '• **Global Chat** – public chat that resets every 24 hours\n' +
-        '• **Cyber Arcade** – 8 games with touch and keyboard controls\n' +
+        '• **Cyber Arcade** – 11 games with touch and keyboard controls, all with a Pause button\n' +
+        '• **Tools** – **JB TV** (10,000+ free channels) and **JB GUARD** (helps to secure accounts)\n' +
         '• **Leaderboards** – a separate ranking for every game\n' +
         '• **Bug & Suggest** – send bugs/ideas and read admin replies\n' +
         '• **Secure accounts** – email verification, Google login, password reset, human check\n' +
@@ -325,7 +362,7 @@
         'JB HUB gives you one free place for **work and play**:\n' +
         '• Save **private notes** and open them again from any device\n' +
         '• Talk with other users in **Global Chat**\n' +
-        '• Play **8 arcade games** and compete on **leaderboards**\n' +
+        '• Play **11 arcade games** and compete on **leaderboards**\n' +
         '• Send **bugs and ideas** straight to the admin\n' +
         'There are no ads, and you just open the website to use it.'
     },
@@ -348,7 +385,7 @@
       answer:
         'Open the **⋮ menu → Cyber Arcade**, choose a game and press **Start** (or tap/click the game). ' +
         'On PC use **arrow keys / A-D / Space**; on mobile use the **on-screen buttons** or touch.\n' +
-        'When a game ends press **Play Again**. Ask me about any game by name for its exact controls.'
+        'Press **P** (or the **Pause** button) to pause any game. When a game ends press **Play Again**. Ask me about any game by name for its exact controls.'
     },
     {
       id: 'score_save',
@@ -356,7 +393,7 @@
       keys: ['how to get on leaderboard', 'get on leaderboard', 'appear on leaderboard', 'not on leaderboard', 'my score not showing', 'score not showing', 'score not saving', 'score not saved', 'score missing', 'scores saved', 'save score', 'save my score', 'personal best', 'best score', 'leaderboard not updating'],
       answer:
         'To appear on the **Leaderboard**: be **logged in**, be **online**, and finish a game. Your **username** is shown and the board keeps your **best** score.\n' +
-        'Games also remember your best score in your browser. If a score does not show, check your internet, refresh and try again.'
+        'Games also remember your best score in your browser. If a score does not show, check your internet, refresh and try again. Scores are small numbers by design – ask me about **scoring**.'
     },
     {
       id: 'notes_color',
@@ -431,7 +468,7 @@
         'If login fails:\n' +
         '• **Invalid username/email or password** – check spelling and Caps Lock, or try your **email** instead of the username. Forgot it? Press **Forgot password?**\n' +
         '• **This account uses Google sign-in** – tap **Continue with Google** instead of typing a password.\n' +
-        '• **This account was removed or renamed** – just log in again.\n' +
+        '• **This account was removed or renamed** – just log in again. If an admin deleted it you will be told, and you can **sign up again** with the same email.\n' +
         '• **Could not connect this account to Firebase Authentication** – re-check the email and your current password.\n' +
         '• **Account Suspended** – an admin restricted the account; email **' + SITE.email + '**.\n' +
         '• **Security check / captcha** – appears after 3 wrong attempts; type the characters shown.\n' +
@@ -453,11 +490,11 @@
     {
       id: 'tools',
       title: 'Tools / JB TV / JB GUARD',
-      keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv', 'jb guard', 'jbguard', 'guard', 'what is jb guard', 'open jb guard', 'secure accounts', 'secure my account'],
+      keys: ['tools', 'tool', 'tools section', 'tools menu', 'extra tools', 'jb tv', 'jbtv', 'tv', 'jb television', 'open jb tv', 'where is jb tv', 'what is jb tv', 'jb guard', 'jbguard', 'guard', 'what is jb guard', 'open jb guard', 'secure accounts', 'secure my account', 'channels', 'free channels', 'how many channels', 'how many free channels', 'tv channels', 'live tv', 'watch tv', 'watch tv online', '10000 channels', 'iptv'],
       answer:
         'Open the **⋮ menu → Tools** (you need to be logged in). It contains two tools, and each opens in a **new tab**, so you do not lose your JB HUB session:\n' +
-        '• **JB TV** – **https://tv.jbhub.ryzn.pro/**\n' +
-        '• **JB GUARD** – helps to secure accounts – **https://guard.jbhub.ryzn.pro/**\n' +
+        '• **JB TV** – watch **10,000+ free channels** – **https://tv.jbhub.ryzn.pro/**\n' +
+        '• **JB GUARD** – helps to **secure accounts** – **https://guard.jbhub.ryzn.pro/**\n' +
         'New tools will appear in the same place.'
     },
     {
@@ -470,6 +507,7 @@
         '• Tap **Use another account** to log in with a different one or create a new account\n' +
         '• Tap the **×** next to an account to remove it from this device\n' +
         '• If nothing is saved you go straight to the normal login page\n' +
+        '• If you change your username in **Account**, the saved entry (and its saved password) updates by itself\n' +
         'JB HUB saves your username (and email, to pick the right Google account) on that device. A password is saved **only if you also tick "Also save my password"**, and then it is stored encrypted – see **Save password**. Do not save accounts on a shared or public computer.'
     },
     {
@@ -623,7 +661,7 @@
       title: 'Username rules',
       keys: ['username rules', 'username rule', 'username format', 'username allowed', 'username characters', 'choose username', 'what username', 'username length', 'special characters', 'symbols', 'username min', 'good username', 'username ideas'],
       answer:
-        'A username must be **at least 3 characters**, **unique**, and **cannot contain @ . # $ [ ] /**. It is what other people see in **Global Chat** and on the **Leaderboards**, so pick one you like.\n' +
+        'A username must be **3 to 20 characters**, **unique**, and may only contain **letters, numbers, spaces, _ and -**. It is what other people see in **Global Chat** and on the **Leaderboards**, so pick one you like.\n' +
         'You can change it later in **Account** (each account update counts toward the 2-per-day limit).'
     },
     {
@@ -672,7 +710,7 @@
       id: 'multiplayer',
       title: 'Multiplayer / playing with friends',
       keys: ['multiplayer', 'multi player', 'play with friends', 'play together', 'two player', '2 player', 'versus', 'battle friends', 'compete', 'challenge friend'],
-      answer: 'All 8 arcade games are **single-player**. You compete with others through the **Leaderboards** (top 10 per game) and can talk to them in **Global Chat**.'
+      answer: 'All 11 arcade games are **single-player**. You compete with others through the **Leaderboards** (top 10 per game) and can talk to them in **Global Chat**.'
     },
     {
       id: 'tips',
@@ -680,15 +718,18 @@
       keys: ['tips', 'tricks', 'how to win', 'high score tips', 'strategy', 'best game', 'hardest game', 'easiest game', 'which game', 'recommend game', 'suggest game', 'bored', "im bored", "i'm bored", 'what should i play', 'favourite game', 'favorite game'],
       answer:
         '**Quick tips:**\n' +
-        '• **Cyber Snake** – plan your path and keep away from walls; speed rises every 50 points\n' +
+        '• **Cyber Snake** – plan your path and keep away from walls; speed rises every 5 foods\n' +
         '• **Memory Matrix** – remember card positions; fewer moves = higher score\n' +
         '• **Cyber Flap** – short, steady taps\n' +
-        '• **Brick Breaker** – keep the paddle under the ball and protect your 3 lives\n' +
-        '• **2048** – keep your biggest tile in one corner\n' +
+        '• **Brick Breaker** – hit the armoured top bricks early, keep the paddle under the ball and watch the red line\n' +
+        '• **2048** – keep your biggest tile in one corner and plan around the stone blocks\n' +
         '• **Glitch Hunter** – on PC use the number keys for speed\n' +
         '• **Neon Dodger** – stay near the middle so you can dodge both ways\n' +
-        '• **Space Invaders** – keep moving while you fire\n' +
-        'Not sure where to start? Try **Cyber Snake** or **2048** first.'
+        '• **Space Invaders** – keep moving while you fire and shoot the lowest aliens first\n' +
+        '• **Cyber Runner** – jump a little early, and duck (do not jump) under drones\n' +
+        '• **Stack Tower** – wait for the block to line up; perfect drops keep it wide\n' +
+        '• **Neon Racer** – look at the next row, not the car in front of you\n' +
+        'Not sure where to start? Try **Cyber Snake** or **2048** first. Press **P** any time to pause.'
     },
     {
       id: 'jb_meaning',
