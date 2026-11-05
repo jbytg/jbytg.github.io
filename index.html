@@ -5388,8 +5388,9 @@
         let flappyCanvas, fCtx;
         let flappyBird = {
             birdX: 70, birdY: FLAPPY_H / 2, birdVel: 0, birdRadius: 12,
-            gravity: 0.45, jumpVel: -7.6,
-            pipes: [], pipeWidth: 46, pipeGap: 120, spawnEvery: 105, spawnCounter: 0,
+            gravity: 0.26, jumpVel: -5.0, maxFall: 5.5,
+            pipes: [], pipeWidth: 46, pipeGap: 140, spawnEvery: 140, spawnCounter: 0,
+            started: false, lastTime: 0,
             score: 0, running: false, gameOver: false, rafId: null
         };
 
@@ -5442,6 +5443,8 @@
             flappyBird.score = 0;
             flappyBird.spawnCounter = 60; // brief breathing room before the first pipe
             flappyBird.running = true;
+            flappyBird.started = false; // bird hovers until the first flap
+            flappyBird.lastTime = 0;
             flappyBird.gameOver = false;
 
             const scoreEl = document.getElementById('flappy-score');
@@ -5453,6 +5456,7 @@
 
         window.flappyJump = function() {
             if (!flappyBird.running) return;
+            flappyBird.started = true;
             flappyBird.birdVel = flappyBird.jumpVel;
         }
 
@@ -5463,23 +5467,38 @@
             flappyBird.pipes.push({ x: FLAPPY_W, gapTop, scored: false });
         }
 
-        function flappyLoop() {
+        function flappyLoop(now) {
             if (!flappyBird.running) return;
-            updateFlappyPhysics();
+            // Frame-rate independent timing so 90/120/144Hz screens aren't faster than 60Hz ones.
+            let step = 1;
+            if (typeof now === 'number') {
+                if (flappyBird.lastTime) step = Math.min((now - flappyBird.lastTime) / 16.667, 2.5);
+                flappyBird.lastTime = now;
+            }
+            updateFlappyPhysics(step);
             if (!flappyBird.running) return; // a collision may have ended the game this frame
             drawFlappyBoard();
             flappyBird.rafId = requestAnimationFrame(flappyLoop);
         }
 
-        function updateFlappyPhysics() {
-            flappyBird.birdVel += flappyBird.gravity;
-            flappyBird.birdY += flappyBird.birdVel;
+        function updateFlappyPhysics(step) {
+            step = step || 1;
 
-            // Pipe speed slowly increases the further the player gets.
-            const speed = Math.min(2.2 + flappyBird.score * 0.12, 6);
+            // Wait for the first flap: bird floats gently, nothing moves yet.
+            if (!flappyBird.started) {
+                flappyBird.birdY = FLAPPY_H / 2 + Math.sin(performance.now() / 250) * 6;
+                flappyBird.birdVel = 0;
+                return;
+            }
+
+            flappyBird.birdVel = Math.min(flappyBird.birdVel + flappyBird.gravity * step, flappyBird.maxFall);
+            flappyBird.birdY += flappyBird.birdVel * step;
+
+            // Pipe speed slowly increases the further the player gets (gentler than before).
+            const speed = Math.min(1.5 + flappyBird.score * 0.05, 3.5) * step;
             flappyBird.pipes.forEach(p => p.x -= speed);
 
-            flappyBird.spawnCounter++;
+            flappyBird.spawnCounter += step;
             if (flappyBird.spawnCounter > flappyBird.spawnEvery) {
                 spawnFlappyPipe();
                 flappyBird.spawnCounter = 0;
