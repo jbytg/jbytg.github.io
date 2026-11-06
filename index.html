@@ -9331,6 +9331,8 @@
             if (/^https?:\/\//i.test(u)) return u;
             if (/^\/\//.test(u)) return 'https:' + u;
             if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return '';                       // any other scheme (javascript:, data:, ...) is refused
+            if (/^(\/(?!\/)|\.{1,2}\/)[^\s<>"'`]*$/.test(u)) return u;                                      // same-site page: /about_us.html, ./page.html, ../x.html
+            if (/^[\w.%-]+\.(html?|php|pdf|txt)([?#][^\s<>"'`]*)?$/i.test(u) && !/^www\./i.test(u)) return u; // bare file name: about_us.html
             if (/^(www\.|[a-z0-9-]+(\.[a-z0-9-]+)+([\/?#]|$))/i.test(u)) return 'https://' + u;
             return '';
         }
