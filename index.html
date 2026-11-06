@@ -9324,6 +9324,32 @@
             try { return walkRules(sheet.cssRules, 0); } catch (e) { return ''; }
         }
 
+        // Turns what an admin typed as a link ("https://x.com", "www.x.com", "x.com/page") into a safe http(s) URL, or '' if it is not one.
+        function normalizeRichUrl(u) {
+            u = String(u == null ? '' : u).trim();
+            if (!u) return '';
+            if (/^https?:\/\//i.test(u)) return u;
+            if (/^\/\//.test(u)) return 'https:' + u;
+            if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return '';                       // any other scheme (javascript:, data:, ...) is refused
+            if (/^(www\.|[a-z0-9-]+(\.[a-z0-9-]+)+([\/?#]|$))/i.test(u)) return 'https://' + u;
+            return '';
+        }
+        // Finds the web address a button was meant to open, from the many ways people write it:
+        // window.open('url'), window.open("url", "_blank", "noopener"), location.href = "url", window.location = 'url', location.assign('url') ...
+        function extractRichClickUrl(code) {
+            const c = String(code || '');
+            if (!/^\s*(?:window\.open|(?:window\.|document\.|top\.|self\.)?location(?:\.href|\.assign|\.replace)?)\s*[=(]/i.test(c)) return '';
+            const m = c.match(/(['"`])\s*([^'"`<>\s]+)\s*\1/);
+            return m ? normalizeRichUrl(m[2]) : '';
+        }
+        // Buttons made by sanitizeRichHtml carry a data-jb-url instead of a raw onclick; this opens it (only ever http/https).
+        document.addEventListener('click', function(e) {
+            const el = e.target && e.target.closest ? e.target.closest('[data-jb-url]') : null;
+            if (!el) return;
+            const u = safeUrl(el.getAttribute('data-jb-url'));
+            if (u) { e.preventDefault(); window.open(u, '_blank', 'noopener,noreferrer'); }
+        });
+
         // Sanitizer for admin-written About / Rules content. Keeps normal formatting, CSS classes, inline styles,
         // <style> blocks (scoped, see above), images, links and buttons; removes scripts, frames, forms, event handlers and javascript: links.
         function sanitizeRichHtml(html) {
@@ -9358,9 +9384,15 @@
                     Array.from(ch.attributes).forEach(a => {
                         const n = a.name.toLowerCase(), v = String(a.value);
                         if (n === 'style') { const c = cleanStyle(v); if (c) ch.setAttribute('style', c); else ch.removeAttribute('style'); }
-                        else if (n === 'href' && ch.tagName === 'A') { if (!/^\s*(https?:|mailto:|tel:|#)/i.test(v)) ch.removeAttribute('href'); }
+                        else if (n === 'href' && ch.tagName === 'A') { if (!/^\s*(https?:|mailto:|tel:|#)/i.test(v)) { const fixed = normalizeRichUrl(v); if (fixed) ch.setAttribute('href', fixed); else ch.removeAttribute('href'); } }
                         else if (n === 'src' && ch.tagName === 'IMG') { if (!/^\s*(https?:\/\/|data:image\/(png|jpe?g|gif|webp);)/i.test(v)) ch.removeAttribute('src'); }
-                        else if (n === 'onclick' && ch.tagName === 'BUTTON') { if (!SAFE_CLICK.test(v)) ch.removeAttribute('onclick'); }
+                        else if (n === 'onclick' && ch.tagName === 'BUTTON') {
+                            const tabM = v.match(/^\s*switchTab\(\s*['"]([A-Za-z0-9_-]{1,30})['"]\s*\)\s*;?\s*$/);
+                            const link = tabM ? '' : extractRichClickUrl(v);
+                            if (tabM) ch.setAttribute('onclick', "switchTab('" + tabM[1] + "')");
+                            else if (link) { ch.removeAttribute('onclick'); ch.setAttribute('data-jb-url', link); }
+                            else ch.removeAttribute('onclick');
+                        }
                         else if (n === 'target' || n === 'rel') { /* set below for links */ }
                         else if (!ATTRS[n]) ch.removeAttribute(a.name);
                     });
