@@ -248,6 +248,93 @@
         body.gfx-ultra .su-ring { filter: drop-shadow(0 0 5px currentColor); }
         body.perf-disable-animations #startup-screen *, body.perf-disable-animations #startup-screen *::before { animation: none !important; transition: none !important; }
         @media (prefers-reduced-motion: reduce) { #startup-screen *, #startup-screen *::before { animation: none !important; transition: none !important; } }
+
+        /* ===== Secure-connection loader: shield + lock + key exchange + live security checklist ===== */
+        @keyframes sx-rot { to { transform: rotate(360deg); } }
+        @keyframes sx-rot-rev { to { transform: rotate(-360deg); } }
+        @keyframes sx-scan { 0% { transform: translateY(-16px); opacity: 0; } 15% { opacity: .95; } 85% { opacity: .95; } 100% { transform: translateY(118px); opacity: 0; } }
+        @keyframes sx-packet { 0% { transform: translateX(0); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateX(144px); opacity: 0; } }
+        @keyframes sx-packet-rev { 0% { transform: translateX(144px); opacity: 0; } 12% { opacity: 1; } 88% { opacity: 1; } 100% { transform: translateX(0); opacity: 0; } }
+        @keyframes sx-fall { to { transform: translateY(calc(100vh + 440px)); } }
+        @keyframes sx-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-3px); } 40% { transform: translateX(3px); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+        @keyframes sx-lockpop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes sx-ringpulse { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.55); opacity: 0; } }
+        .sx-aura { position: absolute; inset: -22px; border-radius: 50%; background: radial-gradient(circle, rgba(96,165,250,.38) 0%, rgba(168,85,247,.22) 45%, transparent 70%); animation: su-pulse 2.6s ease-in-out infinite; }
+        .sx-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+        .sx-svg .sx-t { transform-box: view-box; transform-origin: 80px 80px; }
+        .sx-hex { fill: none; stroke-width: 1.5; }
+        .sx-hex-a { stroke: rgba(192,132,252,.75); stroke-dasharray: 18 9; animation: sx-rot 14s linear infinite; }
+        .sx-hex-b { stroke: rgba(96,165,250,.65); stroke-dasharray: 4 6; animation: sx-rot-rev 9s linear infinite; }
+        .sx-ticks { fill: none; stroke: rgba(56,189,248,.6); stroke-width: 3; stroke-dasharray: 1 6.2; animation: sx-rot 24s linear infinite; }
+        .sx-shield { fill: rgba(30,20,64,.88); stroke: url(#sxGrad); stroke-width: 2.5; stroke-linejoin: round; }
+        .sx-scan { fill: rgba(96,165,250,.28); animation: sx-scan 2.4s ease-in-out infinite; }
+        .sx-scanline { fill: #7dd3fc; }
+        .sx-orbit { animation: sx-rot 3.2s linear infinite; } .sx-orbit circle { fill: #22d3ee; }
+        .sx-orbit2 { animation: sx-rot-rev 5s linear infinite; } .sx-orbit2 circle { fill: #f472b6; }
+        .sx-lock { transform-box: fill-box; transform-origin: center; animation: su-breathe 2.6s ease-in-out infinite; }
+        .sx-body { fill: #c084fc; transition: fill .4s; }
+        .sx-keyhole { fill: #2a1650; }
+        .sx-shackle { fill: none; stroke: #e9d5ff; stroke-width: 5; stroke-linecap: round; transform: translateY(var(--sx-lift, -8px)); transition: transform .5s cubic-bezier(.3,1.6,.5,1), stroke .4s; }
+        .sx-burst { fill: none; stroke: #10b981; stroke-width: 3; opacity: 0; }
+        .sx-link { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 auto 12px; }
+        .sx-node { width: 46px; text-align: center; font-size: 16px; color: #c4b5fd; transition: color .4s; }
+        .sx-node em { display: block; font-style: normal; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #6b7280; margin-top: 2px; }
+        .sx-wire { position: relative; flex: none; width: 150px; height: 2px; background: linear-gradient(90deg, rgba(168,85,247,.15), rgba(96,165,250,.4), rgba(168,85,247,.15)); }
+        .sx-wire b { position: absolute; top: -2px; left: 0; width: 6px; height: 6px; border-radius: 50%; background: #22d3ee; box-shadow: 0 0 8px #22d3ee; opacity: 0; animation: sx-packet 1.8s linear infinite; }
+        .sx-wire b:nth-child(2) { background: #c084fc; box-shadow: 0 0 8px #c084fc; animation-name: sx-packet-rev; animation-delay: .6s; }
+        .sx-wire b:nth-child(3) { animation-delay: 1.2s; }
+        #startup-screen.sx-secure .sx-wire { background: linear-gradient(90deg, rgba(16,185,129,.2), rgba(52,211,153,.6), rgba(16,185,129,.2)); }
+        #startup-screen.sx-secure .sx-wire b { background: #34d399; box-shadow: 0 0 8px #34d399; }
+        #startup-screen.sx-secure .sx-node { color: #6ee7b7; }
+        .sx-steps { list-style: none; margin: 6px auto 12px; padding: 9px 14px; max-width: 310px; text-align: left; border-radius: 12px; border: 1px solid rgba(96,165,250,.24); background: rgba(15,23,42,.5); }
+        .sx-steps li { display: flex; align-items: center; gap: 10px; padding: 3px 0; font-size: 12px; color: #6b7280; transition: color .25s; }
+        .sx-steps li::before { content: ''; flex: none; box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #3b3a5c; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; line-height: 13px; text-align: center; color: #052e1f; transition: background .25s, border-color .25s; }
+        .sx-steps li.active { color: #e5e7eb; }
+        .sx-steps li.active::before { border-color: #c084fc; border-top-color: transparent; animation: sx-rot .8s linear infinite; }
+        .sx-steps li.done { color: #a7f3d0; }
+        .sx-steps li.done::before { content: '\2713'; background: #10b981; border-color: #10b981; }
+        .sx-steps li.fail { color: #fcd34d; }
+        .sx-steps li.fail::before { content: '!'; background: #f59e0b; border-color: #f59e0b; color: #422006; }
+        .sx-cipher { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; letter-spacing: .1em; color: #8b7fd0; margin: 0 0 12px; white-space: nowrap; }
+        .sx-cipher i { font-style: normal; color: #4b4a6a; margin: 0 1px; }
+        .sx-cipher .k { color: #34d399; text-shadow: 0 0 8px rgba(52,211,153,.55); }
+        .sx-cipher-label { display: block; font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; margin-bottom: 3px; }
+        .sx-rain { display: none; position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+        .sx-rain span { position: absolute; top: -420px; width: 12px; font: 700 11px/1.2 ui-monospace, Menlo, Consolas, monospace; color: rgba(52,211,153,.2); word-break: break-all; animation: sx-fall 9s linear infinite; }
+        body.gfx-high .sx-rain, body.gfx-ultra .sx-rain { display: block; }
+        body.gfx-high .sx-rain span { color: rgba(52,211,153,.13); }
+        body.gfx-ultra .sx-rain span { color: rgba(52,211,153,.24); text-shadow: 0 0 6px rgba(52,211,153,.4); }
+        .sx-lowlock { display: none; position: absolute; inset: 0; align-items: center; justify-content: center; font-size: 26px; color: #d8b4fe; }
+        /* graphics modes */
+        body.gfx-medium .sx-aura { display: none; }
+        body.gfx-ultra .sx-svg .su-ultra { display: inline; }
+        body.gfx-low .sx-svg, body.gfx-low .sx-aura, body.gfx-low .sx-wire b { display: none; }
+        body.gfx-low .sx-lowlock { display: flex; }
+        body.gfx-low .sx-steps li.active::before { animation: none; border-top-color: #c084fc; background: #c084fc; }
+        /* success: everything turns green, the lock closes, a ring bursts out */
+        #startup-screen.startup-ok .sx-body { fill: #10b981; }
+        #startup-screen.startup-ok .sx-shackle { stroke: #bbf7d0; }
+        #startup-screen.startup-ok .sx-shield { stroke: #10b981; fill: rgba(6,40,30,.88); }
+        #startup-screen.startup-ok .sx-hex, #startup-screen.startup-ok .sx-ticks { stroke: rgba(16,185,129,.65); }
+        #startup-screen.startup-ok .sx-orbit circle { fill: #34d399; }
+        #startup-screen.startup-ok .sx-scan { animation: none; opacity: 0; }
+        #startup-screen.startup-ok .sx-burst { animation: su-burst .7s ease-out forwards; }
+        #startup-screen.startup-ok .sx-aura { background: radial-gradient(circle, rgba(16,185,129,.5) 0%, transparent 70%); }
+        #startup-screen.startup-ok .sx-cipher { color: #34d399; }
+        #startup-screen.startup-ok .sx-lowlock { color: #10b981; }
+        /* problem: amber, slow, shaking lock stays open */
+        #startup-screen.startup-fail .sx-body { fill: #f59e0b; }
+        #startup-screen.startup-fail .sx-shackle { stroke: #fde68a; }
+        #startup-screen.startup-fail .sx-shield { stroke: #f59e0b; fill: rgba(60,38,6,.88); }
+        #startup-screen.startup-fail .sx-hex, #startup-screen.startup-fail .sx-ticks { stroke: rgba(245,158,11,.5); }
+        #startup-screen.startup-fail .sx-hex-a { animation-duration: 40s; } #startup-screen.startup-fail .sx-hex-b { animation-duration: 30s; }
+        #startup-screen.startup-fail .sx-orbit { animation-duration: 12s; } #startup-screen.startup-fail .sx-orbit circle { fill: #fbbf24; }
+        #startup-screen.startup-fail .sx-scan { animation: none; opacity: 0; }
+        #startup-screen.startup-fail .sx-lock { animation: sx-shake .5s ease-in-out 2; }
+        #startup-screen.startup-fail .sx-wire b { animation: none; opacity: 0; }
+        #startup-screen.startup-fail .sx-lowlock { color: #f59e0b; }
+        @media (max-height: 700px) { .sx-link { display: none; } #startup-spinner { margin: 12px auto 14px; } }
+        /* ===== end secure-connection loader ===== */
         #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
         #startup-screen[data-failsafe] #startup-failsafe { display: block; }
         #startup-screen[data-failsafe] .startup-main { display: none; }
@@ -712,6 +799,37 @@
             .menu-item:hover, .menu-item:active { transform: none !important; }
         }
 
+
+        /* ===== Extra motion pack: staggered card entrance, hover spotlight, press feel, secure welcome ===== */
+        @keyframes sxRise { from { opacity: 0; transform: translateY(18px) scale(.97); } to { opacity: 1; transform: none; } }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass,
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass { animation: sxRise .5s cubic-bezier(.22,1,.36,1) backwards; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(1), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(1) { animation-delay: 0ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(2), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(2) { animation-delay: 70ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(3), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(3) { animation-delay: 140ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(4), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(4) { animation-delay: 210ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(5), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(5) { animation-delay: 280ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(6), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(6) { animation-delay: 350ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(7), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(7) { animation-delay: 420ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(8), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(8) { animation-delay: 490ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(9), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(9) { animation-delay: 560ms; }
+        body:not(.perf-disable-animations) #tab-content.tab-stagger .grid > .glass:nth-child(10), body:not(.perf-disable-animations) #tab-content.tab-stagger .space-y-4 > .glass:nth-child(10) { animation-delay: 630ms; }
+        /* the glow under the cursor (High / Ultra, mouse only) */
+        body.gfx-high .glass:hover, body.gfx-ultra .glass:hover { background-image: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(168,85,247,.17), transparent 65%); }
+        /* buttons feel pressed (uses the separate "scale" property, so it never fights existing transforms) */
+        body:not(.perf-disable-animations) button { transition: scale .12s ease; }
+        body:not(.perf-disable-animations) button:active:not(:disabled) { scale: .96; }
+        /* welcome screen: pulsing ring around the avatar + "secure session" chip whose lock pops in */
+        #win-welcome-avatar { position: relative; }
+        body:not(.perf-disable-animations) #win-welcome-avatar::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(168,85,247,.65); animation: sx-ringpulse 1.8s ease-out infinite; pointer-events: none; }
+        .sx-welcome-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 14px; padding: 5px 12px; border-radius: 999px; border: 1px solid rgba(52,211,153,.4); background: rgba(16,185,129,.1); color: #6ee7b7; font-size: 11px; font-weight: 700; letter-spacing: .06em; }
+        body:not(.perf-disable-animations) .sx-welcome-chip i { animation: sx-lockpop .6s cubic-bezier(.3,1.6,.5,1) .5s backwards; }
+        @media (prefers-reduced-motion: reduce) {
+            #tab-content.tab-stagger .grid > .glass, #tab-content.tab-stagger .space-y-4 > .glass, #win-welcome-avatar::after, .sx-welcome-chip i { animation: none !important; }
+            button, button:active { transition: none !important; scale: none !important; }
+            .glass:hover { background-image: none !important; }
+        }
+        /* ===== end extra motion pack ===== */
     </style>
 </head>
 <body class="flex flex-col items-center justify-center p-3 sm:p-6 min-h-screen">
@@ -790,6 +908,7 @@
         </div>
         <h2 id="win-welcome-name" class="text-3xl sm:text-4xl font-light tracking-wide text-white mb-2 text-center">Welcome</h2>
         <p id="win-welcome-classification" class="text-sm text-purple-300 tracking-wider font-medium mb-4 text-center"></p>
+        <div class="sx-welcome-chip"><i class="fa fa-lock"></i><span>SECURE SESSION ACTIVE</span></div>
         <p class="text-xs text-gray-400 tracking-widest uppercase font-semibold">Preparing your workspace...</p>
         <div class="mt-6 flex space-x-1.5">
             <div class="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
@@ -831,19 +950,42 @@
     <!-- Startup screen: stays until the server really answers (see "Startup screen" script) -->
     <div id="startup-screen" role="status" aria-live="polite" style="position:fixed;inset:0;z-index:9800;display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(24px, env(safe-area-inset-top)) 16px 24px;background:radial-gradient(circle at 50% 0%, #2a1650 0%, #0b0818 62%);color:#e5e7eb;">
         <div class="su-stars" aria-hidden="true"><span class="su-shoot"></span><span class="su-shoot"></span><span class="su-shoot"></span><span class="su-dot" style="left:6%;animation-delay:0.0s;animation-duration:7.2s;"></span><span class="su-dot" style="left:14%;animation-delay:2.1s;animation-duration:8.5s;"></span><span class="su-dot" style="left:23%;animation-delay:4.3s;animation-duration:6.8s;"></span><span class="su-dot" style="left:31%;animation-delay:1.2s;animation-duration:9.0s;"></span><span class="su-dot" style="left:40%;animation-delay:5.5s;animation-duration:7.4s;"></span><span class="su-dot" style="left:48%;animation-delay:3.1s;animation-duration:8.1s;"></span><span class="su-dot" style="left:57%;animation-delay:0.7s;animation-duration:6.6s;"></span><span class="su-dot" style="left:65%;animation-delay:4.8s;animation-duration:9.2s;"></span><span class="su-dot" style="left:73%;animation-delay:2.6s;animation-duration:7.7s;"></span><span class="su-dot" style="left:81%;animation-delay:5.9s;animation-duration:8.3s;"></span><span class="su-dot" style="left:88%;animation-delay:1.8s;animation-duration:6.9s;"></span><span class="su-dot" style="left:94%;animation-delay:3.7s;animation-duration:8.8s;"></span><span class="su-dot" style="left:10%;animation-delay:6.4s;animation-duration:9.5s;"></span><span class="su-dot" style="left:52%;animation-delay:6.9s;animation-duration:7.1s;"></span></div>
+        <div class="sx-rain" id="sx-rain" aria-hidden="true"></div>
         <div class="startup-main" style="position:relative;width:100%;max-width:440px;margin:auto 0;text-align:center;">
             <div class="su-logo">JB HUB</div>
             <div id="startup-spinner" aria-hidden="true">
-                <span class="su-glow su-hi"></span>
-                <span class="su-ring su-ring4 su-ultra"><i></i></span>
-                <span class="su-ring su-ring1"><i></i></span>
-                <span class="su-ring su-ring2"><i></i></span>
-                <span class="su-ring su-ring3 su-hi"><i></i></span>
-                <span class="su-orb"></span>
+                <span class="sx-aura su-hi"></span>
+                <svg class="sx-svg" viewBox="0 0 160 160" focusable="false">
+                    <defs>
+                        <linearGradient id="sxGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c084fc"/><stop offset="1" stop-color="#60a5fa"/></linearGradient>
+                        <clipPath id="sxClip"><path d="M80 26 L124 43 V80 C124 107 105 126 80 137 C55 126 36 107 36 80 V43 Z"/></clipPath>
+                    </defs>
+                    <circle class="sx-ticks sx-t su-ultra" cx="80" cy="80" r="76"/>
+                    <polygon class="sx-hex sx-hex-a sx-t" points="80.0,8.0 142.4,44.0 142.4,116.0 80.0,152.0 17.6,116.0 17.6,44.0"/>
+                    <polygon class="sx-hex sx-hex-b sx-t su-hi" points="80.0,16.0 135.4,48.0 135.4,112.0 80.0,144.0 24.6,112.0 24.6,48.0"/>
+                    <path class="sx-shield" d="M80 26 L124 43 V80 C124 107 105 126 80 137 C55 126 36 107 36 80 V43 Z"/>
+                    <g clip-path="url(#sxClip)"><g class="sx-scan"><rect x="30" y="26" width="100" height="14"/><rect class="sx-scanline" x="30" y="39" width="100" height="1.5"/></g></g>
+                    <g class="sx-lock">
+                        <path class="sx-shackle" d="M70 80 V72 a10 10 0 0 1 20 0 V80"/>
+                        <rect class="sx-body" x="63" y="80" width="34" height="26" rx="5"/>
+                        <circle class="sx-keyhole" cx="80" cy="91" r="3.6"/><rect class="sx-keyhole" x="78.6" y="92" width="2.8" height="8" rx="1"/>
+                    </g>
+                    <g class="sx-orbit sx-t"><circle cx="80" cy="4" r="3"/></g>
+                    <g class="sx-orbit sx-orbit2 sx-t su-hi"><circle cx="80" cy="156" r="2.5"/></g>
+                    <circle class="sx-burst sx-t" cx="80" cy="80" r="70"/>
+                </svg>
+                <span class="sx-lowlock"><i class="fa fa-lock"></i></span>
                 <span class="su-lowring" id="su-lowring"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
             </div>
-            <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Connecting to server…</p>
-            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 12px;">This usually takes just a second.</p>
+            <div class="sx-link" aria-hidden="true">
+                <span class="sx-node"><i class="fa fa-mobile-screen-button"></i><em>You</em></span>
+                <span class="sx-wire"><b></b><b></b><b></b></span>
+                <span class="sx-node"><i class="fa fa-server"></i><em>JB HUB</em></span>
+            </div>
+            <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Securing your connection…</p>
+            <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 10px;">Building an encrypted link to JB HUB.</p>
+            <ul id="sx-steps" class="sx-steps" aria-label="Connection security steps"><li class="done">Opening secure HTTPS channel</li><li class="active">Contacting server</li><li>Opening encrypted tunnel</li><li>Verifying access rules</li><li>Syncing your workspace</li></ul>
+            <div class="sx-cipher" aria-hidden="true"><span class="sx-cipher-label">Cipher stream</span><span id="sx-cipher">0000·0000·0000·0000·0000</span></div>
             <div id="startup-bar" class="su-bar" aria-hidden="true"><span></span></div>
             <div id="su-lowbar" class="su-lowbar" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div>
             <div id="startup-tip" class="su-tip"><span class="su-tip-label"><i class="fa fa-lightbulb"></i> Did you know?</span><span id="startup-tip-text">Tick “Save this account on this device” when you log in, and next time you can pick your account from a list.</span></div>
@@ -1691,7 +1833,8 @@
                 cb = connRef.on('value', async snap => {
                     connected = snap.val() === true;
                     if (!connected || finished) return;
-                    try { await db.ref('settings').once('value'); done({ ok: true }); }
+                    if (window.sxSetStage) window.sxSetStage(3);   // server reached + encrypted tunnel open
+                    try { await db.ref('settings').once('value'); if (window.sxSetStage) window.sxSetStage(4); done({ ok: true }); }
                     catch (e) { done({ ok: false, reason: 'denied', error: e }); }
                 });
             });
@@ -1762,8 +1905,9 @@
             const scr = document.getElementById('startup-screen');
             if (scr) { scr.classList.remove('startup-ok', 'startup-fail'); if (state === 'ok') scr.classList.add('startup-ok'); if (state === 'failed') scr.classList.add('startup-fail'); }
             const tip = document.getElementById('startup-tip');
-            if (state === 'connecting') { if (tip) tip.classList.remove('hidden'); startStartupTips(); startLowAnimation(); }
-            else { stopStartupTips(); stopLowAnimation(); if (tip && state === 'failed') tip.classList.add('hidden'); }
+            if (state === 'connecting') { if (tip) tip.classList.remove('hidden'); startStartupTips(); startLowAnimation(); sxStartCipher(); }
+            else { stopStartupTips(); stopLowAnimation(); sxStopCipher(); if (tip && state === 'failed') tip.classList.add('hidden'); }
+            sxRender();
         }
 
         function startupEl(id) { return document.getElementById(id); }
@@ -1813,7 +1957,7 @@
                 setStartupText('Still connecting…', 'This is taking longer than usual (' + secs + ' s). You can retry now, or just wait.');
                 const act = startupEl('startup-actions'); if (act) act.classList.remove('hidden');
             } else {
-                setStartupText('Connecting to server…', 'This usually takes just a second.');
+                setStartupText('Securing your connection…', SX_SUBS[Math.min(sxStage, 4)]);
             }
         }
 
@@ -1823,13 +1967,17 @@
             window.__bootReady = true; clearTimeout(window.__bootTimer);
             const el = startupEl('startup-screen');
             if (el) {
-                setStartupText('Connected', 'Opening JB HUB…');
-                setStartupState('ok');
-                const burst = (document.body && document.body.classList.contains('perf-disable-animations')) ? 120 : 450; // let the rings burst
+                setStartupText('Securing your session…', 'Finishing the last checks…');
+                const extra = sxFinish();   // the remaining checklist steps tick off one by one, then the lock closes
                 setTimeout(() => {
-                    el.style.transition = 'opacity .25s'; el.style.opacity = '0';
-                    setTimeout(() => { el.classList.add('hidden'); }, 280);
-                }, burst);
+                    setStartupText('Secure connection ready', 'Opening JB HUB…');
+                    setStartupState('ok');
+                    const burst = (document.body && document.body.classList.contains('perf-disable-animations')) ? 120 : 520; // let the lock click shut + ring burst
+                    setTimeout(() => {
+                        el.style.transition = 'opacity .25s'; el.style.opacity = '0';
+                        setTimeout(() => { el.classList.add('hidden'); }, 280);
+                    }, burst);
+                }, extra);
             }
             if (typeof window.refreshAuthEntry === 'function') window.refreshAuthEntry(); // saved accounts if any, otherwise the login page
             startLiveNotifications();                                                    // admin notifications also reach people on the login page
@@ -1845,18 +1993,20 @@
                 const act = startupEl('startup-actions'); if (act) act.classList.add('hidden');
                 const pb = startupEl('startup-problems'); if (pb) pb.classList.add('hidden');
                 const det = startupEl('startup-details'); if (det) det.textContent = '';
-                setStartupText('Connecting to server…', 'This usually takes just a second.');
+                sxReset();
+                setStartupText('Securing your connection…', SX_SUBS[1]);
                 startupTicker = setInterval(() => tickStartup(run, t0), 1000);
             } else {
                 const det = startupEl('startup-details'); if (det) det.textContent = 'Trying again…';
             }
             // Some devices/in-app browsers wrongly report "offline", so the server is always tried (shorter wait if they say offline)
-            if (!navigator.onLine && !auto) setStartupText('Connecting to server…', 'Your device says it is offline – checking anyway…');
+            if (!navigator.onLine && !auto) setStartupText('Securing your connection…', 'Your device says it is offline – checking anyway…');
             let result = await probeServer(auto ? 8000 : (navigator.onLine ? STARTUP_FAIL_MS : 6000));
             if (run !== startupRun) return;
             // Networks that block WebSockets: switch to the slower but more compatible long-polling connection and try once more
             if (!result.ok && result.reason !== 'denied' && navigator.onLine && enableCompatMode()) {
                 setStartupText('Still connecting…', 'Trying a more compatible connection method…');
+                sxRender();
                 result = await probeServer(STARTUP_FAIL_MS);
                 if (run !== startupRun) return;
             }
@@ -1879,6 +2029,95 @@
             while (!isFirebaseConnected && Date.now() - t0 < limit) await new Promise(r => setTimeout(r, 250));
             return isFirebaseConnected;
         }
+
+        // ===== Secure-connection loader engine =====
+        // The checklist follows what really happens: HTTPS channel -> server reached -> encrypted tunnel -> database access check -> workspace sync.
+        // The lock only closes (and the screen turns green) once the server has genuinely answered.
+        const SX_STEPS = [
+            () => location.protocol === 'https:' ? 'Opening secure HTTPS channel' : 'Opening channel (not HTTPS)',
+            () => compatModeOn ? 'Contacting server (compatible mode)' : 'Contacting server',
+            () => 'Opening encrypted tunnel',
+            () => appCheckActive ? 'Verifying app & access (App Check)' : 'Verifying access rules',
+            () => 'Syncing your workspace'
+        ];
+        const SX_SUBS = ['Checking the secure channel…', 'Reaching the JB HUB server…', 'Locking the connection with encryption…', 'Checking that this app may use the database…', 'Loading your workspace…'];
+        const SX_LIFT = ['-8px', '-8px', '-6px', '-3px', '-1px', '0px'];
+        let sxStage = 1, sxCipherTimer = null, sxFinal = [];
+        function sxHex() { return Math.floor(Math.random() * 65536).toString(16).toUpperCase().padStart(4, '0'); }
+        function sxNewFinal() { sxFinal = [sxHex(), sxHex(), sxHex(), sxHex(), sxHex()]; }
+        function sxCipherDraw() {
+            const el = document.getElementById('sx-cipher'); if (!el) return;
+            const locked = Math.min(sxStage, 5);
+            el.innerHTML = sxFinal.map((g, i) => i < locked ? '<span class="k">' + g + '</span>' : sxHex()).join('<i>·</i>');
+        }
+        function sxRender() {
+            const scr = document.getElementById('startup-screen'); if (!scr) return;
+            const failed = scr.classList.contains('startup-fail');
+            scr.querySelectorAll('#sx-steps li').forEach((li, i) => {
+                li.className = i < sxStage ? 'done' : (i === sxStage ? (failed ? 'fail' : 'active') : '');
+                const label = SX_STEPS[i] ? SX_STEPS[i]() : '';
+                if (li.textContent !== label) li.textContent = label;
+            });
+            scr.style.setProperty('--sx-lift', SX_LIFT[Math.min(sxStage, 5)]);   // the lock's shackle comes down as the link gets secured
+            scr.classList.toggle('sx-secure', sxStage >= 3);
+            const t = document.getElementById('startup-title'), sub = document.getElementById('startup-sub');
+            if (t && sub && /^Securing your connection/.test(t.textContent) && !failed) sub.textContent = SX_SUBS[Math.min(sxStage, 4)];
+            sxCipherDraw();
+        }
+        window.sxSetStage = function (n) { if (n > sxStage) { sxStage = Math.min(n, 5); sxRender(); } };
+        function sxReset() { sxStage = 1; sxNewFinal(); sxRender(); }
+        function sxStartCipher() {
+            sxStopCipher();
+            const b = document.body || {};
+            const calm = b.classList && b.classList.contains('perf-disable-animations') || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            const fast = b.classList && (b.classList.contains('gfx-high') || b.classList.contains('gfx-ultra'));
+            sxCipherTimer = setInterval(sxCipherDraw, calm ? 500 : (fast ? 90 : 160));
+        }
+        function sxStopCipher() { clearInterval(sxCipherTimer); sxCipherTimer = null; }
+        // finishes the remaining steps one after another; returns how long that takes (ms)
+        function sxFinish() {
+            const low = document.body && document.body.classList.contains('perf-disable-animations');
+            const gap = low ? 0 : 110, left = Math.max(0, 5 - sxStage);
+            for (let k = 1; k <= left; k++) {
+                if (gap === 0) sxStage = Math.min(5, sxStage + 1);
+                else setTimeout(() => { sxStage = Math.min(5, sxStage + 1); sxRender(); }, k * gap);
+            }
+            if (gap === 0) sxRender();
+            return left * gap + 60;
+        }
+        function sxBuildRain() {
+            const r = document.getElementById('sx-rain'); if (!r || r.childElementCount) return;
+            const cols = window.innerWidth < 640 ? 9 : 18, ch = '0123456789ABCDEF';
+            let h = '';
+            for (let i = 0; i < cols; i++) {
+                let t = ''; const n = 26 + (i * 7) % 14;
+                for (let j = 0; j < n; j++) t += ch[Math.floor(Math.random() * 16)];
+                h += '<span style="left:' + ((i + 0.5) / cols * 100).toFixed(1) + '%;animation-duration:' + (7 + (i % 5) * 1.7).toFixed(1) + 's;animation-delay:-' + ((i * 1.3) % 9).toFixed(1) + 's;">' + t + '</span>';
+            }
+            r.innerHTML = h;
+        }
+        sxNewFinal(); sxBuildRain(); sxRender(); sxStartCipher();
+
+        // Hover spotlight: the glow on glass cards follows the mouse (High / Ultra only, mouse devices only)
+        (function () {
+            if (!window.matchMedia || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+            let raf = 0, last = null;
+            document.addEventListener('pointermove', e => {
+                last = e;
+                if (raf) return;
+                raf = requestAnimationFrame(() => {
+                    raf = 0;
+                    const b = document.body;
+                    if (!last || !b || !(b.classList.contains('gfx-high') || b.classList.contains('gfx-ultra'))) return;
+                    const g = last.target && last.target.closest ? last.target.closest('.glass') : null;
+                    if (!g) return;
+                    const r = g.getBoundingClientRect();
+                    g.style.setProperty('--mx', (last.clientX - r.left) + 'px');
+                    g.style.setProperty('--my', (last.clientY - r.top) + 'px');
+                });
+            }, { passive: true });
+        })();
+
 
         startStartupTips();
         startLowAnimation();
@@ -4280,7 +4519,10 @@
                 titleEl.classList.remove('title-pop'); void titleEl.offsetWidth; titleEl.classList.add('title-pop');
             }
             const tc = document.getElementById('tab-content');
-            if (tc) { tc.classList.remove('tab-enter'); void tc.offsetWidth; tc.classList.add('tab-enter'); }
+            if (tc) {
+                tc.classList.remove('tab-enter', 'tab-stagger'); void tc.offsetWidth; tc.classList.add('tab-enter', 'tab-stagger');
+                clearTimeout(window.__sxStaggerT); window.__sxStaggerT = setTimeout(() => tc.classList.remove('tab-stagger'), 1400); // only the tab switch staggers, later re-renders (new chat message, saved note) don't replay it
+            }
             renderCurrentTabContent();
         }
 
