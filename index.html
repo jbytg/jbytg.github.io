@@ -207,16 +207,16 @@
 
         /* ---- connecting animation per graphics mode ---- */
         .su-lowring, .su-lowbar, .su-ultra, .su-shoot { display: none; }
-        .su-lowring { position: absolute; inset: 34px; }
-        .su-lowring i { position: absolute; left: 28px; top: 28px; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #3b2f66; }
-        .su-lowring i:nth-child(1) { transform: rotate(0deg) translateY(-27px); }
-        .su-lowring i:nth-child(2) { transform: rotate(45deg) translateY(-27px); }
-        .su-lowring i:nth-child(3) { transform: rotate(90deg) translateY(-27px); }
-        .su-lowring i:nth-child(4) { transform: rotate(135deg) translateY(-27px); }
-        .su-lowring i:nth-child(5) { transform: rotate(180deg) translateY(-27px); }
-        .su-lowring i:nth-child(6) { transform: rotate(225deg) translateY(-27px); }
-        .su-lowring i:nth-child(7) { transform: rotate(270deg) translateY(-27px); }
-        .su-lowring i:nth-child(8) { transform: rotate(315deg) translateY(-27px); }
+        .su-lowring { position: absolute; inset: 0; }   /* same box as the lock icon, so ring and lock share one exact centre */
+        .su-lowring i { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #3b2f66; }
+        .su-lowring i:nth-child(1) { transform: rotate(0deg) translateY(-44px); }
+        .su-lowring i:nth-child(2) { transform: rotate(45deg) translateY(-44px); }
+        .su-lowring i:nth-child(3) { transform: rotate(90deg) translateY(-44px); }
+        .su-lowring i:nth-child(4) { transform: rotate(135deg) translateY(-44px); }
+        .su-lowring i:nth-child(5) { transform: rotate(180deg) translateY(-44px); }
+        .su-lowring i:nth-child(6) { transform: rotate(225deg) translateY(-44px); }
+        .su-lowring i:nth-child(7) { transform: rotate(270deg) translateY(-44px); }
+        .su-lowring i:nth-child(8) { transform: rotate(315deg) translateY(-44px); }
         .su-lowring i.trail { background: #7c4fd0; }
         .su-lowring i.on { background: #d8b4fe; }
         .su-lowbar { gap: 3px; justify-content: center; margin: 4px auto 14px; }
@@ -335,6 +335,29 @@
         #startup-screen.startup-fail .sx-lowlock { color: #f59e0b; }
         @media (max-height: 700px) { .sx-link { display: none; } #startup-spinner { margin: 12px auto 14px; } }
         /* ===== end secure-connection loader ===== */
+
+        /* ===== more security motion ===== */
+        @keyframes sx-badgepop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+        .sx-arc-track { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 2.5; }
+        .sx-arc { fill: none; stroke: url(#sxGrad); stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 496.4; stroke-dashoffset: 496.4; transition: stroke-dashoffset .6s ease; }
+        .sx-ping { fill: none; stroke: #22d3ee; stroke-width: 2; opacity: 0; }
+        .sx-ping.go { animation: su-burst .9s ease-out; }
+        .sx-binring text { font: 700 7px ui-monospace, Menlo, Consolas, monospace; letter-spacing: 2px; fill: rgba(52,211,153,.55); }
+        .sx-binring { animation: sx-rot 30s linear infinite; }
+        .sx-keyfly { position: absolute; top: -7px; left: 0; font-size: 12px; color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,.7); opacity: 0; animation: sx-packet 3.6s linear .3s infinite; }
+        .sx-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 12px; }
+        .sx-badges span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; border: 1px solid #2f2d4d; color: #4b5563; font-size: 9px; font-weight: 700; letter-spacing: .08em; transition: color .3s, border-color .3s, background .3s; }
+        .sx-badges span.on { color: #6ee7b7; border-color: rgba(52,211,153,.5); background: rgba(16,185,129,.1); animation: sx-badgepop .45s cubic-bezier(.3,1.6,.5,1); }
+        .sx-cipher-label { padding-left: .16em; }
+        #startup-screen.startup-ok .sx-arc { stroke: #10b981; }
+        #startup-screen.startup-ok .sx-binring text { fill: rgba(16,185,129,.7); }
+        #startup-screen.startup-fail .sx-arc { stroke: #f59e0b; }
+        #startup-screen.startup-fail .sx-keyfly { animation: none; opacity: 0; }
+        #startup-screen.startup-fail .sx-binring { animation-duration: 90s; }
+        body.gfx-medium .sx-binring { display: none; }
+        body.gfx-low .sx-keyfly { display: none; }
+        @media (max-height: 700px) { .sx-badges { display: none; } }
+        /* ===== end more security motion ===== */
         #startup-failsafe { display: none; width: 100%; max-width: 420px; margin: auto 0; text-align: center; }
         #startup-screen[data-failsafe] #startup-failsafe { display: block; }
         #startup-screen[data-failsafe] .startup-main { display: none; }
@@ -960,6 +983,10 @@
                         <linearGradient id="sxGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c084fc"/><stop offset="1" stop-color="#60a5fa"/></linearGradient>
                         <clipPath id="sxClip"><path d="M80 26 L124 43 V80 C124 107 105 126 80 137 C55 126 36 107 36 80 V43 Z"/></clipPath>
                     </defs>
+                    <path id="sxCirc" d="M80 80 m-90 0 a90 90 0 1 1 180 0 a90 90 0 1 1 -180 0" fill="none"/>
+                    <g class="sx-binring sx-t su-ultra"><text><textPath href="#sxCirc">1 0 1 0 0 0 1 0 0 0 0 1 1 0 0 0 1 0 0 0 0 1 0 0 0 0 1 1 0 0 1 0 0 0 1 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 0 0 1 0 1 0 1 1 0 0 1 1 1 1 1 0 0 1 1 0 0 1 1 1 1 1 0 1 1 0 0 1 0</textPath></text></g>
+                    <circle class="sx-arc-track" cx="80" cy="80" r="79"/>
+                    <circle class="sx-arc" id="sx-arc" cx="80" cy="80" r="79" transform="rotate(-90 80 80)"/>
                     <circle class="sx-ticks sx-t su-ultra" cx="80" cy="80" r="76"/>
                     <polygon class="sx-hex sx-hex-a sx-t" points="80.0,8.0 142.4,44.0 142.4,116.0 80.0,152.0 17.6,116.0 17.6,44.0"/>
                     <polygon class="sx-hex sx-hex-b sx-t su-hi" points="80.0,16.0 135.4,48.0 135.4,112.0 80.0,144.0 24.6,112.0 24.6,48.0"/>
@@ -972,19 +999,21 @@
                     </g>
                     <g class="sx-orbit sx-t"><circle cx="80" cy="4" r="3"/></g>
                     <g class="sx-orbit sx-orbit2 sx-t su-hi"><circle cx="80" cy="156" r="2.5"/></g>
+                    <circle class="sx-ping sx-t" cx="80" cy="80" r="45"/>
                     <circle class="sx-burst sx-t" cx="80" cy="80" r="70"/>
                 </svg>
-                <span class="sx-lowlock"><i class="fa fa-lock"></i></span>
+                <span class="sx-lowlock"><i class="fa fa-lock-open"></i></span>
                 <span class="su-lowring" id="su-lowring"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
             </div>
             <div class="sx-link" aria-hidden="true">
                 <span class="sx-node"><i class="fa fa-mobile-screen-button"></i><em>You</em></span>
-                <span class="sx-wire"><b></b><b></b><b></b></span>
+                <span class="sx-wire"><b></b><b></b><b></b><i class="fa fa-key sx-keyfly"></i></span>
                 <span class="sx-node"><i class="fa fa-server"></i><em>JB HUB</em></span>
             </div>
             <p id="startup-title" style="font-size:17px;font-weight:700;margin:0 0 4px;">Securing your connection…</p>
             <p id="startup-sub" style="font-size:12px;color:#9ca3af;margin:0 0 10px;">Building an encrypted link to JB HUB.</p>
             <ul id="sx-steps" class="sx-steps" aria-label="Connection security steps"><li class="done">Opening secure HTTPS channel</li><li class="active">Contacting server</li><li>Opening encrypted tunnel</li><li>Verifying access rules</li><li>Syncing your workspace</li></ul>
+            <div class="sx-badges" id="sx-badges" aria-hidden="true"><span data-s="1"><i class="fa fa-lock"></i>HTTPS</span><span data-s="3"><i class="fa fa-key"></i>ENCRYPTED</span><span data-s="4"><i class="fa fa-shield-halved"></i>ACCESS OK</span><span data-s="5"><i class="fa fa-circle-check"></i>SYNCED</span></div>
             <div class="sx-cipher" aria-hidden="true"><span class="sx-cipher-label">Cipher stream</span><span id="sx-cipher">0000·0000·0000·0000·0000</span></div>
             <div id="startup-bar" class="su-bar" aria-hidden="true"><span></span></div>
             <div id="su-lowbar" class="su-lowbar" aria-hidden="true"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div>
@@ -2060,11 +2089,25 @@
             });
             scr.style.setProperty('--sx-lift', SX_LIFT[Math.min(sxStage, 5)]);   // the lock's shackle comes down as the link gets secured
             scr.classList.toggle('sx-secure', sxStage >= 3);
+            // progress arc around the shield, security badges that light up, and the Low-mode lock (open until fully secured)
+            const arc = document.getElementById('sx-arc');
+            if (arc) arc.style.strokeDashoffset = (496.4 * (1 - Math.min(sxStage, 5) / 5)).toFixed(1);
+            scr.querySelectorAll('#sx-badges span').forEach(b => {
+                const need = +b.getAttribute('data-s'), https = location.protocol === 'https:';
+                b.classList.toggle('on', sxStage >= need && (need !== 1 || https));
+            });
+            const lowIcon = scr.querySelector('.sx-lowlock i');
+            if (lowIcon) lowIcon.className = 'fa ' + ((sxStage >= 5 || scr.classList.contains('startup-ok')) ? 'fa-lock' : 'fa-lock-open');
             const t = document.getElementById('startup-title'), sub = document.getElementById('startup-sub');
             if (t && sub && /^Securing your connection/.test(t.textContent) && !failed) sub.textContent = SX_SUBS[Math.min(sxStage, 4)];
             sxCipherDraw();
         }
-        window.sxSetStage = function (n) { if (n > sxStage) { sxStage = Math.min(n, 5); sxRender(); } };
+        // one ring pings out from the shield every time a security step completes
+        function sxPing() {
+            const e = document.querySelector('#startup-screen .sx-ping'); if (!e) return;
+            e.classList.remove('go'); void e.getBoundingClientRect(); e.classList.add('go');
+        }
+        window.sxSetStage = function (n) { if (n > sxStage) { sxStage = Math.min(n, 5); sxRender(); sxPing(); } };
         function sxReset() { sxStage = 1; sxNewFinal(); sxRender(); }
         function sxStartCipher() {
             sxStopCipher();
@@ -2080,7 +2123,7 @@
             const gap = low ? 0 : 110, left = Math.max(0, 5 - sxStage);
             for (let k = 1; k <= left; k++) {
                 if (gap === 0) sxStage = Math.min(5, sxStage + 1);
-                else setTimeout(() => { sxStage = Math.min(5, sxStage + 1); sxRender(); }, k * gap);
+                else setTimeout(() => { sxStage = Math.min(5, sxStage + 1); sxRender(); sxPing(); }, k * gap);
             }
             if (gap === 0) sxRender();
             return left * gap + 60;
