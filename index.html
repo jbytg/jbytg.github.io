@@ -3717,9 +3717,14 @@
                     if (!em) em = await fetchLoginEmail(idLower);
                     acctEmail = em || '';
                 }
-                if (acctEmail) {
+                // Normally one address. Right after an email change started on this device the new address is tried too,
+                // so the username keeps working even before the profile has caught up with Firebase.
+                const pendingMail = idLower.includes('@') ? '' : pendingEmailFor(idLower);
+                const tryEmails = [acctEmail, pendingMail].filter((m, i, a) => m && a.indexOf(m) === i);
+                for (const tryEmail of tryEmails) {
+                    if (passwordOk || blockMsg) break;
                     try {
-                        const cred = await auth.signInWithEmailAndPassword(acctEmail, password);
+                        const cred = await auth.signInWithEmailAndPassword(tryEmail, password);
                         const au = cred.user;
                         if (au.emailVerified) {
                             const recs = await findOwnRecords(au.uid);
@@ -3736,6 +3741,11 @@
                             }
                             if (rec) {
                                 usernameKey = rec.key; userVal = rec.val; passwordOk = true;
+                                // if Firebase's email is newer than the profile (link opened on another device), bring the profile up to date now
+                                try {
+                                    await syncProfileEmailWithAuth(au, rec.key, userVal);
+                                    if (pendingEmailFor(rec.key) === String(au.email || '').toLowerCase()) clearPendingEmailMarker();
+                                } catch (syncErr) { jbLogErr('email sync', syncErr); }
                                 userVal.isAdmin = await loadIsAdmin(au.uid);        // admin rights come from /admins, never from the user record
                                 if (Object.prototype.hasOwnProperty.call(userVal, 'password')) { db.ref('users/' + usernameKey + '/password').remove().catch(() => {}); delete userVal.password; }
                             } else if (await consumeDeletionMarker(au)) { blockMsg = 'This account was deleted by an administrator. You can create a new one.'; }
@@ -4522,6 +4532,7 @@
         }
 
         window.logout = async function() {
+            stopEmailChangeWatch();   // forget the password kept in memory while waiting for an email-change link
             if (currentUser) {
                 const usernameKey = currentUser.username.toLowerCase();
                 await safeSetOffline(usernameKey);
@@ -7058,7 +7069,7 @@
 
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Email Address</label>
-                            <p class="text-xs text-gray-400 mb-2">Currently saved: <span class="text-purple-300 font-semibold">${currentUser.email ? escapeHtml(currentUser.email) : 'No email saved for this account yet'}</span></p>
+                            <p class="text-xs text-gray-400 mb-2">Currently saved: <span id="account-email-saved" class="text-purple-300 font-semibold">${currentUser.email ? escapeHtml(currentUser.email) : 'No email saved for this account yet'}</span></p>
                             <input type="email" id="account-email-input" autocomplete="email" value="${escapeHtml(currentUser.email || '')}" placeholder="you@example.com" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl text-sm outline-none focus:border-purple-500">
                         </div>
 
@@ -7071,7 +7082,7 @@
                                 <button type="button" onclick="sendAccountEmailVerificationLink()" class="w-full p-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition">Send Verification Link</button>
                                 <button type="button" onclick="checkAccountEmailVerification()" class="w-full p-2.5 rounded-lg bg-emerald-700/80 hover:bg-emerald-700 text-white text-sm font-semibold transition">I've clicked the link — Check Status</button>
                             </div>
-                            <p class="text-xs text-gray-500">Firebase sends a verification link to your email. Open it, return to this browser, and check status before saving.</p>
+                            <p class="text-xs text-gray-500">Enter your current password once, then press Send. Open the link Firebase emails to the new address: your login email, profile and this device update automatically, with no second password and no extra Save.</p>
                         </div>
 
                         <div>
@@ -7201,6 +7212,110 @@
             return authUser;
         }
 
+        // ===== Email change that keeps everything in step =====
+        // What changes with an email, and what does not:
+        //   Firebase Authentication email ........ Firebase changes it itself once the link in its email is opened
+        //   users/<name>: email, authEmail, emailVerified ... synced here, automatically (no second password)
+        //   the "choose account" list on this device ....... refreshed
+        //   Firebase UID (authUid), JB HUB id (u_...) and username NEVER change with an email, so notes, scores and chat stay linked.
+        // The password is asked ONCE, to start the change (Firebase insists on a fresh login for that, and it stops someone at an
+        // unlocked screen from taking over the account). It is kept in memory only while waiting for the link (30 minutes at most),
+        // so the profile can be synced the moment the link is opened, without asking again.
+        let emailChangeWatch = null;   // { email, pw, started, timer, busy, tries }
+        const EMAIL_PENDING_KEY = 'jb_pending_email';
+        function setPendingEmailMarker(username, email) { try { localStorage.setItem(EMAIL_PENDING_KEY, JSON.stringify({ u: String(username).toLowerCase(), e: email, t: Date.now() })); } catch (e) {} }
+        function clearPendingEmailMarker() { try { localStorage.removeItem(EMAIL_PENDING_KEY); } catch (e) {} }
+        // the new address of a change started on THIS device, so a username login keeps working before the profile has caught up
+        function pendingEmailFor(usernameKey) {
+            try {
+                const m = JSON.parse(localStorage.getItem(EMAIL_PENDING_KEY) || 'null');
+                if (m && m.u === usernameKey && m.e && Date.now() - m.t < 3 * 24 * 3600 * 1000) return String(m.e).toLowerCase();
+            } catch (e) {}
+            return '';
+        }
+        // Copies the verified Firebase email into the profile (email + authEmail + emailVerified). Returns true when something changed.
+        async function syncProfileEmailWithAuth(au, key, rec) {
+            const mail = String((au && au.email) || '').trim().toLowerCase();
+            if (!mail || !au.emailVerified || !rec || !key) return false;
+            if (rec.authUid && rec.authUid !== au.uid) return false;   // never point an account at a different login
+            const inSync = String(rec.email || '').toLowerCase() === mail && String(rec.authEmail || '').toLowerCase() === mail && rec.emailVerified === true && rec.authUid === au.uid;
+            if (inSync) return false;
+            const upd = { email: mail, authEmail: mail, emailVerified: true, authUid: au.uid };
+            await db.ref('users/' + key).update(upd);
+            Object.assign(rec, upd);
+            return true;
+        }
+        function stopEmailChangeWatch() {
+            if (emailChangeWatch) { clearInterval(emailChangeWatch.timer); emailChangeWatch.pw = ''; emailChangeWatch = null; }
+        }
+        function startEmailChangeWatch(email, pw) {
+            stopEmailChangeWatch();
+            emailChangeWatch = { email: email, pw: pw, started: Date.now(), busy: false, tries: 0, timer: setInterval(() => pollEmailChange(false), 4000) };
+            if (currentUser) setPendingEmailMarker(currentUser.username, email);
+        }
+        function showEmailChangeDone(mail) {
+            const saved = document.getElementById('account-email-saved'); if (saved) saved.textContent = mail;
+            const input = document.getElementById('account-email-input'); if (input) input.value = mail;
+            const st = document.getElementById('email-verification-status');
+            if (st) { st.textContent = 'Verified'; st.className = 'text-xs font-semibold text-green-400'; }
+        }
+        async function pollEmailChange(manual) {
+            const w = emailChangeWatch;
+            if (!w || w.busy) return;
+            if (!currentUser) { stopEmailChangeWatch(); return; }
+            if (Date.now() - w.started > 30 * 60 * 1000) {
+                stopEmailChangeWatch();
+                if (manual) showToast('This took too long to finish here. Open the link, then log in with your new email and your profile updates by itself.', 'error');
+                return;
+            }
+            w.busy = true;
+            try {
+                let au = auth.currentUser;
+                if (au) {
+                    try { await au.reload(); au = auth.currentUser; }
+                    catch (e) { if (e && /user-token-expired|user-not-found|invalid-user-token|requires-recent-login/.test(e.code || '')) au = null; else throw e; }
+                }
+                if (!au) {
+                    // Firebase can sign this browser out the moment the email changes. Sign back in with the NEW email and the
+                    // password typed when the change was started, so no second password is needed.
+                    if (!w.pw || w.tries >= 4) {
+                        stopEmailChangeWatch();
+                        showToast('We could not finish automatically. Open the link if you have not yet, then log in with your NEW email. Your profile updates by itself at login.', 'error');
+                        return;
+                    }
+                    w.tries++;
+                    try { au = (await auth.signInWithEmailAndPassword(w.email, w.pw)).user; }
+                    catch (e) {
+                        if (manual) showToast('Not confirmed yet. Open the link Firebase emailed to ' + w.email + '.', 'error');
+                        return;
+                    }
+                }
+                if (String(au.email || '').toLowerCase() !== w.email || !au.emailVerified) {
+                    if (manual) showToast('Not confirmed yet. Open the link Firebase emailed to ' + w.email + '.', 'error');
+                    return;
+                }
+                if (!currentUser.authUid || au.uid !== currentUser.authUid) {
+                    stopEmailChangeWatch();
+                    showToast('This login belongs to a different account, so nothing was changed.', 'error');
+                    return;
+                }
+                await syncProfileEmailWithAuth(au, currentUser.username.toLowerCase(), currentUser);
+                accountEmailVerifiedFor = w.email;
+                const done = w.email;
+                clearPendingEmailMarker();
+                stopEmailChangeWatch();
+                try { rememberAccountOnThisDevice(currentUser); if (document.body.classList.contains('jb-has-saved')) renderAccountChooser(); } catch (e) {}
+                showEmailChangeDone(done);
+                showToast('Email changed to ' + done + '. Your login, profile and this device are all updated.', 'success');
+            } catch (e) {
+                jbLogErr('email change check', e);
+                if (manual) showToast(authErrorMessage(e), 'error');
+            } finally {
+                if (emailChangeWatch === w) w.busy = false;
+            }
+        }
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && emailChangeWatch) pollEmailChange(false); });
+
         window.sendAccountEmailVerificationLink = async function() {
             const button = document.querySelector('button[onclick="sendAccountEmailVerificationLink()"]');
             try {
@@ -7251,9 +7366,10 @@
                         }
                     }
                     accountEmailVerifiedFor = '';
+                    startEmailChangeWatch(email, password);   // from here on the profile follows Firebase automatically
                     const changeStatus = document.getElementById('email-verification-status');
-                    if (changeStatus) { changeStatus.textContent = 'Link sent — check inbox'; changeStatus.className = 'text-xs font-semibold text-sky-300'; }
-                    showToast('Verification link sent to ' + email + '. Click it, then press the verify-check button here and save.', 'success');
+                    if (changeStatus) { changeStatus.textContent = 'Waiting for you to open the link…'; changeStatus.className = 'text-xs font-semibold text-sky-300'; }
+                    showToast('Link sent to ' + email + '. Open it and everything (login, profile, this device) updates by itself. No password needed again. On other devices use the new email for your first login.', 'success');
                     return;
                 }
 
@@ -7286,6 +7402,7 @@
         window.checkAccountEmailVerification = async function() {
             try {
                 const email = (document.getElementById('account-email-input')?.value || '').trim().toLowerCase();
+                if (emailChangeWatch && emailChangeWatch.email === email) { await pollEmailChange(true); return; }
                 if (!currentUser || !auth.currentUser) {
                     showToast('Please send a verification link from this account first, then return to this browser.', 'error');
                     return;
@@ -7308,9 +7425,11 @@
                 await db.ref('users/' + currentUser.username.toLowerCase()).update({ authUid: authUser.uid, authEmail: email });
                 currentUser.authUid = authUser.uid;
                 currentUser.authEmail = email;
+                try { await syncProfileEmailWithAuth(authUser, currentUser.username.toLowerCase(), currentUser); rememberAccountOnThisDevice(currentUser); clearPendingEmailMarker(); } catch (syncErr) { jbLogErr('email sync', syncErr); }
                 const status = document.getElementById('email-verification-status');
                 if (status) { status.textContent = 'Verified'; status.className = 'text-xs font-semibold text-green-400'; }
-                showToast('Email verified successfully. Click Save Account Updates to finish.', 'success');
+                const savedLbl = document.getElementById('account-email-saved'); if (savedLbl) savedLbl.textContent = email;
+                showToast('Email verified and saved everywhere.', 'success');
             } catch (err) {
                 showToast(authErrorMessage(err), 'error');
             }
@@ -8571,6 +8690,10 @@
                     if (unameErr) { showToast(unameErr, "error"); return; }
                 }
                 if (await emailTakenByOther(newEmail, usernameKey)) { showToast("This email is already used by another account", "error"); return; }
+                // The login email lives in Firebase Authentication and only its owner can change it (Account tab). Saving a different
+                // address here would show one email in the profile while the person logs in with another.
+                { const keepMail = [user.email, user.authEmail].map(m => String(m || '').toLowerCase());
+                  if (user.authUid && !keepMail.includes(newEmail)) { showToast("This account's login email can only be changed by its owner (Account tab → Email). It is controlled by Firebase Authentication.", "error"); return; } }
                 if (!newDob) { showToast("Date of Birth is required", "error"); return; }
                 if (!newGender) { showToast("Please select Male or Female", "error"); return; }
 
