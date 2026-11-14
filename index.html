@@ -942,6 +942,12 @@
         <p class="text-lg font-bold text-red-300">Your account is being deleted</p>
         <p class="text-sm text-gray-300 mt-1">Please wait… Do not close or refresh this page.</p>
     </div>
+    <!-- Shown while an account is being created: blocks every click so nothing can be sent twice -->
+    <div id="creating-overlay" class="hidden fixed inset-0 flex flex-col items-center justify-center bg-black/85 text-center px-6" style="z-index:9000;" role="alert" aria-live="assertive">
+        <div class="w-14 h-14 rounded-full border-4 border-purple-500/30 border-t-purple-400 animate-spin mb-5"></div>
+        <p id="creating-overlay-title" class="text-lg font-bold text-purple-200">Creating your account</p>
+        <p id="creating-overlay-sub" class="text-sm text-gray-300 mt-1">Please wait… Do not close or refresh this page.</p>
+    </div>
     <div id="toast" style="z-index:9500;" class="fixed top-5 z-50 transform -translate-y-24 opacity-0 transition-all duration-300 px-6 py-3 rounded-xl shadow-lg font-medium text-sm flex items-center space-x-2 text-white pointer-events-none">
         <i id="toast-icon" class="fa"></i>
         <span id="toast-msg"></span>
@@ -1558,6 +1564,24 @@
             if (o) o.classList.add('hidden');
             document.body.classList.remove('deleting-account');
         }
+        // ===== "Creating your account, please wait" =====
+        // A counter (not a flag) so two stages that overlap can never hide the screen too early.
+        let accountCreating = 0;
+        function beginAccountCreation(title, sub) {
+            accountCreating++;
+            const o = document.getElementById('creating-overlay');
+            const t = document.getElementById('creating-overlay-title'), u = document.getElementById('creating-overlay-sub');
+            if (t) t.textContent = title || 'Creating your account';
+            if (u) u.textContent = sub || 'Please wait… Do not close or refresh this page.';
+            if (o) o.classList.remove('hidden');
+        }
+        function endAccountCreation() {
+            accountCreating = Math.max(0, accountCreating - 1);
+            if (accountCreating === 0) { const o = document.getElementById('creating-overlay'); if (o) o.classList.add('hidden'); }
+        }
+        // while creating: no keyboard actions, and the browser warns before leaving the page
+        document.addEventListener('keydown', function (e) { if (accountCreating > 0) { e.preventDefault(); e.stopPropagation(); } }, true);
+        window.addEventListener('beforeunload', function (e) { if (accountCreating > 0) { e.preventDefault(); e.returnValue = ''; } });
         // while deleting: no keyboard actions, and the browser warns before leaving the page
         document.addEventListener('keydown', function (e) { if (accountDeleting) { e.preventDefault(); e.stopPropagation(); } }, true);
         window.addEventListener('beforeunload', function (e) { if (accountDeleting) { e.preventDefault(); e.returnValue = ''; } });
@@ -2590,6 +2614,7 @@
 
         // Which part of sign-up is running, so an unexpected error can say WHERE it happened (shown as "Ref: code · step").
         let jbStep = '';
+        let signupStartBusy = false;
         function setSignupVerifyStatus(text, cls) {
             const el = document.getElementById('signup-verify-status');
             if (el) { el.textContent = text; el.className = cls; }
@@ -2652,6 +2677,10 @@
             if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
 
             const usernameKey = username.toLowerCase();
+            if (signupStartBusy) return;   // a second press while the first one is still running is ignored
+            signupStartBusy = true;
+            beginAccountCreation('Creating your account', 'Please wait… Do not close or refresh this page.');
+            try {
             jbStep = 'checking username';
             if ((await db.ref('users/' + usernameKey + '/username').once('value')).exists()) {
                 showToast("Username already exists", "error");
@@ -2704,11 +2733,13 @@
                     throw sendErr;
                 }
             }
+            } finally { signupStartBusy = false; endAccountCreation(); }
         }
 
         async function finishSignupAfterVerification(authUser) {
             if (!pendingSignup || signupFinishing) return;
             signupFinishing = true;
+            beginAccountCreation('Email verified. Finishing your account', 'Please wait… Do not close or refresh this page.');
             try {
                 const p = pendingSignup;
                 const usernameKey = p.username.toLowerCase();
@@ -2744,6 +2775,7 @@
                 proceedAfterLogin();
             } finally {
                 signupFinishing = false;
+                endAccountCreation();
             }
         }
 
@@ -3059,7 +3091,9 @@
             }
 
             const btn = document.getElementById('gs-create-btn');
+            if (btn && btn.disabled) return;   // already running: ignore a second press
             if (btn) btn.disabled = true;
+            beginAccountCreation('Creating your account', 'Please wait… Do not close or refresh this page.');
             try {
                 const usernameKey = username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
@@ -3114,6 +3148,7 @@
                 showToast(googleErrorMessage(err), 'error');
             } finally {
                 jbStep = '';
+                endAccountCreation();
                 if (btn) btn.disabled = false;
                 if (pendingGoogle) drawAccountCaptcha('gs-cap');   // a captcha can only be used once
             }
