@@ -2588,6 +2588,8 @@
             return '';
         }
 
+        // Which part of sign-up is running, so an unexpected error can say WHERE it happened (shown as "Ref: code · step").
+        let jbStep = '';
         function setSignupVerifyStatus(text, cls) {
             const el = document.getElementById('signup-verify-status');
             if (el) { el.textContent = text; el.className = cls; }
@@ -2650,12 +2652,14 @@
             if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
 
             const usernameKey = username.toLowerCase();
+            jbStep = 'checking username';
             if ((await db.ref('users/' + usernameKey + '/username').once('value')).exists()) {
                 showToast("Username already exists", "error");
                 return;
             }
 
             // Create (or reuse an earlier unfinished) Firebase Authentication user for this email
+            jbStep = 'creating login';
             let authUser;
             try {
                 const cred = await auth.createUserWithEmailAndPassword(email, password);
@@ -2681,6 +2685,7 @@
 
             pendingSignup = { username, email, password, dob, gender };
 
+            jbStep = 'sending verification email';
             if (authUser.emailVerified) {
                 await finishSignupAfterVerification(authUser);
                 return;
@@ -2709,6 +2714,7 @@
                 const usernameKey = p.username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
 
+                jbStep = 'checking username';
                 if ((await userRef.child('username').once('value')).exists()) {
                     showToast("That username was just taken. Please choose another.", "error");
                     hideSignupVerifyPanel();
@@ -2722,10 +2728,13 @@
                     authEmail: p.email, authUid: authUser.uid, emailVerified: true,
                     dob: p.dob, gender: p.gender, id: 'u_' + Date.now()
                 };
+                jbStep = 'saving profile';
                 await userRef.set(newUser);
                 currentUser = Object.assign({}, newUser, { isAdmin: false });
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                jbStep = 'saving session';
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
+                jbStep = '';
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -2758,7 +2767,15 @@
                 }
                 stopSignupVerifyPolling();
                 setSignupVerifyStatus('Verified ✓', 'text-xs font-semibold text-green-400');
-                await finishSignupAfterVerification(fresh);
+                try {
+                    await finishSignupAfterVerification(fresh);
+                } catch (finishErr) {
+                    // the email IS verified but saving the account failed: say so (also during the automatic check) and let the person retry
+                    jbLogErr('Saving the new account failed at: ' + jbStep, finishErr);
+                    setSignupVerifyStatus('Email verified, but saving your account failed. Press the check button to retry.', 'text-xs font-semibold text-amber-300');
+                    showToast(authErrorMessage(finishErr), 'error');
+                    jbStep = '';
+                }
             } catch (err) {
                 if (auto !== true) showToast(authErrorMessage(err), 'error');
             }
@@ -3046,6 +3063,7 @@
             try {
                 const usernameKey = username.toLowerCase();
                 const userRef = db.ref('users/' + usernameKey);
+                jbStep = 'checking username (Google)';
                 if ((await userRef.child('username').once('value')).exists()) { showToast("Username already exists", "error"); return; }
                 if (await emailTakenByOther(pendingGoogle.email, usernameKey)) {
                     showToast("An account with this email already exists. Please log in.", "error");
@@ -3072,15 +3090,18 @@
                 // New accounts are NEVER admins. Admin rights are given only by an existing admin (Admin Panel) or by the owner in the Firebase console.
 
                 const newUser = {
-                    username: username, password: '', email: pendingGoogle.email,
+                    username: username, email: pendingGoogle.email,
                     authEmail: pendingGoogle.email, authUid: pendingGoogle.uid,
                     emailVerified: true, googleAccount: true,
                     dob: dob, gender: gender, id: 'u_' + Date.now()
                 };
+                jbStep = 'saving profile (Google)';
                 await userRef.set(newUser);
                 currentUser = Object.assign({}, newUser, { isAdmin: false });
                 mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                jbStep = 'saving session';
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
+                jbStep = '';
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
                 setupSessionWatcher(usernameKey);
@@ -3089,9 +3110,10 @@
                 showToast("Account created with Google!");
                 proceedAfterLogin();
             } catch (err) {
-                jbLogErr('JB HUB', err);
+                jbLogErr('JB HUB' + (jbStep ? ' (' + jbStep + ')' : ''), err);
                 showToast(googleErrorMessage(err), 'error');
             } finally {
+                jbStep = '';
                 if (btn) btn.disabled = false;
                 if (pendingGoogle) drawAccountCaptcha('gs-cap');   // a captcha can only be used once
             }
@@ -3832,9 +3854,10 @@
                 showToast("Logged in successfully!");
                 proceedAfterLogin();
             } catch (err) {
-                jbLogErr('JB HUB', err);
+                jbLogErr('JB HUB' + (jbStep ? ' (' + jbStep + ')' : ''), err);
                 showToast(authErrorMessage(err), 'error');
             } finally {
+                jbStep = '';
                 if (btn) btn.disabled = false;
             }
         }
@@ -7189,9 +7212,17 @@
             if (code === 'auth/too-many-requests') return 'Too many attempts. Please wait a few minutes and try again.';
             if (code === 'auth/invalid-email') return 'That email address is not valid.';
             if (code === 'auth/requires-recent-login') return 'Please sign in again, then retry this action.';
+            if (code === 'auth/network-request-failed') return 'Network problem. Check your internet connection (or turn off a VPN / ad blocker for this site) and try again.';
+            if (code === 'auth/admin-restricted-operation') return 'Creating new accounts is switched off right now. Please try again later.';
+            if (code === 'auth/quota-exceeded') return 'The email service is busy right now. Please try again in a little while.';
             // Messages written by this app (new Error('...')) are shown; raw Firebase / database errors are not.
-            if (err && ((err.code && /^(auth\/|app-check|appCheck|database\/|PERMISSION)/i.test(err.code)) || /permission_denied|firebase|googleapis|https?:\/\//i.test(String(err.message || '')))) return 'Something went wrong. Please try again.';
-            return (err && err.message) || 'Something went wrong. Please try again.';
+            if (err && ((err.code && /^(auth\/|app-check|appCheck|database\/|PERMISSION)/i.test(err.code)) || /permission_denied|firebase|googleapis|https?:\/\//i.test(String(err.message || '')))) return genericErrorMessage(err);
+            return (err && err.message) || genericErrorMessage(err);
+        }
+        // Raw server errors stay hidden, but a short reference (the error code + the step) is shown so the real cause can be found.
+        function genericErrorMessage(err) {
+            const code = err && (err.code || err.name) ? String(err.code || err.name).replace(/[^A-Za-z0-9_\/.-]/g, '').slice(0, 60) : 'error';
+            return 'Something went wrong. Please try again. (Ref: ' + code + (jbStep ? ' · ' + jbStep : '') + ')';
         }
 
         async function ensureFirebaseAuthForCurrentAccount(password) {
