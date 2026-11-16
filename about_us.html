@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>About JB HUB – Free Cloud Notes, 11 Arcade Games, Chat &amp; Tools</title>
     <meta name="description" content="Everything inside JB HUB: free cloud notes, 11 arcade games with leaderboards, global chat, JB TV with 10,000+ channels, JB GUARD, 4 graphics modes and strong security. 100% free, no ads.">
+    <meta name="keywords" content="JB HUB, jbhub, jb hub website, JB HUB official site, jbhub.ryzn.pro, JB YT GAMER, JB YT Gamer website, Johan Biju, Johan Biju developer, JB GUARD, JB TV, JB AI, JB HUB cloud workspace, JB HUB cyber arcade, free cloud notes, free online notes app, online notepad, private cloud notes, secure notes online, sync notes across devices, notes saved in cloud, free notebook online, online diary, write notes online free, colored notes, note taking website, no signup limit notes, free browser games, free online games, play games online free, no download games, no install games, no ads games, ad-free games, ad free website, instant play games, html5 games, mobile browser games, phone games online, pc browser games, unblocked games, games to play when bored, mini games, casual games, quick games, offline style arcade games, retro arcade games, online arcade, cyber arcade, neon arcade, cyberpunk games, neon games, pixel arcade, arcade high score games, high score games, leaderboard games, multiplayer leaderboard, global game leaderboard, live leaderboards, compete with friends online, score challenge games, snake game, cyber snake, classic snake game, memory match game, memory card game, flappy bird, flappy bird clone, breakout game, brick breaker, brick breaker online, 2048, 2048 game online, glitch hunter, neon dodger, dodge game, space invaders, space invaders online, space shooter game, cyber runner, endless runner game, stack tower, stack game, tower stacking game, neon racer, car racing game online, lane racing game, endless racing game, reaction games, skill games, puzzle games online, brain games, logic games, keyboard games, touch screen games, global chat, free chat room, online chat room, public chat, chat with strangers online, no ads chat, chat website, live chat room, anonymous style chat, community chat, gaming community, gamers community, free gaming platform, gaming hub, game hub, all in one platform, all in one website, digital platform, cloud platform, web platform, web app, progressive web app, browser app, free web tools, online tools, productivity and games, free live TV, free live TV channels, live tv online, watch tv online free, 10000 channels, 10, 000+ channels, IPTV player, online tv player, browser tv, stream live channels, free streaming tools, news channels live, sports channels live, music channels live, kids channels live, movies channels live, account security tool, password security checker, account protection, secure login, email verification login, Google sign in, login with username or email, secure website, Firebase powered, cloud secure platform, privacy friendly website, no tracking ads, no popups, no ads, 100% free, completely free, free forever, free to use, no payment, no credit card, no download needed, works in browser, works on mobile, works on desktop, works on tablet, responsive website, dark mode website, glassmorphism design, neon dark theme, animated background, four graphics modes, low graphics mode, ultra graphics mode, battery friendly, lightweight website, fast loading website, smooth performance, bug report system, suggestion box, report a bug, feature requests, admin announcements, community rules, maintenance notice, user profiles, change username, account settings, saved accounts on device, indie developer, indie web platform, open web platform, JB tools, JB games, JB notes, JB chat, JB leaderboard, JB arcade, JB cloud">
     <link rel="canonical" href="https://jbhub.ryzn.pro/about_us.html">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="#05070f">
@@ -1229,7 +1230,9 @@
             const list = document.getElementById('demo-notes-list');
             const li = document.createElement('li');
             li.className = 'p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs flex justify-between items-center text-white animate-fade-in';
-            li.innerHTML = `<span>${input.value}</span><i class="fa-solid fa-cloud text-amber-400"></i>`;
+            const sp = document.createElement('span'); sp.textContent = input.value;   // text, never HTML
+            const ic = document.createElement('i'); ic.className = 'fa-solid fa-cloud text-amber-400';
+            li.appendChild(sp); li.appendChild(ic);
             list.prepend(li);
             input.value = '';
         }
@@ -1240,7 +1243,8 @@
             const box = document.getElementById('demo-chat-box');
             
             const userMsg = document.createElement('div');
-            userMsg.innerHTML = `<strong class="text-purple-400">You:</strong> ${input.value}`;
+            const who = document.createElement('strong'); who.className = 'text-purple-400'; who.textContent = 'You:';
+            userMsg.appendChild(who); userMsg.appendChild(document.createTextNode(' ' + input.value));   // text, never HTML
             box.appendChild(userMsg);
             
             input.value = '';

@@ -13,7 +13,7 @@
     <title>JB HUB – Free Cloud Notes, 11 Arcade Games &amp; Global Chat (No Ads)</title>
     <link rel="canonical" href="https://jbhub.ryzn.pro/" />
     <meta name="description" content="JB HUB is a free, ad-free cloud workspace and arcade: private cloud notes, 11 browser games, global chat, live leaderboards and JB TV with 10,000+ channels. No download needed.">
-    <meta name="keywords" content="JB HUB, JB Hub, JB YT GAMER, free cloud notes, free online notes app, free browser games, no ads games, online arcade, cyber arcade, play games online free, global chat, game leaderboard, free live TV channels, 2048, snake, space invaders, flappy bird">
+    <meta name="keywords" content="JB HUB, jbhub, jb hub website, JB HUB official site, jbhub.ryzn.pro, JB YT GAMER, JB YT Gamer website, Johan Biju, Johan Biju developer, JB GUARD, JB TV, JB AI, JB HUB cloud workspace, JB HUB cyber arcade, free cloud notes, free online notes app, online notepad, private cloud notes, secure notes online, sync notes across devices, notes saved in cloud, free notebook online, online diary, write notes online free, colored notes, note taking website, no signup limit notes, free browser games, free online games, play games online free, no download games, no install games, no ads games, ad-free games, ad free website, instant play games, html5 games, mobile browser games, phone games online, pc browser games, unblocked games, games to play when bored, mini games, casual games, quick games, offline style arcade games, retro arcade games, online arcade, cyber arcade, neon arcade, cyberpunk games, neon games, pixel arcade, arcade high score games, high score games, leaderboard games, multiplayer leaderboard, global game leaderboard, live leaderboards, compete with friends online, score challenge games, snake game, cyber snake, classic snake game, memory match game, memory card game, flappy bird, flappy bird clone, breakout game, brick breaker, brick breaker online, 2048, 2048 game online, glitch hunter, neon dodger, dodge game, space invaders, space invaders online, space shooter game, cyber runner, endless runner game, stack tower, stack game, tower stacking game, neon racer, car racing game online, lane racing game, endless racing game, reaction games, skill games, puzzle games online, brain games, logic games, keyboard games, touch screen games, global chat, free chat room, online chat room, public chat, chat with strangers online, no ads chat, chat website, live chat room, anonymous style chat, community chat, gaming community, gamers community, free gaming platform, gaming hub, game hub, all in one platform, all in one website, digital platform, cloud platform, web platform, web app, progressive web app, browser app, free web tools, online tools, productivity and games, free live TV, free live TV channels, live tv online, watch tv online free, 10000 channels, 10, 000+ channels, IPTV player, online tv player, browser tv, stream live channels, free streaming tools, news channels live, sports channels live, music channels live, kids channels live, movies channels live, account security tool, password security checker, account protection, secure login, email verification login, Google sign in, login with username or email, secure website, Firebase powered, cloud secure platform, privacy friendly website, no tracking ads, no popups, no ads, 100% free, completely free, free forever, free to use, no payment, no credit card, no download needed, works in browser, works on mobile, works on desktop, works on tablet, responsive website, dark mode website, glassmorphism design, neon dark theme, animated background, four graphics modes, low graphics mode, ultra graphics mode, battery friendly, lightweight website, fast loading website, smooth performance, bug report system, suggestion box, report a bug, feature requests, admin announcements, community rules, maintenance notice, user profiles, change username, account settings, saved accounts on device, indie developer, indie web platform, open web platform, JB tools, JB games, JB notes, JB chat, JB leaderboard, JB arcade, JB cloud">
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
     <meta name="theme-color" content="#1c0df4">
     <meta name="author" content="JB HUB">
@@ -43,7 +43,7 @@
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "JB HUB",
-      "alternateName": "JB Hub",
+      "alternateName": ["JB Hub", "jbhub", "JB YT GAMER"],
       "url": "https://jbhub.ryzn.pro/"
     }
     </script>
@@ -59,6 +59,7 @@
       "browserRequirements": "Requires JavaScript",
       "image": "https://jbhub.ryzn.pro/og-banner.png",
       "inLanguage": "en",
+      "keywords": "JB HUB, jbhub, jb hub website, JB HUB official site, jbhub.ryzn.pro, JB YT GAMER, JB YT Gamer website, Johan Biju, Johan Biju developer, JB GUARD, JB TV, JB AI, JB HUB cloud workspace, JB HUB cyber arcade, free cloud notes, free online notes app, online notepad, private cloud notes, secure notes online, sync notes across devices, notes saved in cloud, free notebook online, online diary, write notes online free, colored notes, note taking website, no signup limit notes, free browser games, free online games, play games online free, no download games, no install games, no ads games, ad-free games, ad free website, instant play games, html5 games, mobile browser games, phone games online, pc browser games, unblocked games, games to play when bored, mini games, casual games, quick games, offline style arcade games, retro arcade games, online arcade, cyber arcade, neon arcade, cyberpunk games, neon games, pixel arcade, arcade high score games, high score games, leaderboard games, multiplayer leaderboard, global game leaderboard, live leaderboards, compete with friends online",
       "isAccessibleForFree": true,
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "featureList": ["Cloud notes synced to your account", "11 arcade games with leaderboards", "Global chat", "JB TV with 10,000+ free channels", "JB GUARD account security tool", "Four graphics modes for any device"],
@@ -2762,7 +2763,7 @@
                 jbStep = 'saving profile';
                 await userRef.set(newUser);
                 currentUser = Object.assign({}, newUser, { isAdmin: false });
-                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                mySessionId = 'sess_' + Date.now() + '_' + jbRandomToken();
                 jbStep = 'saving session';
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 jbStep = '';
@@ -2960,7 +2961,7 @@
             }
 
             currentUser = userVal;
-            mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+            mySessionId = 'sess_' + Date.now() + '_' + jbRandomToken();
             try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
             setupPresence(usernameKey);
             setupBanWatcher(usernameKey);
@@ -3132,7 +3133,7 @@
                 jbStep = 'saving profile (Google)';
                 await userRef.set(newUser);
                 currentUser = Object.assign({}, newUser, { isAdmin: false });
-                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                mySessionId = 'sess_' + Date.now() + '_' + jbRandomToken();
                 jbStep = 'saving session';
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 jbStep = '';
@@ -3881,7 +3882,7 @@
                 }
 
                 currentUser = userVal;
-                mySessionId = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                mySessionId = 'sess_' + Date.now() + '_' + jbRandomToken();
                 try { await userRef.update({ activeSession: mySessionId }); } catch (e) { currentUser = null; mySessionId = null; throw e; } // must be saved before the session watchers start
                 setupPresence(usernameKey);
                 setupBanWatcher(usernameKey);
@@ -8282,7 +8283,7 @@
                                     <input type="color" onchange="applyColorToTextarea('admin-about-input', this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="Custom Color">
                                 </div>
                             </div>
-                            <textarea id="admin-about-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.aboutText || ''}</textarea>
+                            <textarea id="admin-about-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${escapeHtml(globalSettings.aboutText || '')}</textarea>
                         </div>
 
                         <div>
@@ -8299,12 +8300,12 @@
                                     <input type="color" onchange="applyColorToTextarea('admin-rules-input', this.value)" class="w-5 h-5 rounded cursor-pointer bg-transparent border-0" title="Custom Color">
                                 </div>
                             </div>
-                            <textarea id="admin-rules-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.rulesText || ''}</textarea>
+                            <textarea id="admin-rules-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${escapeHtml(globalSettings.rulesText || '')}</textarea>
                         </div>
 
                         <div>
                             <label class="text-xs text-gray-400 mb-1 block">Special Thanks Names (one per line, or comma separated — shown as centered highlighted badges)</label>
-                            <textarea id="admin-thanks-input" placeholder="e.g.&#10;JB YT GAMER&#10;Alex&#10;Sam" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${globalSettings.specialThanks || ''}</textarea>
+                            <textarea id="admin-thanks-input" placeholder="e.g.&#10;JB YT GAMER&#10;Alex&#10;Sam" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 text-sm h-20 resize-none">${escapeHtml(globalSettings.specialThanks || '')}</textarea>
                         </div>
 
                         <button onclick="adminSaveSettings()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 rounded-xl font-bold text-sm transition">Save System Content</button>
@@ -9838,6 +9839,14 @@
 
         // ===== Security helpers =====
         // Escapes text for HTML text and attribute contexts (also ' and `), and accepts numbers / null safely.
+        // Unpredictable random text (crypto), for values that must not be guessable such as session ids
+        function jbRandomToken(bytes) {
+            const n = bytes || 12;
+            try {
+                const a = new Uint8Array(n); (window.crypto || window.msCrypto).getRandomValues(a);
+                return Array.from(a, b => b.toString(16).padStart(2, '0')).join('');
+            } catch (e) { return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2); }
+        }
         function escapeHtml(str) {
             return String(str == null ? '' : str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/`/g, "&#96;");
         }
