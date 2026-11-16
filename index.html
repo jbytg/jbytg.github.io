@@ -7766,7 +7766,12 @@
                 notesData.forEach(n => {
                     if (n.userId === mergedRecord.id) updates['notes/' + n.id + '/username'] = newUsername;
                 });
-                // (old chat messages keep the old name; they disappear after 24 hours and cannot be edited)
+                // chat messages of this account get the new name too (only the username field changes)
+                try {
+                    const myUidForChat = auth.currentUser && auth.currentUser.uid;
+                    const chatSnap = await db.ref('globalChat').once('value');
+                    chatSnap.forEach(c => { const m = c.val(); if (m && myUidForChat && m.ownerUid === myUidForChat) updates['globalChat/' + c.key + '/username'] = newUsername; });
+                } catch (chatErr) { jbLogErr('chat rename', chatErr); }
                 bugReportsData.forEach(r => {
                     if (r.userId === mergedRecord.id) updates['bugReports/' + r.id + '/username'] = newUsername;
                 });
@@ -7902,6 +7907,13 @@
 
                 await Promise.all(notesData.filter(n => n.userId === currentUser.id).map(n => db.ref('notes/' + n.id).remove().catch(() => {})));
                 await Promise.all(bugReportsData.filter(r => r.userId === currentUser.id).map(r => db.ref('bugReports/' + r.id).remove().catch(() => {})));
+                // delete this account's global chat messages
+                try {
+                    const chatSnapDel = await db.ref('globalChat').once('value');
+                    const delJobs = [];
+                    chatSnapDel.forEach(c => { const m = c.val(); if (m && m.ownerUid === authUserToDelete.uid) delJobs.push(db.ref('globalChat/' + c.key).remove().catch(() => {})); });
+                    await Promise.all(delJobs);
+                } catch (chatErr) { jbLogErr('chat delete', chatErr); }
 
                 await endMyPresence(); db.ref('presence/' + usernameKey).remove().catch(() => {}); // account is gone: no presence either
                 if (presenceRef) { db.ref('.info/connected').off('value', presenceRef); presenceRef = null; }
@@ -8950,6 +8962,12 @@
                     // the login itself can only be removed by its owner, so it is marked and removed when they next try to log in
                     await db.ref('deletions/' + delUid).set({ at: firebase.database.ServerValue.TIMESTAMP, email: String(delUser.authEmail || delUser.email || '').slice(0, 254), by: String(currentUser.username).slice(0, 40) }).then(() => { markerSaved = true; }).catch(() => {});
                 }
+                try {   // remove this user's global chat messages
+                    const chatSnapAdm = await db.ref('globalChat').once('value');
+                    const admJobs = [];
+                    chatSnapAdm.forEach(c => { const m = c.val(); if (m && ((delUid && m.ownerUid === delUid) || String(m.username || '').toLowerCase() === usernameKey)) admJobs.push(db.ref('globalChat/' + c.key).remove().catch(() => {})); });
+                    await Promise.all(admJobs);
+                } catch (chatErr) { jbLogErr('admin chat delete', chatErr); }
                 await db.ref(`users/${usernameKey}`).remove();
                 db.ref(`presence/${usernameKey}`).remove().catch(() => {});
                 await db.ref(`leaderboards/snake/${usernameKey}`).remove();
