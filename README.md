@@ -1,171 +1,116 @@
 # JB HUB
 
-> **JB HUB** --- a cloud-powered digital workspace and Cyber Arcade
-> built with HTML, CSS, JavaScript, Tailwind CSS, Firebase, and Font
-> Awesome.
+> **JB HUB** — a free, ad-free cloud workspace and Cyber Arcade built with HTML, CSS, JavaScript, Tailwind CSS, Firebase and Font Awesome.
 
-🌐 **Live Website:** https://jbhub.ryzn.pro/
+🌐 **Live website:** https://jbhub.ryzn.pro/
 
 ## ✨ Overview
 
-JB HUB is an interactive web platform combining an account-based
-workspace with an online arcade and community features.
-
-The interface uses a dark glassmorphism design with animated
-purple/pink/blue visual effects, responsive layouts, interactive
-controls, and performance-friendly modes.
+JB HUB combines an account-based workspace with an online arcade and community features, wrapped in a dark glassmorphism design with animated purple / pink / blue effects, responsive layouts and four graphics modes for any device.
 
 ## 🚀 Features
 
-### 🔐 Account System
+### 🔐 Accounts
+- Sign up with email verification, or continue with Google
+- Log in with username or email
+- Password-strength indicator (minimum 8 characters for new passwords), confirm-password check, human-verification test
+- Account and session safety checks, one-device session protection
+- Ban / account-status handling, saved accounts on the device (password encrypted on the device)
+- Change username, email, password; full account deletion (also removes your notes, bug reports, chat messages and scores)
 
--   Login and account creation
--   Username and password
--   Date-of-birth field
--   Male/Female profile selection
--   Password-strength indicator
--   Confirm-password validation
--   Human-verification test
--   Account/session safety checks
--   Ban and account-status handling
--   Other-device login protection
+### ☁️ Cloud workspace
+- Firebase Realtime Database + Firebase Authentication + App Check
+- Private cloud notes, global chat (messages follow your username changes), bug reports and suggestions
+- Live leaderboards for every game
+- Dynamic About Us, rules and Special Thanks content
 
-### ☁️ Cloud Workspace
+### 🎮 Cyber Arcade (11 games)
+Snake, Memory, Flappy, Glitch, Breakout, 2048, Neon Dodger, Space Invaders and more, each with a global leaderboard.
 
--   Firebase Realtime Database integration
--   Notes
--   Global chat
--   Bug reports and suggestions
--   Multiple game leaderboards
--   Account information
--   Dynamic About Us, rules, and Special Thanks content
+### 🧰 Extra tools
+- **JB AI** – built-in offline assistant (`jb-ai.js`)
+- **JB TV** – https://tv.jbhub.ryzn.pro
+- **JB GUARD** – https://guard.jbhub.ryzn.pro
 
-### 🎮 Cyber Arcade
+### 🛠️ Admin panel
+User management, moderation (ban / unban), notes, bug reports, leaderboards, chat control, About Us / rules / Special Thanks, section maintenance, shutdown / online controls. Admin rights are stored only in the database (`/admins`) and enforced by the database rules.
 
-The project includes browser-based games with leaderboard support,
-including: - Snake - Memory - Flappy - Glitch - Breakout - 2048 - Neon
-Dodger - Space Invaders
-
-### 🛠️ Admin Panel
-
-Administrators can manage users and platform content, including: - User
-management - Username/password editing - Date-of-birth and gender
-editing - Account moderation controls - Notes management - Bug reports -
-Game leaderboards - Global chat/content controls - About Us and platform
-rules - Special Thanks - Section maintenance - Server shutdown/online
-controls
-
-### ⚡ Performance
-
--   Low-graphics mode
--   Animation disabling
--   Reduced visual effects
--   Hardware-friendly UI behavior
--   Responsive mobile/desktop layout
-
-## 🎨 Design
-
-JB HUB uses a dark futuristic glassmorphism style with: - Purple, pink,
-indigo, and blue accents - Animated `JB HUB` branding - Particle
-background - Smooth transitions - Interactive buttons - Responsive cards
-and controls
+### ⚡ Performance and comfort
+Low-graphics mode, animation disabling, reduced-motion support, keyboard focus outlines, responsive mobile / desktop layout, installable as an app (web manifest).
 
 ## 🧰 Technologies
 
-  Technology                   Purpose
-  ---------------------------- ----------------------------
-  HTML5                        Page structure
-  CSS3                         Styling and animations
-  JavaScript                   Application logic
-  Tailwind CSS                 Responsive utility styling
-  Font Awesome 6.4             Icons
-  Firebase Realtime Database   Cloud data
-  Web hosting                  Deployment
+| Technology | Purpose |
+| --- | --- |
+| HTML5 / CSS3 / JavaScript | Structure, styling, logic |
+| Tailwind CSS | Utility styling |
+| Font Awesome 6.4 | Icons |
+| Firebase Realtime Database | Cloud data |
+| Firebase Authentication | Login (email, Google) |
+| Firebase App Check | Blocks traffic that is not from the real site |
 
-## 📁 Project Structure
+## 📁 Project structure
 
-``` text
+```text
 JB-HUB/
-├── index.html
+├── index.html                 main application
+├── about_us.html              About Us page
+├── jb-ai.js                   JB AI assistant
 ├── logo.png
-├── favicon/
-│   ├── favicon.svg
-│   ├── favicon-96x96.png
-│   ├── apple-touch-icon.png
-│   └── site.webmanifest
-└── README.md
+├── og-banner.png              1200x630 social preview image
+├── sitemap.xml
+├── robots.txt
+├── _headers                   security headers (Cloudflare Pages / Netlify)
+├── database.rules.json        Firebase Realtime Database rules
+├── .well-known/
+│   └── security.txt
+└── favicon/
+    ├── favicon.svg
+    ├── favicon-96x96.png
+    ├── apple-touch-icon.png
+    ├── web-app-manifest-192x192.png
+    ├── web-app-manifest-512x512.png
+    └── site.webmanifest
 ```
 
-## ⚙️ Running the Project
+## ⚙️ Running the project
 
-### Local
+Serve the folder with any local HTTP server (opening `index.html` with `file://` does not work correctly with Firebase). Deploy on any static host (Cloudflare Pages, Netlify, GitHub Pages, …).
 
-Download or clone the repository and serve `index.html` with a local
-HTTP server. Some Firebase/browser features may not work correctly when
-the file is opened directly with `file://`.
+## 🔥 Firebase and security
 
-### GitHub Pages
+JB HUB uses its own Firebase project. The Firebase web configuration is public by design; **the database rules are the real security**.
 
-1.  Upload `index.html` and required assets to your repository.
-2.  Open **Settings → Pages**.
-3.  Select the branch containing the website.
-4.  Select the publishing folder.
-5.  Save and open the generated Pages URL.
+Checklist before every release:
+1. Publish `database.rules.json` and test it in the Rules Playground (sign up, notes, chat, scores, rename, delete, admin).
+2. Keep **App Check enforcement** on for Realtime Database and Authentication once real users pass it.
+3. Admin rights only in `/admins`, never trusted from the browser.
+4. No private keys or secrets in frontend code.
+5. Security headers from `_headers` are active (check with securityheaders.com).
+6. Re-check the Content Security Policy in `index.html` after adding any new external script, font, image host or embed.
+7. Review the rules whenever a feature changes.
 
-## 🔥 Firebase
+Report security problems privately (see `.well-known/security.txt`), not in the public chat.
 
-JB HUB uses Firebase Realtime Database.
-
-If you create your own version, create your own Firebase project and
-replace the Firebase configuration with your own project configuration.
-
-### Security
-
-Firebase web configuration is normally visible in client-side code. This
-is not a substitute for security rules.
-
-Before public deployment: - Restrict database reads and writes with
-Firebase Security Rules. - Validate permissions server-side through
-Firebase rules. - Do not trust administrator flags supplied only by the
-browser. - Never put private API keys or other secrets in frontend
-JavaScript. - Validate user-provided data. - Review database rules
-whenever features change.
-
-The frontend UI should not be treated as a security boundary.
-
-## 🧑‍💻 Development
-
-1.  Edit `index.html`.
-2.  Test the interface locally.
-3.  Test account and Firebase functionality.
-4.  Test the Admin Panel with an authorized account.
-5.  Test all arcade games and leaderboards.
-6.  Test desktop and mobile layouts.
-7.  Commit and push changes.
+## 🧑‍💻 Development checklist
+1. Edit `index.html`.
+2. Test sign-up, login (username / email / Google), logout.
+3. Test notes, chat, bug reports, rename, account delete.
+4. Test every game and its leaderboard.
+5. Test the admin panel with an admin account.
+6. Test desktop and mobile; open the browser console and make sure there are no red CSP errors.
+7. Commit and push.
 
 ## 📱 Compatibility
-
-Designed for modern browsers on Windows, Android, Linux, macOS,
-ChromeOS, and other modern browser platforms.
+Modern browsers on Windows, Android, Linux, macOS, ChromeOS and iOS.
 
 ## 🌐 Links
-
--   **Website:** https://jbhub.ryzn.pro/
--   **GitHub:** https://jbytg.github.io/
--   **Brand:** JB YT GAMER
+- **Website:** https://jbhub.ryzn.pro/
+- **Brand:** JB YT GAMER
 
 ## 📜 License
-
-No license is currently specified for this project. If you want others
-to legally reuse, modify, or distribute the code, add an appropriate
-open-source license.
+No license is currently specified. Add an open-source license if you want others to legally reuse the code.
 
 ## 💜 Credits
-
-**JB HUB**\
-Created and maintained by **Johan Biju**.
-
-Special thanks to everyone who helps test, improve, and use the
-platform.
-
-------------------------------------------------------------------------
+**JB HUB** — created and maintained by **Johan Biju**.
+Special thanks to everyone who helps test, improve and use the platform.

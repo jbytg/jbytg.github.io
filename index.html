@@ -6,8 +6,10 @@
     // Clickjacking guard: if another website shows JB HUB inside its own page, hide it and open the real site instead
     (function () { try { if (window.top !== window.self) { var same = false; try { same = window.top.location.origin === window.location.origin; } catch (e) { same = false; } if (!same) { document.documentElement.style.display = 'none'; window.top.location = window.self.location; } } } catch (e) { document.documentElement.style.display = 'none'; } })();
     </script>
-    <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'self'; form-action 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseapp.com https://www.google.com https://www.gstatic.com; frame-src 'self' https://tv.jbhub.ryzn.pro https://guard.jbhub.ryzn.pro https://*.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
     <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="format-detection" content="telephone=no">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- SEO & Search Engine Optimization for JB Hub -->
     <title>JB HUB – Free Cloud Notes, 11 Arcade Games &amp; Global Chat (No Ads)</title>
@@ -68,7 +70,7 @@
     </script>
 
     <!-- Favicons -->
-    <link rel="icon" type="image/png" href="logo.png" sizes="1254x1254" />
+    <link rel="icon" type="image/png" href="logo.png" />
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="logo.png" />
@@ -97,6 +99,8 @@
         .glass { background: rgba(15, 15, 25, 0.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 20px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
         .active-tab { border-bottom: 3px solid #a855f7; color: #a855f7; font-weight: bold; }
         .hidden { display: none !important; }
+        :focus-visible { outline: 2px solid #a855f7; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } #canvas-bg { display: none !important; } }
         body.deleting-account #toast { z-index: 9100 !important; }
         /* Keep native dropdown options readable on dark/glass UI. Some browsers
            inherit a white option background with white text, making the labels
@@ -1270,7 +1274,7 @@
                 <div>
                     <label class="text-xs text-gray-400 mb-1 block">Create Password</label>
                     <div class="relative">
-                        <input type="password" id="gs-password" autocomplete="new-password" placeholder="At least 6 characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm pr-10">
+                        <input type="password" id="gs-password" autocomplete="new-password" placeholder="At least 8 characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm pr-10">
                         <button type="button" onclick="togglePass('gs-password')" class="absolute right-3 top-3 text-gray-400 hover:text-white p-1"><i class="fa fa-eye" id="eye-gs-password"></i></button>
                     </div>
                 </div>
@@ -1463,6 +1467,7 @@
 
         // Web Refresh / Page Exit Confirmation Notice
         window.addEventListener('beforeunload', function (e) {
+            if (typeof currentUser === 'undefined' || !currentUser) return;   // login screen / visitors / search crawlers: leave without a popup
             const message = 'Refreshing or leaving the web page will terminate your active JB HUB session and reset temporary workspace progress to protect system security.';
             e.preventDefault();
             e.returnValue = message;
@@ -2674,7 +2679,7 @@
                 showToast("Account Protection: Age must be greater than 1 year to create an account", "error");
                 return;
             }
-            if (password.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+            if (password.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
             if (password !== confPass) { showToast("Passwords do not match.", "error"); return; }
 
             const usernameKey = username.toLowerCase();
@@ -3080,7 +3085,7 @@
                 showToast("Account Protection: Age must be greater than 1 year to create an account", "error");
                 return;
             }
-            if (gsPassword.length < 6) { showToast("Password must be at least 6 characters", "error"); return; }
+            if (gsPassword.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
             if (gsPassword !== gsConfirm) { showToast("Passwords do not match.", "error"); return; }
 
             const gsCapTyped = ((document.getElementById('gs-cap-input') || {}).value || '').trim().toUpperCase();
