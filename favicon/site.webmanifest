@@ -1,62 +1,21 @@
 {
   "id": "/",
-  "name": "JB CLOUD HUB",
+  "name": "JB HUB – Cloud Workspace & Cyber Arcade",
   "short_name": "JB HUB",
-  "description": "JB HUB is a free, ad-free cloud workspace and arcade: cloud notes, 11 games, global chat, leaderboards and handy tools, built by Johan Biju.",
+  "description": "Free, ad-free cloud notes, 11 arcade games with leaderboards, global chat, JB TV and JB GUARD.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
+  "categories": ["games", "productivity", "entertainment"],
   "theme_color": "#1c0df4",
-  "background_color": "#0a0cf7",
-  "categories": ["productivity", "games", "utilities"],
-  "prefer_related_applications": false,
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
+  "background_color": "#050505",
   "icons": [
-    {
-      "src": "/favicon/web-app-manifest-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon/web-app-manifest-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/favicon/web-app-manifest-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Open JB HUB",
-      "short_name": "Open",
-      "description": "Open your notes, games and chat",
-      "url": "/",
-      "icons": [{ "src": "/favicon/favicon-96x96.png", "sizes": "96x96", "type": "image/png" }]
-    },
-    {
-      "name": "About JB HUB",
-      "short_name": "About",
-      "description": "See every feature, game and tool",
-      "url": "/about_us.html",
-      "icons": [{ "src": "/favicon/favicon-96x96.png", "sizes": "96x96", "type": "image/png" }]
-    }
+    { "src": "/favicon/web-app-manifest-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon/web-app-manifest-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon/web-app-manifest-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/favicon/web-app-manifest-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
