@@ -15,7 +15,7 @@ JB HUB combines an account-based workspace with an online arcade and community f
 - Log in with username or email
 - Password-strength indicator (minimum 8 characters for new passwords), confirm-password check, human-verification test
 - Account and session safety checks, one-device session protection
-- Ban / account-status handling, saved accounts on the device (password encrypted on the device)
+- Ban / account-status handling; "remember my username" on the device (passwords are never stored by JB HUB)
 - Change username, email, password; full account deletion (also removes your notes, bug reports, chat messages and scores)
 
 ### ☁️ Cloud workspace

@@ -1,0 +1,292 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "admins": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+        ".validate": "newData.val() === true"
+      }
+    },
+    "bans": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "(auth != null && root.child('admins').child(auth.uid).val() === true) || (auth != null && auth.uid === $uid && data.exists() && !newData.exists() && data.child('type').val() === 'temporary' && data.child('unbanAt').val() <= now)",
+        ".validate": "newData.child('isBanned').exists() && newData.child('type').exists() && newData.child('reason').exists() && (newData.child('isBanned').val() === true || newData.child('isBanned').val() === false) && (newData.child('type').val() === 'temporary' || newData.child('type').val() === 'permanent') && newData.child('reason').isString() && newData.child('reason').val().length <= 500",
+        "isBanned": {
+          ".validate": "newData.isBoolean()"
+        },
+        "type": {
+          ".validate": "newData.isString()"
+        },
+        "reason": {
+          ".validate": "newData.isString()"
+        },
+        "unbanAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "bannedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "bannedBy": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "deletions": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || auth.uid === $uid)",
+        ".validate": "newData.child('at').exists() && newData.child('at').isNumber()",
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "email": {
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "settings": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "liveNotification": {
+      ".read": true,
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    },
+    "users": {
+      ".indexOn": [
+        "authUid"
+      ],
+      ".read": "(auth != null && root.child('admins').child(auth.uid).val() === true) || (auth != null && query.orderByChild == 'authUid' && query.equalTo == auth.uid)",
+      "$u": {
+        ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || data.child('authUid').val() === auth.uid)",
+        ".write": "(auth != null && root.child('admins').child(auth.uid).val() === true) || (auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && (data.child('authUid').val() === auth.uid || (!data.exists() && newData.child('authUid').val() === auth.uid)))",
+        ".validate": "newData.hasChildren(['username','authUid']) && $u.matches(/^[a-z0-9_ -]{3,40}$/)",
+        "username": {
+          ".read": true,
+          ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 40 && newData.val().toLowerCase() === $u"
+        },
+        "authEmail": {
+          ".read": true,
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "email": {
+          ".read": true,
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "authUid": {
+          ".validate": "newData.val() === data.val() || newData.val() === auth.uid || (auth != null && root.child('admins').child(auth.uid).val() === true)"
+        },
+        "isAdmin": {
+          ".validate": false
+        },
+        "ban": {
+          ".validate": false
+        },
+        "password": {
+          ".validate": false
+        },
+        "activeSession": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "id": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "dob": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        },
+        "gender": {
+          ".validate": "newData.isString() && newData.val().length <= 12"
+        }
+      }
+    },
+    "presence": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$u": {
+        ".read": "auth != null && root.child('users').child($u).child('authUid').val() === auth.uid",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && root.child('users').child($u).child('authUid').val() === auth.uid))",
+        "$sid": {
+          ".validate": "newData.isBoolean() || newData.isNumber() || (newData.isString() && newData.val().length <= 100)"
+        }
+      }
+    },
+    "leaderboards": {
+      ".read": "auth != null",
+      "$game": {
+        ".validate": "$game.matches(/^(snake|memory|flappy|glitch|breakout|2048|neonDodger|spaceInvaders|cyberRunner|stackTower|neonRacer)$/)",
+        "$u": {
+          ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && root.child('users').child($u).child('authUid').val() === auth.uid))",
+          ".validate": "newData.child('username').exists() && newData.child('score').exists() && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 100000000 && newData.child('username').isString() && newData.child('username').val().toLowerCase() === $u && (root.child('admins').child(auth.uid).val() === true || !data.exists() || newData.child('score').val() >= data.child('score').val())",
+          "username": {
+            ".validate": "newData.isString()"
+          },
+          "score": {
+            ".validate": "newData.isNumber()"
+          },
+          "v": {
+            ".validate": "newData.val() === 2"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "notes": {
+      ".indexOn": [
+        "ownerUid",
+        "userId"
+      ],
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || (query.orderByChild == 'ownerUid' && query.equalTo == auth.uid))",
+      "$id": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && (data.child('ownerUid').val() === auth.uid || (!data.exists() && newData.child('ownerUid').val() === auth.uid && newData.parent().parent().child('rate').child(auth.uid).child('note').val() === now))))",
+        "ownerUid": {
+          ".validate": "newData.val() === auth.uid || (data.exists() && newData.val() === data.val()) || root.child('admins').child(auth.uid).val() === true"
+        },
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 100"
+        },
+        "text": {
+          ".validate": "newData.isString() && newData.val().length <= 5000"
+        }
+      }
+    },
+    "bugReports": {
+      ".indexOn": [
+        "ownerUid",
+        "userId"
+      ],
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || (query.orderByChild == 'ownerUid' && query.equalTo == auth.uid))",
+      "$id": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && (data.child('ownerUid').val() === auth.uid || (!data.exists() && newData.child('ownerUid').val() === auth.uid && newData.parent().parent().child('rate').child(auth.uid).child('bug').val() === now))))",
+        "ownerUid": {
+          ".validate": "newData.val() === auth.uid || (data.exists() && newData.val() === data.val()) || root.child('admins').child(auth.uid).val() === true"
+        },
+        "title": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "description": {
+          ".validate": "newData.isString() && newData.val().length <= 3000"
+        },
+        "status": {
+          ".validate": "root.child('admins').child(auth.uid).val() === true || newData.val() === data.val() || (!data.exists() && newData.val() === 'Pending')"
+        },
+        "reply": {
+          ".validate": "root.child('admins').child(auth.uid).val() === true || newData.val() === data.val() || (!data.exists() && newData.val() === '')"
+        }
+      }
+    },
+    "globalChat": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && ((!data.exists() && newData.exists() && auth != null && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && newData.child('ownerUid').val() === auth.uid && newData.parent().parent().child('rate').child(auth.uid).child('chat').val() === now) || (data.exists() && !newData.exists() && (root.child('admins').child(auth.uid).val() === true || data.child('ownerUid').val() === auth.uid || data.child('createdAt').val() < now - 86400000)) || (data.exists() && newData.exists() && auth.token.email_verified === true && (!root.child('bans').child(auth.uid).exists() || (root.child('bans').child(auth.uid).child('type').val() === 'temporary' && root.child('bans').child(auth.uid).child('unbanAt').val() <= now)) && data.child('ownerUid').val() === auth.uid && newData.child('ownerUid').val() === data.child('ownerUid').val() && newData.child('text').val() === data.child('text').val() && newData.child('createdAt').val() === data.child('createdAt').val()))",
+        ".validate": "newData.hasChildren(['text','createdAt','username','ownerUid'])",
+        "ownerUid": {
+          ".validate": "newData.val() === auth.uid"
+        },
+        "text": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 500"
+        },
+        "createdAt": {
+          ".validate": "(data.exists() && newData.val() === data.val()) || (!data.exists() && newData.isNumber() && newData.val() <= now + 60000 && newData.val() >= now - 300000)"
+        },
+        "isAdmin": {
+          ".validate": "newData.val() === false || root.child('admins').child(auth.uid).val() === true"
+        },
+        "username": {
+          ".validate": "newData.isString() && root.child('users').child(newData.val().toLowerCase()).child('authUid').val() === auth.uid"
+        },
+        "$other": {
+          ".validate": false
+        },
+        "id": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        },
+        "userId": {
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        }
+      }
+    },
+    "rate": {
+      "$uid": {
+        "chat": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && newData.exists()",
+          ".validate": "newData.val() === now && (!data.exists() || now - data.val() >= 4000)"
+        },
+        "note": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && newData.exists()",
+          ".validate": "newData.val() === now && (!data.exists() || now - data.val() >= 2500)"
+        },
+        "bug": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && newData.exists()",
+          ".validate": "newData.val() === now && (!data.exists() || now - data.val() >= 25000)"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "loginLocks": {
+      "$h": {
+        ".read": true,
+        ".write": "(auth != null && root.child('admins').child(auth.uid).val() === true) || ($h.matches(/^[a-f0-9]{64}$/) && (newData.exists() || (data.exists() && data.child('exp').val() < now)))",
+        ".validate": "newData.hasChildren(['fails','until','exp','t']) && newData.child('fails').isNumber() && newData.child('fails').val() >= 1 && newData.child('fails').val() <= 50 && newData.child('fails').val() === ((data.exists() && data.child('exp').val() >= now) ? data.child('fails').val() + 1 : 1) && newData.child('until').isNumber() && (newData.child('fails').val() < 10 ? newData.child('until').val() === 0 : (newData.child('until').val() > now && newData.child('until').val() <= now + 3660000)) && (!(data.exists() && data.child('exp').val() >= now) || newData.child('until').val() >= data.child('until').val()) && newData.child('exp').isNumber() && newData.child('exp').val() > now && newData.child('exp').val() <= now + 4200000 && newData.child('t').val() === now",
+        "fails": {
+          ".validate": "newData.isNumber()"
+        },
+        "until": {
+          ".validate": "newData.isNumber()"
+        },
+        "exp": {
+          ".validate": "newData.isNumber()"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "accountLocks": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$k": {
+        ".read": true,
+        ".write": "(auth != null && root.child('admins').child(auth.uid).val() === true) || ($k.matches(/^[^$#\\[\\]\\/]{3,254}$/) && $k === $k.toLowerCase() && (newData.exists() || !data.exists() || data.child('exp').val() < now || (auth != null && auth.token.email_verified === true && auth.token.email != null && $k === auth.token.email.toLowerCase().replace('.', ','))))",
+        ".validate": "newData.hasChildren(['fails','locked','exp','t']) && newData.child('fails').isNumber() && newData.child('fails').val() >= 1 && newData.child('fails').val() <= 50 && newData.child('fails').val() === ((data.exists() && data.child('exp').val() >= now) ? data.child('fails').val() + 1 : 1) && newData.child('locked').isBoolean() && newData.child('locked').val() === (newData.child('fails').val() >= 10) && newData.child('exp').isNumber() && newData.child('exp').val() > now && (newData.child('locked').val() === true ? newData.child('exp').val() <= now + 2700000000 : newData.child('exp').val() <= now + 4200000) && newData.child('t').val() === now",
+        "fails": {
+          ".validate": "newData.isNumber()"
+        },
+        "locked": {
+          ".validate": "newData.isBoolean()"
+        },
+        "exp": {
+          ".validate": "newData.isNumber()"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
+  }
+}

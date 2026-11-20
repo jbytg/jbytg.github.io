@@ -6,7 +6,7 @@
     // Clickjacking guard: if another website shows JB HUB inside its own page, hide it and open the real site instead
     (function () { try { if (window.top !== window.self) { var same = false; try { same = window.top.location.origin === window.location.origin; } catch (e) { same = false; } if (!same) { document.documentElement.style.display = 'none'; window.top.location = window.self.location; } } } catch (e) { document.documentElement.style.display = 'none'; } })();
     </script>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseapp.com https://www.google.com https://www.gstatic.com; frame-src 'self' https://tv.jbhub.ryzn.pro https://guard.jbhub.ryzn.pro https://*.firebaseapp.com https://accounts.google.com https://apis.google.com https://www.google.com; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://www.gstatic.com https://apis.google.com https://www.google.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https://api.ipify.org https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.firebaseapp.com https://www.google.com https://www.gstatic.com; frame-src 'self' https:; manifest-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="format-detection" content="telephone=no">
@@ -1190,11 +1190,11 @@
 
                 <label id="save-account-row" class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
                     <input type="checkbox" id="save-account-checkbox" onchange="updateSavePasswordRow()" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list.</span></span>
+                    <span>Remember my username on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list. Your password is never saved by JB HUB - use your browser's password manager if you want that.</span></span>
                 </label>
                 <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
                     <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Also save my login on this device<span class="block text-[11px] text-gray-500">Passwords are stored encrypted on this device only; Google accounts simply stay signed in. Then one tap signs you in. Use it only on your own device.</span></span>
+                    <span>Keep my Google account signed in (Google accounts only)<span class="block text-[11px] text-gray-500">Handled by Google / Firebase sign-in, not by a saved password. Use it only on your own device.</span></span>
                 </label>
 
                 <!-- Device suspended notice: after 10 wrong passwords in a row -->
@@ -1661,6 +1661,7 @@
             }
             currentUser = null;
             humanTestPassed = false;
+            try { db.ref('globalChat').off(); detachLeaderboardListeners(); } catch (e) {}
             document.getElementById('username').value = ''; { const su = document.getElementById('signup-username'); if (su) su.value = ''; }
             document.getElementById('password').value = '';
             resetSignupCaptcha();
@@ -3161,10 +3162,10 @@
         };
 
         // ===== Saved accounts on this device =====
-        // Kept in this browser's storage only when the user ticks "Save this account on this device":
+        // Kept in this browser's storage only when the user ticks "Remember my username on this device":
         //   - username (+ email, to pre-select a Google account)
-        //   - optionally the password, but only ENCRYPTED (AES-GCM) with a non-extractable key that lives in IndexedDB.
-        // The password is never sent anywhere except to sign in, and it is deleted automatically if it stops working.
+        //   - for Google accounts only: a flag meaning "do not sign out of Firebase" (the session is managed by Firebase Auth).
+        // Passwords are NEVER stored.
         const CAN_SAVE_PASSWORD = !!(window.crypto && window.crypto.subtle && window.indexedDB);
         const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
         const MAX_SAVED_ACCOUNTS = 5;
@@ -3214,57 +3215,21 @@
             if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
         }
 
-        // ---- encryption helpers (AES-GCM, key can never be exported from the browser) ----
-        function idbRequest(req) {
-            return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
-        }
-        function idbOpen() {
-            const open = indexedDB.open('jb_secure', 1);
-            open.onupgradeneeded = () => open.result.createObjectStore('keys');
-            return idbRequest(open);
-        }
-        async function getDeviceKey(createIfMissing) {
-            const idb = await idbOpen();
-            let key = await idbRequest(idb.transaction('keys', 'readonly').objectStore('keys').get('device'));
-            if (!key && createIfMissing) {
-                key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-                await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').put(key, 'device'));
-            }
-            return key || null;
-        }
-        async function deleteDeviceKey() {
-            try { const idb = await idbOpen(); await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').delete('device')); } catch (e) {}
-        }
-        const toB64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
-        const fromB64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
-        const aad = username => new TextEncoder().encode(String(username).toLowerCase()); // ties the secret to its account
-
-        async function encryptPassword(username, password) {
-            const key = await getDeviceKey(true);
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad(username) }, key, new TextEncoder().encode(password));
-            return { iv: toB64(iv), ct: toB64(ct) };
-        }
-        async function decryptPassword(username, blob) {
-            try {
-                const key = await getDeviceKey(false);
-                if (!key || !blob) return null;
-                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(blob.iv), additionalData: aad(username) }, key, fromB64(blob.ct));
-                return new TextDecoder().decode(plain);
-            } catch (e) { return null; }
-        }
+        // ---- Password storage has been REMOVED (security audit 3.4) ----
+        // JB HUB never stores passwords on the device any more. Only the user name (and, for Google accounts, the
+        // Firebase-managed "stay signed in" session) can be remembered. These stubs stay so older code paths keep working.
+        async function decryptPassword() { return null; }
+        async function deleteDeviceKey() { try { indexedDB.deleteDatabase('jb_secure'); } catch (e) {} }
 
         // set (or with null, delete) the encrypted password of a saved account
         async function setSavedPassword(username, passwordOrNull) {
+            if (passwordOrNull) return false;   // passwords are never stored
             const k = String(username || '').toLowerCase();
-            let blob = null;
-            if (passwordOrNull) { try { blob = await encryptPassword(username, passwordOrNull); } catch (e) { return false; } }
             const list = getSavedAccounts();
             const entry = list.find(a => a.u.toLowerCase() === k);
             if (!entry) return false;
-            if (blob) entry.pw = blob; else delete entry.pw;
+            delete entry.pw;
             setSavedAccounts(list);
-            if (!list.some(a => a.pw)) deleteDeviceKey();   // no encrypted passwords left: drop the key too
             return true;
         }
         // Google accounts have no password. "Also save my login" for them means: the Firebase sign-in of this Google account
@@ -3289,6 +3254,15 @@
             setSavedPassword(username, null);
             if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
         }
+
+        // One-time cleanup: remove password blobs and the device key that older versions may have stored on this browser
+        (function purgeLegacySavedPasswords() {
+            try {
+                const list = getSavedAccounts();
+                if (list.some(a => a.pw)) { list.forEach(a => { delete a.pw; }); setSavedAccounts(list); }
+                indexedDB.deleteDatabase('jb_secure');
+            } catch (e) {}
+        })();
 
         function maskEmail(email) {
             const m = String(email || '').match(/^([^@]+)@(.+)$/);
@@ -3370,7 +3344,7 @@
             if (!a) return;
             showLoginFormFromChooser();
             document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
-            document.getElementById('save-password-checkbox').checked = !!(a.pw || a.gs);
+            document.getElementById('save-password-checkbox').checked = !!a.gs;
             updateSavePasswordRow();
             document.getElementById('username').value = a.u;
             if (a.g) {
@@ -3380,17 +3354,6 @@
                 return;
             }
             document.getElementById('password').value = '';
-            if (a.pw) {
-                const saved = await decryptPassword(a.u, a.pw);
-                if (saved) {
-                    document.getElementById('password').value = saved;
-                    oneTapUser = a.u;
-                    handleAuth();                                               // normal login: all server-side checks still apply
-                    return;
-                }
-                setSavedPassword(a.u, null);                                    // cannot be decrypted any more (browser data cleared)
-                renderAccountChooser();
-            }
             const sub = document.getElementById('auth-subtitle');
             if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
             document.getElementById('password').focus();
@@ -3408,7 +3371,7 @@
             if (a.gs) {
                 try { const cu = auth.currentUser; if (cu && String(cu.email || '').toLowerCase() === String(a.e || '').toLowerCase()) auth.signOut(); } catch (e) {}
             }
-            showToast('Removed ' + a.u + (a.pw ? ' and its saved password' : (a.gs ? ' and its saved Google sign-in' : '')) + ' from this device');
+            showToast('Removed ' + a.u + (a.gs ? ' and its saved Google sign-in' : '') + ' from this device');
         };
 
         // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
@@ -3435,6 +3398,159 @@
         const LOGIN_SUSPEND_MS = 24 * 60 * 60 * 1000;         // 1 day
         let totalFailsMem = 0, suspendedUntilMem = 0;         // fallback if localStorage is unavailable
 
+        // ===== Shared login lock (stored in the database, per network) =====
+        // Wrong passwords are also counted in  loginLocks/<SHA-256 of the visitor's IP>  so clearing the browser data or using
+        // another browser on the same network does not reset the counter. The raw IP is never stored. Every record has an
+        // expiry time (exp) and is deleted automatically once it has expired. (A MAC address cannot be read by a web page.)
+        const IP_LOCK_AFTER = 10;                 // wrong passwords from one network inside the window
+        const IP_LOCK_MS = 60 * 60 * 1000;        // lock length: 1 hour       (database rules allow at most about 1 hour)
+        const IP_WINDOW_MS = 60 * 60 * 1000;      // failures older than 1 hour are forgotten and the record is deleted
+        let ipLockUntilMem = 0;                   // lock end, in this device's clock
+        let ipKeyPromise = null, ipKeyFailedAt = 0;
+        function withTimeout(p, ms) { return Promise.race([p, new Promise(res => setTimeout(() => res(undefined), ms))]); }
+        function getIpKey() {
+            if (!ipKeyPromise && Date.now() - ipKeyFailedAt < 60000) return Promise.resolve('');   // lookup just failed (blocked/offline): do not slow every login down
+            if (!ipKeyPromise) {
+                ipKeyPromise = (async () => {
+                    let ip = '';
+                    const sources = [
+                        ['/cdn-cgi/trace', t => (String(t).match(/^ip=(.+)$/m) || [])[1]],                                  // own domain (works when the site is behind Cloudflare)
+                        ['https://api.ipify.org?format=json', t => { try { return JSON.parse(t).ip; } catch (e) { return ''; } }]  // fallback
+                    ];
+                    for (const [url, parse] of sources) {
+                        try {
+                            const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000);
+                            const r = await fetch(url, { cache: 'no-store', credentials: 'omit', referrerPolicy: 'no-referrer', signal: ctrl.signal });
+                            clearTimeout(to);
+                            if (!r.ok) continue;
+                            const v = String(parse(await r.text()) || '').trim();
+                            if (/^[0-9a-fA-F:.]{3,45}$/.test(v)) { ip = v; break; }
+                        } catch (e) {}
+                    }
+                    if (!ip || !(window.crypto && crypto.subtle)) return '';
+                    if (ip.indexOf(':') !== -1) ip = ip.split(':').slice(0, 4).join(':');   // IPv6: use the network part (one user owns a whole /64)
+                    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('jbhub-login-lock|' + ip));
+                    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                })().then(k => { if (!k) { ipKeyPromise = null; ipKeyFailedAt = Date.now(); } return k; }).catch(() => { ipKeyPromise = null; ipKeyFailedAt = Date.now(); return ''; });
+            }
+            return ipKeyPromise;
+        }
+        async function getServerOffset() {
+            try { const o = await db.ref('.info/serverTimeOffset').once('value'); return Number(o.val()) || 0; } catch (e) { return 0; }
+        }
+        // reads the shared lock (and deletes the record if it has expired)
+        async function refreshIpLock() {
+            return withTimeout((async () => {
+                try {
+                    const key = await getIpKey(); if (!key) return;
+                    const off = await getServerOffset(), now = Date.now() + off;
+                    const ref = db.ref('loginLocks/' + key);
+                    const snap = await ref.once('value');
+                    const v = snap.val();
+                    if (!v) { return; }
+                    if (typeof v.exp === 'number' && v.exp < now) { ref.remove().catch(() => {}); ipLockUntilMem = 0; return; }   // expired: auto-delete
+                    ipLockUntilMem = (typeof v.until === 'number' && v.until > now) ? v.until - off : 0;
+                } catch (e) { /* offline / blocked: the device lock still works */ }
+            })(), 3500);
+        }
+        // counts one wrong password for this network
+        async function recordIpFailure() {
+            try {
+                const key = await getIpKey(); if (!key) return;
+                const off = await getServerOffset();
+                const res = await db.ref('loginLocks/' + key).transaction(cur => {
+                    const now = Date.now() + off;
+                    const live = !!(cur && typeof cur.exp === 'number' && cur.exp >= now);
+                    const fails = live ? (Number(cur.fails) || 0) + 1 : 1;
+                    if (fails > 50) return;                                         // already locked: stop counting
+                    let until = live ? (Number(cur.until) || 0) : 0;
+                    if (fails >= IP_LOCK_AFTER) until = Math.max(until, now + IP_LOCK_MS);
+                    const exp = until > now ? until + 5 * 60 * 1000 : now + IP_WINDOW_MS;
+                    return { fails: fails, until: until, exp: exp, t: firebase.database.ServerValue.TIMESTAMP };
+                }, undefined, false);
+                const v = res && res.snapshot && res.snapshot.val();
+                if (v && typeof v.until === 'number' && v.until > Date.now() + off) {
+                    ipLockUntilMem = v.until - off;
+                    try { updateLoginSuspendUI(); } catch (e) {}
+                }
+            } catch (e) { /* offline / blocked: the device lock still works */ }
+        }
+
+        // ===== Account lock (per account, stored in the database) =====
+        // Wrong passwords for an ACCOUNT are counted in  accountLocks/<its email, lower case, "." written as ",">.
+        // At 10 wrong passwords the account is LOCKED: the login page refuses it until the owner sets a new password with the
+        // built-in Firebase "password reset" email and then logs in. The lock is removed by the owner's successful login: the
+        // database rules only let the person who is signed in with THAT email delete it (or an admin). A lock that nobody
+        // clears is deleted automatically after 30 days; counts below 10 are forgotten after 1 hour.
+        const ACCOUNT_LOCK_AFTER = 10;                          // (the database rules contain the same number)
+        const ACCOUNT_WINDOW_MS = 60 * 60 * 1000;               // wrong passwords older than this are forgotten
+        const ACCOUNT_LOCK_KEEP_MS = 30 * 24 * 60 * 60 * 1000;  // a lock nobody clears disappears after 30 days
+        const accountTryUntil = {};                              // email -> time until which login attempts are allowed after "I reset my password"
+        let lockModalEmail = '';
+        function accountLockKey(email) {
+            const k = String(email || '').trim().toLowerCase().replace(/\./g, ',');
+            return (k.length >= 3 && k.length <= 254 && !/[$#\[\]\/\\\u0000-\u001f]/.test(k)) ? k : '';
+        }
+        function accountTryAllowed(email) { return Date.now() < (accountTryUntil[String(email || '').toLowerCase()] || 0); }
+        async function refreshAccountLock(email) {
+            const key = accountLockKey(email); if (!key) return null;
+            const v = await withTimeout((async () => {
+                try {
+                    const off = await getServerOffset();
+                    const ref = db.ref('accountLocks/' + key);
+                    const val = (await ref.once('value')).val();
+                    if (!val) return null;
+                    if (typeof val.exp === 'number' && val.exp < Date.now() + off) { ref.remove().catch(() => {}); return null; }   // expired: auto-delete
+                    return val;
+                } catch (e) { return null; }       // offline / blocked: do not lock people out because of a network problem
+            })(), 3500);
+            return v || null;
+        }
+        async function recordAccountFailure(email) {
+            const key = accountLockKey(email); if (!key) return null;
+            return withTimeout((async () => {
+                try {
+                    const off = await getServerOffset();
+                    const res = await db.ref('accountLocks/' + key).transaction(cur => {
+                        const now = Date.now() + off;
+                        const live = !!(cur && typeof cur.exp === 'number' && cur.exp >= now);
+                        const fails = live ? (Number(cur.fails) || 0) + 1 : 1;
+                        if (fails > 50) return;                                  // already locked: stop counting
+                        const locked = fails >= ACCOUNT_LOCK_AFTER;
+                        return { fails: fails, locked: locked, exp: now + (locked ? ACCOUNT_LOCK_KEEP_MS : ACCOUNT_WINDOW_MS), t: firebase.database.ServerValue.TIMESTAMP };
+                    }, undefined, false);
+                    return (res && res.snapshot && res.snapshot.val()) || null;
+                } catch (e) { return null; }
+            })(), 3500);
+        }
+        async function sendAccountUnlockEmail(email) {
+            if (!jbThrottle('reset', 60000, 'Please wait a minute before requesting another reset link.')) return;
+            try {
+                const url = window.location.origin + window.location.pathname;
+                try { await auth.sendPasswordResetEmail(email, { url, handleCodeInApp: false }); }      // Firebase's own reset email
+                catch (e) {
+                    if (['auth/unauthorized-continue-uri', 'auth/invalid-continue-uri', 'auth/missing-continue-uri'].includes(e.code)) {
+                        try { await auth.sendPasswordResetEmail(email); } catch (e2) { if (e2.code !== 'auth/user-not-found') throw e2; }
+                    } else if (e.code !== 'auth/user-not-found') throw e;
+                }
+                showToast('If this account exists, a password reset link was sent. Open it, set a new password, then log in here.', 'success');
+            } catch (err) { jbLogErr('JB HUB', err); showToast(authErrorMessage(err), 'error'); }
+        }
+        window.jbAccountTryAgain = function () {
+            if (lockModalEmail) accountTryUntil[lockModalEmail.toLowerCase()] = Date.now() + 10 * 60 * 1000;
+            closeModal();
+            showToast('Enter your NEW password and log in. The lock is removed when you log in successfully.');
+        };
+        function showAccountLockedModal(email) {
+            lockModalEmail = String(email || '');
+            openModal('Account locked',
+                'Too many wrong passwords were entered for this account (' + maskEmail(email) + '), so it is locked. Press Confirm to send a password reset email to that address. Open the link, set a new password, then log in with it.',
+                '<button type="button" onclick="jbAccountTryAgain()" class="w-full py-2 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold transition">I already reset my password - let me log in</button>',
+                () => { sendAccountUnlockEmail(email); });
+        }
+
+        window.addEventListener('load', () => { setTimeout(() => { refreshIpLock().then(() => { try { updateLoginSuspendUI(); } catch (e) {} }); }, 1500); });
+
         function getTotalLoginFails() {
             let n = totalFailsMem;
             try { const v = parseInt(localStorage.getItem('jb_login_fails_total') || '0', 10); if (v > n) n = v; } catch (e) {}
@@ -3447,12 +3563,12 @@
         function getSuspendedUntil() {
             let t = suspendedUntilMem;
             try { const v = parseInt(localStorage.getItem('jb_device_suspended_until') || '0', 10); if (v > t) t = v; } catch (e) {}
-            if (t && Date.now() >= t) {                        // suspension is over
-                suspendedUntilMem = 0;
+            if (t && Date.now() >= t) {                        // local suspension is over
+                suspendedUntilMem = 0; t = 0;
                 try { localStorage.removeItem('jb_device_suspended_until'); } catch (e) {}
-                return 0;
             }
-            return t;
+            if (ipLockUntilMem && Date.now() >= ipLockUntilMem) ipLockUntilMem = 0;   // shared lock is over
+            return Math.max(t, ipLockUntilMem);
         }
         function isDeviceSuspended() { return getSuspendedUntil() > Date.now(); }
         function suspendLeftText() {
@@ -3473,7 +3589,7 @@
             box.classList.toggle('hidden', !show);
             if (show) {
                 const t = document.getElementById('login-suspend-text');
-                if (t) t.textContent = 'Too many wrong passwords. Login is blocked on this device for 1 day. Try again in ' + suspendLeftText() + '.';
+                if (t) t.textContent = 'Too many wrong passwords. Login is temporarily blocked. Try again in ' + suspendLeftText() + '.';
             }
         }
 
@@ -3599,6 +3715,7 @@
             const total = getTotalLoginFails() + 1;
             setTotalLoginFails(total);
             if (total >= LOGIN_SUSPEND_AFTER) suspendDevice();   // 10 wrong passwords in a row: 1-day suspension
+            recordIpFailure();                                    // the same failure is counted for this network (auto-expiring record)
             const input = document.getElementById('login-captcha-input');
             if (input) input.value = '';
             const box = document.getElementById('login-captcha-box');
@@ -3737,6 +3854,7 @@
 
         window.handleAuth = async function() {
             const usedSavedPasswordFor = oneTapUser; oneTapUser = null; // set by a one-tap login from the saved-accounts list
+            if (!isSignupMode) await refreshIpLock();   // is this network locked? (also deletes an expired record)
             if (!isSignupMode && isDeviceSuspended()) {
                 updateLoginSuspendUI();
                 showToast("This device is suspended from logging in for " + suspendLeftText() + " (too many wrong passwords).", "error");
@@ -3806,6 +3924,10 @@
                 // Normally one address. If it does not work for a USERNAME login, the other addresses this account may be signed up with
                 // (both email fields in the database + what this device remembers) are tried too, so the username keeps working even when the
                 // profile and the login email disagree. The first successful login then repairs the profile.
+                if (acctEmail && !accountTryAllowed(acctEmail)) {
+                    const lock = await refreshAccountLock(acctEmail);
+                    if (lock && lock.locked === true) { showAccountLockedModal(acctEmail); return; }   // locked: password reset email required
+                }
                 const tryEmails = acctEmail ? [acctEmail] : [];
                 for (let qi = 0; qi < tryEmails.length; qi++) {
                     if (passwordOk || blockMsg) break;
@@ -3854,6 +3976,14 @@
 
                 if (!userVal || !passwordOk) {
                     const fails = registerLoginFailure();
+                    if (acctEmail) {                       // count it for the ACCOUNT as well (locks it at 10)
+                        const lk = await recordAccountFailure(acctEmail);
+                        if (lk && lk.locked === true) {
+                            if (accountTryAllowed(acctEmail)) { showToast('Wrong password. The account stays locked until you log in with your new password.', 'error'); }
+                            else { showAccountLockedModal(acctEmail); }
+                            return;
+                        }
+                    }
                     if (isDeviceSuspended()) {            // that was the 10th wrong password in a row
                         updateLoginSuspendUI();
                         showToast("Too many wrong passwords. This device is suspended from logging in for 1 day.", "error");
@@ -3870,6 +4000,7 @@
                     return;
                 }
                 resetLoginCaptcha(); // correct details: forget earlier failed attempts
+                try { const lk = accountLockKey(auth.currentUser && auth.currentUser.email); if (lk) { db.ref('accountLocks/' + lk).remove().catch(() => {}); } delete accountTryUntil[String((auth.currentUser && auth.currentUser.email) || '').toLowerCase()]; } catch (e) {}   // only the owner (same email) is allowed to do this
                 const userRef = db.ref('users/' + usernameKey);
 
                 // Repair accounts damaged by the old rename bug (record saved without an id)
@@ -3991,8 +4122,6 @@
                         const pwBox = document.getElementById('save-password-checkbox');
                         const typedPw = (document.getElementById('password') || {}).value || '';
                         if (currentUser.googleAccount === true) setGoogleStay(currentUser.username, !!(pwBox && pwBox.checked)); // Google: stay signed in on this device
-                        else if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && typedPw) setSavedPassword(currentUser.username, typedPw);
-                        else if (pwBox && !pwBox.checked) setSavedPassword(currentUser.username, null);
                     }
                 }
             } catch (e) {}
@@ -4646,6 +4775,12 @@
             showToast("Logged out successfully");
 
             fadeOutAndHide(document.getElementById('dashboard-view'), () => {
+                // forget everything private that was loaded for this account (notes, chat, reports, user list, scores)
+                try {
+                    notesData = []; bugReportsData = []; chatData = []; leaderboardData = []; usersData = [];
+                    presenceMap = {}; adminUidMap = {}; bansByUid = {}; usersRaw = []; deletionsData = [];
+                    const tc = document.getElementById('tab-content'); if (tc) tc.innerHTML = '';
+                } catch (e) {}
                 document.getElementById('auth-view').classList.remove('hidden');
                 initAllWaveLogos();
                 refreshAuthEntry();
