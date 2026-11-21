@@ -1184,17 +1184,17 @@
                             <canvas id="signup-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
                             <button type="button" onclick="refreshSignupCaptcha(true)" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
                         </div>
-                        <input type="text" id="signup-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+                        <input type="text" id="signup-captcha-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="8" placeholder="Type exactly as shown (capital / small letters matter)" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center">
                     </div>
                 </div>
 
                 <label id="save-account-row" class="flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none">
                     <input type="checkbox" id="save-account-checkbox" onchange="updateSavePasswordRow()" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Remember my username on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list. Your password is never saved by JB HUB - use your browser's password manager if you want that.</span></span>
+                    <span>Save this account on this device<span class="block text-[11px] text-gray-500">Next time you can pick it from a list.</span></span>
                 </label>
                 <label id="save-password-row" class="hidden flex items-start gap-2 text-xs text-gray-300 cursor-pointer select-none ml-6">
                     <input type="checkbox" id="save-password-checkbox" class="mt-0.5 w-4 h-4 accent-purple-500">
-                    <span>Keep my Google account signed in (Google accounts only)<span class="block text-[11px] text-gray-500">Handled by Google / Firebase sign-in, not by a saved password. Use it only on your own device.</span></span>
+                    <span>Also save my login on this device<span class="block text-[11px] text-gray-500">Your password is stored encrypted on this device only; Google accounts simply stay signed in. Then one tap signs you in. Anyone who can use this browser could sign in as you, so use it only on your own phone or computer.</span></span>
                 </label>
 
                 <!-- Device suspended notice: after 10 wrong passwords in a row -->
@@ -1211,7 +1211,7 @@
                         <canvas id="login-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
                         <button type="button" onclick="refreshLoginCaptcha()" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
                     </div>
-                    <input type="text" id="login-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+                    <input type="text" id="login-captcha-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="8" placeholder="Type exactly as shown (capital / small letters matter)" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuth();}" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center">
                 </div>
 
                 <button type="button" onclick="handleAuth()" id="auth-btn" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Login</button>
@@ -1241,7 +1241,7 @@
                         <canvas id="forgot-captcha-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
                         <button type="button" onclick="refreshForgotCaptcha(true)" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
                     </div>
-                    <input type="text" id="forgot-captcha-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest uppercase">
+                    <input type="text" id="forgot-captcha-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="8" placeholder="Type exactly as shown (capital / small letters matter)" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest">
                 </div>
                 <button type="button" id="forgot-send-btn" onclick="sendPasswordResetLink()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Send Reset Link</button>
                 <p id="forgot-status" class="text-xs text-center text-sky-300 hidden"></p>
@@ -1292,7 +1292,7 @@
                         <canvas id="gs-cap-canvas" width="180" height="56" role="img" aria-label="Captcha image" class="rounded-lg border border-white/10 bg-black/30 select-none max-w-full"></canvas>
                         <button type="button" onclick="refreshAccountCaptcha('gs-cap')" aria-label="Get a new captcha" title="New captcha" class="p-2.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 text-sm transition"><i class="fa fa-rotate"></i></button>
                     </div>
-                    <input type="text" id="gs-cap-input" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="Enter the characters" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center uppercase">
+                    <input type="text" id="gs-cap-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="8" placeholder="Type exactly as shown (capital / small letters matter)" class="w-full p-3 bg-white/5 border border-white/10 rounded-xl outline-none focus:border-purple-500 transition text-sm tracking-widest text-center">
                 </div>
                 <button type="button" id="gs-create-btn" onclick="finishGoogleSignup()" class="w-full p-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 rounded-xl font-bold shadow-lg shadow-purple-500/30 transition text-sm">Create Account</button>
                 <button type="button" onclick="cancelGoogleSignup()" class="w-full p-3 bg-white/10 hover:bg-white/20 rounded-xl font-medium transition text-xs">Cancel</button>
@@ -2869,7 +2869,7 @@
             const email = document.getElementById('forgot-email').value.trim().toLowerCase();
             if (!email) { showToast("Enter your email", "error"); return; }
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) { showToast("Please enter a valid email address", "error"); return; }
-            const forgotTyped = (document.getElementById('forgot-captcha-input').value || '').trim().toUpperCase();
+            const forgotTyped = (document.getElementById('forgot-captcha-input').value || '').trim();
             if (!forgotTyped) { showToast("Please enter the captcha characters", "error"); return; }
             if (forgotTyped !== forgotCaptchaCode) { showToast("Incorrect captcha. Here is a new one.", "error"); refreshForgotCaptcha(true); return; }
             if (!jbThrottle('reset', 60000, 'Please wait a minute before requesting another reset link.')) return;
@@ -3089,7 +3089,7 @@
             if (gsPassword.length < 8) { showToast("Password must be at least 8 characters", "error"); return; }
             if (gsPassword !== gsConfirm) { showToast("Passwords do not match.", "error"); return; }
 
-            const gsCapTyped = ((document.getElementById('gs-cap-input') || {}).value || '').trim().toUpperCase();
+            const gsCapTyped = ((document.getElementById('gs-cap-input') || {}).value || '').trim();
             if (!gsCapTyped) { showToast("Please enter the captcha characters", "error"); return; }
             if (gsCapTyped !== accountCaptchaCodes['gs-cap']) {
                 showToast("Incorrect captcha. Here is a new one.", "error");
@@ -3162,10 +3162,10 @@
         };
 
         // ===== Saved accounts on this device =====
-        // Kept in this browser's storage only when the user ticks "Remember my username on this device":
+        // Kept in this browser's storage only when the user ticks "Save this account on this device":
         //   - username (+ email, to pre-select a Google account)
-        //   - for Google accounts only: a flag meaning "do not sign out of Firebase" (the session is managed by Firebase Auth).
-        // Passwords are NEVER stored.
+        //   - optionally the password, but only ENCRYPTED (AES-GCM) with a non-extractable key that lives in IndexedDB.
+        // The password is never sent anywhere except to sign in, and it is deleted automatically if it stops working.
         const CAN_SAVE_PASSWORD = !!(window.crypto && window.crypto.subtle && window.indexedDB);
         const SAVED_ACCOUNTS_KEY = 'jb_saved_accounts';
         const MAX_SAVED_ACCOUNTS = 5;
@@ -3215,21 +3215,57 @@
             if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
         }
 
-        // ---- Password storage has been REMOVED (security audit 3.4) ----
-        // JB HUB never stores passwords on the device any more. Only the user name (and, for Google accounts, the
-        // Firebase-managed "stay signed in" session) can be remembered. These stubs stay so older code paths keep working.
-        async function decryptPassword() { return null; }
-        async function deleteDeviceKey() { try { indexedDB.deleteDatabase('jb_secure'); } catch (e) {} }
+        // ---- encryption helpers (AES-GCM, key can never be exported from the browser) ----
+        function idbRequest(req) {
+            return new Promise((resolve, reject) => { req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+        }
+        function idbOpen() {
+            const open = indexedDB.open('jb_secure', 1);
+            open.onupgradeneeded = () => open.result.createObjectStore('keys');
+            return idbRequest(open);
+        }
+        async function getDeviceKey(createIfMissing) {
+            const idb = await idbOpen();
+            let key = await idbRequest(idb.transaction('keys', 'readonly').objectStore('keys').get('device'));
+            if (!key && createIfMissing) {
+                key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+                await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').put(key, 'device'));
+            }
+            return key || null;
+        }
+        async function deleteDeviceKey() {
+            try { const idb = await idbOpen(); await idbRequest(idb.transaction('keys', 'readwrite').objectStore('keys').delete('device')); } catch (e) {}
+        }
+        const toB64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+        const fromB64 = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+        const aad = username => new TextEncoder().encode(String(username).toLowerCase()); // ties the secret to its account
+
+        async function encryptPassword(username, password) {
+            const key = await getDeviceKey(true);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad(username) }, key, new TextEncoder().encode(password));
+            return { iv: toB64(iv), ct: toB64(ct) };
+        }
+        async function decryptPassword(username, blob) {
+            try {
+                const key = await getDeviceKey(false);
+                if (!key || !blob) return null;
+                const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64(blob.iv), additionalData: aad(username) }, key, fromB64(blob.ct));
+                return new TextDecoder().decode(plain);
+            } catch (e) { return null; }
+        }
 
         // set (or with null, delete) the encrypted password of a saved account
         async function setSavedPassword(username, passwordOrNull) {
-            if (passwordOrNull) return false;   // passwords are never stored
             const k = String(username || '').toLowerCase();
+            let blob = null;
+            if (passwordOrNull) { try { blob = await encryptPassword(username, passwordOrNull); } catch (e) { return false; } }
             const list = getSavedAccounts();
             const entry = list.find(a => a.u.toLowerCase() === k);
             if (!entry) return false;
-            delete entry.pw;
+            if (blob) entry.pw = blob; else delete entry.pw;
             setSavedAccounts(list);
+            if (!list.some(a => a.pw)) deleteDeviceKey();   // no encrypted passwords left: drop the key too
             return true;
         }
         // Google accounts have no password. "Also save my login" for them means: the Firebase sign-in of this Google account
@@ -3254,15 +3290,6 @@
             setSavedPassword(username, null);
             if (document.body.classList.contains('jb-has-saved')) renderAccountChooser();
         }
-
-        // One-time cleanup: remove password blobs and the device key that older versions may have stored on this browser
-        (function purgeLegacySavedPasswords() {
-            try {
-                const list = getSavedAccounts();
-                if (list.some(a => a.pw)) { list.forEach(a => { delete a.pw; }); setSavedAccounts(list); }
-                indexedDB.deleteDatabase('jb_secure');
-            } catch (e) {}
-        })();
 
         function maskEmail(email) {
             const m = String(email || '').match(/^([^@]+)@(.+)$/);
@@ -3344,7 +3371,7 @@
             if (!a) return;
             showLoginFormFromChooser();
             document.getElementById('save-account-checkbox').checked = true;   // it is already saved: keep it saved
-            document.getElementById('save-password-checkbox').checked = !!a.gs;
+            document.getElementById('save-password-checkbox').checked = !!(a.pw || a.gs);
             updateSavePasswordRow();
             document.getElementById('username').value = a.u;
             if (a.g) {
@@ -3354,6 +3381,17 @@
                 return;
             }
             document.getElementById('password').value = '';
+            if (a.pw) {
+                const saved = await decryptPassword(a.u, a.pw);
+                if (saved) {
+                    document.getElementById('password').value = saved;
+                    oneTapUser = a.u;
+                    handleAuth();                                               // normal login: ALL checks (captcha, locks, server rules) still apply
+                    return;
+                }
+                setSavedPassword(a.u, null);                                    // cannot be decrypted any more (browser data cleared)
+                renderAccountChooser();
+            }
             const sub = document.getElementById('auth-subtitle');
             if (sub) sub.textContent = 'Welcome back, ' + a.u + '! Enter your password';
             document.getElementById('password').focus();
@@ -3371,7 +3409,7 @@
             if (a.gs) {
                 try { const cu = auth.currentUser; if (cu && String(cu.email || '').toLowerCase() === String(a.e || '').toLowerCase()) auth.signOut(); } catch (e) {}
             }
-            showToast('Removed ' + a.u + (a.gs ? ' and its saved Google sign-in' : '') + ' from this device');
+            showToast('Removed ' + a.u + (a.pw ? ' and its saved password' : (a.gs ? ' and its saved Google sign-in' : '')) + ' from this device');
         };
 
         // Forget saved accounts that no longer exist (deleted or renamed). Never removes anything if the check itself fails.
@@ -3406,7 +3444,24 @@
         const IP_LOCK_MS = 60 * 60 * 1000;        // lock length: 1 hour       (database rules allow at most about 1 hour)
         const IP_WINDOW_MS = 60 * 60 * 1000;      // failures older than 1 hour are forgotten and the record is deleted
         let ipLockUntilMem = 0;                   // lock end, in this device's clock
-        let ipKeyPromise = null, ipKeyFailedAt = 0;
+        let ipKeyPromise = null, ipKeyFailedAt = 0, lastIpFailPromise = null;
+        // What happened the last time the shared locks were used. In the browser console type:  __jbLockDiag
+        const lockDiag = { ipKey: 'not used yet', ipSave: 'not used yet', accountSave: 'not used yet', ipRecord: null, accountRecord: null };
+        window.__jbLockDiag = lockDiag;
+        function lockErr(e) { return String((e && (e.code || e.message)) || e || 'error'); }
+        // which lock is blocking: this browser ("device"), this network/IP ("network") or both
+        function suspendKind() {
+            let t = suspendedUntilMem;
+            try { const v = parseInt(localStorage.getItem('jb_device_suspended_until') || '0', 10); if (v > t) t = v; } catch (e) {}
+            const dev = t > Date.now(), net = ipLockUntilMem > Date.now();
+            return dev && net ? 'both' : (net ? 'network' : 'device');
+        }
+        function suspendMessage() {
+            const k = suspendKind(), left = suspendLeftText();
+            if (k === 'network') return 'Too many wrong passwords from this network (IP address). Login is blocked for ' + left + '.';
+            if (k === 'both') return 'Too many wrong passwords on this device and this network. Login is blocked for ' + left + '.';
+            return 'Too many wrong passwords on this device. Login is blocked for ' + left + '.';
+        }
         function withTimeout(p, ms) { return Promise.race([p, new Promise(res => setTimeout(() => res(undefined), ms))]); }
         function getIpKey() {
             if (!ipKeyPromise && Date.now() - ipKeyFailedAt < 60000) return Promise.resolve('');   // lookup just failed (blocked/offline): do not slow every login down
@@ -3442,21 +3497,24 @@
         async function refreshIpLock() {
             return withTimeout((async () => {
                 try {
-                    const key = await getIpKey(); if (!key) return;
+                    const key = await getIpKey(); if (!key) { lockDiag.ipKey = 'FAILED: could not read the IP address (blocked or offline)'; return; }
+                    lockDiag.ipKey = 'ok';
                     const off = await getServerOffset(), now = Date.now() + off;
                     const ref = db.ref('loginLocks/' + key);
                     const snap = await ref.once('value');
-                    const v = snap.val();
+                    const v = snap.val(); lockDiag.ipRecord = v ? { fails: v.fails, until: v.until } : null;
                     if (!v) { return; }
                     if (typeof v.exp === 'number' && v.exp < now) { ref.remove().catch(() => {}); ipLockUntilMem = 0; return; }   // expired: auto-delete
                     ipLockUntilMem = (typeof v.until === 'number' && v.until > now) ? v.until - off : 0;
-                } catch (e) { /* offline / blocked: the device lock still works */ }
+                } catch (e) { lockDiag.ipRecord = 'READ ERROR: ' + lockErr(e); jbLogErr('ip lock read', e); }
             })(), 3500);
         }
         // counts one wrong password for this network
         async function recordIpFailure() {
             try {
-                const key = await getIpKey(); if (!key) return;
+                const key = await getIpKey();
+                if (!key) { lockDiag.ipKey = 'FAILED: could not read the IP address (blocked or offline)'; lockDiag.ipSave = 'skipped'; return; }
+                lockDiag.ipKey = 'ok';
                 const off = await getServerOffset();
                 const res = await db.ref('loginLocks/' + key).transaction(cur => {
                     const now = Date.now() + off;
@@ -3469,11 +3527,12 @@
                     return { fails: fails, until: until, exp: exp, t: firebase.database.ServerValue.TIMESTAMP };
                 }, undefined, false);
                 const v = res && res.snapshot && res.snapshot.val();
+                lockDiag.ipSave = (res && res.committed) ? 'saved (fails=' + (v && v.fails) + ')' : 'NOT saved (aborted)';
                 if (v && typeof v.until === 'number' && v.until > Date.now() + off) {
                     ipLockUntilMem = v.until - off;
                     try { updateLoginSuspendUI(); } catch (e) {}
                 }
-            } catch (e) { /* offline / blocked: the device lock still works */ }
+            } catch (e) { lockDiag.ipSave = 'ERROR: ' + lockErr(e); jbLogErr('ip lock save', e); }
         }
 
         // ===== Account lock (per account, stored in the database) =====
@@ -3502,7 +3561,7 @@
                     if (!val) return null;
                     if (typeof val.exp === 'number' && val.exp < Date.now() + off) { ref.remove().catch(() => {}); return null; }   // expired: auto-delete
                     return val;
-                } catch (e) { return null; }       // offline / blocked: do not lock people out because of a network problem
+                } catch (e) { lockDiag.accountRecord = 'READ ERROR: ' + lockErr(e); jbLogErr('account lock read', e); return null; }       // offline / blocked: do not lock people out because of a network problem
             })(), 3500);
             return v || null;
         }
@@ -3519,9 +3578,12 @@
                         const locked = fails >= ACCOUNT_LOCK_AFTER;
                         return { fails: fails, locked: locked, exp: now + (locked ? ACCOUNT_LOCK_KEEP_MS : ACCOUNT_WINDOW_MS), t: firebase.database.ServerValue.TIMESTAMP };
                     }, undefined, false);
-                    return (res && res.snapshot && res.snapshot.val()) || null;
-                } catch (e) { return null; }
-            })(), 3500);
+                    const v = (res && res.snapshot && res.snapshot.val()) || null;
+                    lockDiag.accountSave = (res && res.committed) ? 'saved (fails=' + (v && v.fails) + ', locked=' + (v && v.locked) + ')' : 'NOT saved (aborted)';
+                    lockDiag.accountRecord = v ? { fails: v.fails, locked: v.locked } : null;
+                    return v;
+                } catch (e) { lockDiag.accountSave = 'ERROR: ' + lockErr(e); jbLogErr('account lock save', e); return null; }
+            })(), 3500).then(v => { if (v === undefined) lockDiag.accountSave = 'TIMEOUT (database did not answer in 3.5 s)'; return v || null; });
         }
         async function sendAccountUnlockEmail(email) {
             if (!jbThrottle('reset', 60000, 'Please wait a minute before requesting another reset link.')) return;
@@ -3589,9 +3651,32 @@
             box.classList.toggle('hidden', !show);
             if (show) {
                 const t = document.getElementById('login-suspend-text');
-                if (t) t.textContent = 'Too many wrong passwords. Login is temporarily blocked. Try again in ' + suspendLeftText() + '.';
+                if (t) t.textContent = suspendMessage() + ' Try again later.';
             }
         }
+
+
+        // ===== Caps Lock hint (captchas and passwords are case-sensitive) =====
+        (function () {
+            let pill = null;
+            function show(on) {
+                if (on && !pill) {
+                    pill = document.createElement('div');
+                    pill.setAttribute('role', 'status');
+                    pill.textContent = 'Caps Lock is ON - capital and small letters matter here';
+                    pill.style.cssText = 'position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99999;background:#92400e;color:#fff;font:600 12px/1.2 system-ui,sans-serif;padding:8px 14px;border-radius:999px;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;max-width:92vw;text-align:center;';
+                    document.body.appendChild(pill);
+                } else if (!on && pill) { pill.remove(); pill = null; }
+            }
+            function check(e) {
+                const t = e.target;
+                if (!t || t.tagName !== 'INPUT' || !(t.type === 'password' || /captcha|gs-cap/.test(t.id || ''))) return;
+                try { show(!!(e.getModifierState && e.getModifierState('CapsLock'))); } catch (x) {}
+            }
+            document.addEventListener('keydown', check, true);
+            document.addEventListener('keyup', check, true);
+            document.addEventListener('focusout', () => show(false), true);
+        })();
 
         // ===== Login captcha: required after more than 3 wrong login attempts =====
         const LOGIN_FAIL_LIMIT = 3;                    // after this many wrong attempts the captcha appears
@@ -3617,13 +3702,19 @@
         function loginCaptchaNeeded() { return getLoginFails() >= LOGIN_FAIL_LIMIT; }
 
         function makeCaptchaCode(len) {
-            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I so people can read it
-            const buf = new Uint32Array(len);
-            if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(buf);
-            else for (let i = 0; i < len; i++) buf[i] = Math.floor(Math.random() * 4294967295);
-            let out = '';
-            for (let i = 0; i < len; i++) out += chars[buf[i] % chars.length];
-            return out;
+            // Capitals + small letters + digits. Left out on purpose: 0 O 1 I l (look alike) and the small versions of
+            // c k o p s u v w x z (they look the same as their capitals, so people could not tell which case is meant).
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabdefghijmnqrty23456789';
+            const hasUpper = c => /[A-Z]/.test(c), hasLower = c => /[a-z]/.test(c);
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const buf = new Uint32Array(len);
+                if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(buf);
+                else for (let i = 0; i < len; i++) buf[i] = Math.floor(Math.random() * 4294967295);
+                let out = '';
+                for (let i = 0; i < len; i++) out += chars[buf[i] % chars.length];
+                if (hasUpper(out) && hasLower(out)) return out;     // every captcha contains at least one capital AND one small letter
+            }
+            return 'Ab3dK';
         }
 
         // Draws a distorted captcha on the given canvas and returns the characters shown
@@ -3715,7 +3806,7 @@
             const total = getTotalLoginFails() + 1;
             setTotalLoginFails(total);
             if (total >= LOGIN_SUSPEND_AFTER) suspendDevice();   // 10 wrong passwords in a row: 1-day suspension
-            recordIpFailure();                                    // the same failure is counted for this network (auto-expiring record)
+            lastIpFailPromise = recordIpFailure();                // the same failure is counted for this network (auto-expiring record)
             const input = document.getElementById('login-captcha-input');
             if (input) input.value = '';
             const box = document.getElementById('login-captcha-box');
@@ -3758,7 +3849,7 @@
             if (need && (wasHidden || !accountCaptchaCodes[prefix])) drawAccountCaptcha(prefix);
         }
         function leaveSuspendedSession() {
-            showToast("Too many wrong passwords. This device is suspended for 1 day.", "error");
+            showToast(suspendMessage(), "error");
             try { logout(); } catch (e) {}
             setTimeout(() => { try { updateLoginSuspendUI(); } catch (e) {} }, 400);
         }
@@ -3766,7 +3857,7 @@
         function passwordGate(prefix) {
             if (isDeviceSuspended()) { leaveSuspendedSession(); return false; }
             if (loginCaptchaNeeded()) {
-                const typed = ((document.getElementById(prefix + '-input') || {}).value || '').trim().toUpperCase();
+                const typed = ((document.getElementById(prefix + '-input') || {}).value || '').trim();
                 if (!typed) { showToast("Please enter the captcha characters", "error"); return false; }
                 if (typed !== accountCaptchaCodes[prefix]) {
                     showToast("Incorrect captcha. Here is a new one.", "error");
@@ -3857,7 +3948,7 @@
             if (!isSignupMode) await refreshIpLock();   // is this network locked? (also deletes an expired record)
             if (!isSignupMode && isDeviceSuspended()) {
                 updateLoginSuspendUI();
-                showToast("This device is suspended from logging in for " + suspendLeftText() + " (too many wrong passwords).", "error");
+                showToast(suspendMessage(), "error");
                 return;
             }
             if (!navigator.onLine && !isFirebaseConnected) {
@@ -3873,7 +3964,7 @@
             const password = document.getElementById('password').value;
 
             if (isSignupMode) {
-                const typedCap = (document.getElementById('signup-captcha-input').value || '').trim().toUpperCase();
+                const typedCap = (document.getElementById('signup-captcha-input').value || '').trim();
                 if (!typedCap) { showToast("Please enter the captcha characters", "error"); return; }
                 if (typedCap !== signupCaptchaCode) {
                     showToast("Incorrect captcha. Here is a new one.", "error");
@@ -3886,7 +3977,7 @@
 
             // Security check: after more than 3 wrong attempts the captcha must be solved before we even look up the account
             if (!isSignupMode && loginCaptchaNeeded()) {
-                const typed = (document.getElementById('login-captcha-input').value || '').trim().toUpperCase();
+                const typed = (document.getElementById('login-captcha-input').value || '').trim();
                 if (!typed) { showToast("Please enter the captcha characters", "error"); return; }
                 if (typed !== loginCaptchaCode) {
                     showToast("Incorrect captcha. Here is a new one.", "error");
@@ -3986,7 +4077,9 @@
                     }
                     if (isDeviceSuspended()) {            // that was the 10th wrong password in a row
                         updateLoginSuspendUI();
-                        showToast("Too many wrong passwords. This device is suspended from logging in for 1 day.", "error");
+                        try { await withTimeout(lastIpFailPromise, 2500); } catch (e) {}   // let the network lock finish so the message names the right lock
+                        updateLoginSuspendUI();
+                        showToast(suspendMessage(), "error");
                         return;
                     }
                     if (usedSavedPasswordFor) { // the saved password no longer works (changed elsewhere): delete it and ask for the new one
@@ -4122,6 +4215,8 @@
                         const pwBox = document.getElementById('save-password-checkbox');
                         const typedPw = (document.getElementById('password') || {}).value || '';
                         if (currentUser.googleAccount === true) setGoogleStay(currentUser.username, !!(pwBox && pwBox.checked)); // Google: stay signed in on this device
+                        else if (pwBox && pwBox.checked && CAN_SAVE_PASSWORD && typedPw) setSavedPassword(currentUser.username, typedPw);
+                        else if (pwBox && !pwBox.checked) setSavedPassword(currentUser.username, null);
                     }
                 }
             } catch (e) {}
