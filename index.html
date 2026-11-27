@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Site Moving — hub.jbnet.dpdns.org</title>
+  <link rel="canonical" href="https://hub.jbnet.dpdns.org/" />
+  <meta http-equiv="refresh" content="2; url=https://hub.jbnet.dpdns.org/" />
+  <script>
+    const target = "https://hub.jbnet.dpdns.org" + window.location.pathname + window.location.search + window.location.hash;
+    window.location.replace(target);
+  </script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #0f172a;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, sans-serif;
+      padding: 24px;
+    }
+    .card {
+      max-width: 460px;
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    }
+    h1 {
+      font-size: 1.35rem;
+      margin-bottom: 10px;
+      color: #38bdf8;
+    }
+    p {
+      font-size: 0.98rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+      margin-bottom: 20px;
+    }
+    .domain {
+      display: inline-block;
+      background: #0f172a;
+      border: 1px solid #475569;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      color: #f8fafc;
+      margin: 6px 0 18px;
+      word-break: break-all;
+    }
+    a.btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #0284c7;
+      color: #fff;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 10px;
+    }
+    a.btn:hover { background: #0369a1; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>ഈ സൈറ്റ് പുതിയ ഡൊമൈനിലേക്ക് മാറുന്നു</h1>
+    <p>ഞങ്ങളുടെ സൈറ്റ് താഴെ പറയുന്ന പുതിയ വിലാസത്തിലേക്ക് മാറ്റിയിട്ടുണ്ട്. നിങ്ങളെ ഉടൻ തന്നെ അവിടേക്ക് മാറ്റുന്നതാണ്:</p>
+    <div class="domain">https://hub.jbnet.dpdns.org</div>
+    <div>
+      <a class="btn" id="direct-link" href="https://hub.jbnet.dpdns.org/">ഇപ്പോൾ തന്നെ പോകുക</a>
+    </div>
+  </div>
+  <script>
+    document.getElementById("direct-link").href = target;
+  </script>
+</body>
+</html>
